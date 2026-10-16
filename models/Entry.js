@@ -63,7 +63,12 @@ const entrySchema = new mongoose.Schema(
     brand: {
       type: String,
       trim: true,
-      default: '',        // e.g. Raymond, Vimal, Arvind
+      default: '',        // e.g. Laxmipati, Raymond, Vimal, Arvind
+    },
+    designNumber: {
+      type: String,
+      trim: true,
+      default: '',        // e.g. Design #405 or article number
     },
     rate: {
       type: Number,
@@ -75,6 +80,7 @@ const entrySchema = new mongoose.Schema(
     },
     date: {
       type: Date,
+      default: Date.now,  // automatically default to exact current timestamp
       required: true,
       index: true,
     },

@@ -196,7 +196,9 @@ window.S = {
   labelRate:           'रेट (प्रति मीटर / पीस)',
   labelDueDate:        'उधार चुकाने की तारीख',
   quantityPlaceholder: 'जैसे: 2',
-  brandPlaceholder:    'जैसे: Raymond, Vimal',
+  brandPlaceholder:    'जैसे: Raymond, Vimal, Laxmipati',
+  labelDesignNumber:   'डिजाइन नंबर',
+  designNumberPlaceholder: 'जैसे: 405',
   ratePlaceholder:     'जैसे: 450',
   due7days:            '7 दिन',
   due15days:           '15 दिन',
@@ -207,7 +209,7 @@ window.S = {
   // ── Floating Global Voice Assistant (FAB) ────────────────────
   fabVoiceTitle:       '🎤 बोलिए',
   fabListening:        '🔴 सुन रहे हैं…',
-  fabVoiceHint:        'उदाहरण: "रमेश का हिसाब" या "रमेश को 6 मीटर पैंट 1200 रुपये"',
+  fabVoiceHint:        'उदाहरण: "रमेश का लड़का मोनू, 1 लक्ष्मीपति साड़ी, डिजाइन 405, 1200 रुपये"',
   fabNotSupported:     'आवाज़ पहचान उपलब्ध नहीं',
   fabError:            'आवाज़ नहीं समझ आई',
   voiceConfirmTitle:   '✅ यह सही है?',
@@ -218,6 +220,7 @@ window.S = {
   voiceNavSearch:      'ग्राहक खोज रहे हैं…',
   voiceNavToday:       'आज का हिसाब खोल रहे हैं…',
   voiceCustomerOpen:   'ग्राहक का हिसाब खोल रहे हैं…',
+  voiceResolvingCustomer: 'ग्राहक मिला रहे हैं…',
   voiceEntryPrefilled: 'फॉर्म भर दिया गया, देख लें',
   voiceSpeakBalance:   'बकाया',     // used before amount in TTS
   voiceHasDues:        'का कुल बकाया',
@@ -227,6 +230,8 @@ window.S = {
   voiceSavedDirect:    'हिसाब सफलतापूर्वक सेव हो गया!',
   voiceHearBalance:    '🔊 आवाज़ में सुनें',
   brand_label:         'ब्रांड',
+  design_label:        'डिजाइन #',
   quantity_label:      'पीस',
+  village_label:       'गाँव',
   dueDate_label:       'देय तारीख',
 };

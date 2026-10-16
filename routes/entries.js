@@ -36,7 +36,7 @@ const entryValidation = [
   body('type').isIn(['sale', 'payment']).withMessage('प्रकार: sale या payment'),
   body('amount')
     .isInt({ min: 1 }).withMessage('राशि कम से कम ₹1 होनी चाहिए'),
-  body('date').isISO8601().withMessage('दिनांक गलत है'),
+  body('date').optional().isISO8601().withMessage('दिनांक गलत है'),
   body('item').optional().trim().isLength({ max: 200 }),
   body('meters').optional({ checkFalsy: true }).isFloat({ min: 0 }),
   body('note').optional().trim().isLength({ max: 500 }),
@@ -48,6 +48,7 @@ const entryValidation = [
     .withMessage('श्रेणी गलत है'),
   body('quantity').optional({ checkFalsy: true }).isInt({ min: 0 }),
   body('brand').optional().trim().isLength({ max: 100 }),
+  body('designNumber').optional().trim().isLength({ max: 100 }),
   body('rate').optional({ checkFalsy: true }).isFloat({ min: 0 }),
   body('dueDate').optional({ checkFalsy: true }).isISO8601().withMessage('देय तिथि गलत है'),
 ];
@@ -61,26 +62,30 @@ router.post('/', entryValidation, async (req, res) => {
   const {
     customerId, type, amount, date,
     item = '', meters = null, note = '', photo = '',
-    category = 'other', quantity = null, brand = '', rate = null, dueDate = null,
+    category = 'other', quantity = null, brand = '', designNumber = '',
+    rate = null, dueDate = null,
   } = req.body;
 
   try {
+    const entryDate = date ? new Date(date) : new Date();
+
     const entry = await Entry.create({
-      customer:  customerId,
-      shop:      req.user.shop,
+      customer:     customerId,
+      shop:         req.user.shop,
       type,
-      amount:    Math.round(Number(amount)),
-      date:      new Date(date),
+      amount:       Math.round(Number(amount)),
+      date:         entryDate,
       item,
-      meters:    meters !== null ? Number(meters) : null,
+      meters:       meters !== null ? Number(meters) : null,
       note,
       photo,
       category,
-      quantity:  quantity !== null ? Math.round(Number(quantity)) : null,
+      quantity:     quantity !== null ? Math.round(Number(quantity)) : null,
       brand,
-      rate:      rate !== null ? Number(rate) : null,
-      dueDate:   dueDate ? new Date(dueDate) : null,
-      createdBy: req.user.userId,
+      designNumber,
+      rate:         rate !== null ? Number(rate) : null,
+      dueDate:      dueDate ? new Date(dueDate) : null,
+      createdBy:    req.user.userId,
     });
 
     // Populate customer name so the frontend can show it immediately

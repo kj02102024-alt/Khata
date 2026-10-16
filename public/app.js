@@ -718,13 +718,14 @@ function renderSaleItem(e, isSettled) {
 
       <div class="entry-meta">
         ${dateStr}
-        ${e.item     ? ` · <strong>${esc(e.item)}</strong>` : ''}
-        ${e.brand    ? ` · 🏷️ <strong>${esc(e.brand)}</strong>` : ''}
-        ${e.meters   ? ` · 📏 ${e.meters} ${S.meters_unit}`   : ''}
-        ${e.quantity ? ` · 🔢 ${e.quantity} पीस`              : ''}
-        ${e.rate     ? ` · @ ₹${e.rate}`                      : ''}
-        ${e.dueDate  ? `<br><span style="color:#ffb74d">📅 देय: ${formatDate(e.dueDate)}</span>` : ''}
-        ${e.note     ? `<br><span style="color:#b0bec5">📝 ${esc(e.note)}</span>` : ''}
+        ${e.item         ? ` · <strong>${esc(e.item)}</strong>` : ''}
+        ${e.brand        ? ` · 🏷️ <strong>${esc(e.brand)}</strong>` : ''}
+        ${e.designNumber ? ` · 🎨 <strong>#${esc(e.designNumber)}</strong>` : ''}
+        ${e.meters       ? ` · 📏 ${e.meters} ${S.meters_unit}`   : ''}
+        ${e.quantity     ? ` · 🔢 ${e.quantity} पीस`              : ''}
+        ${e.rate         ? ` · @ ₹${e.rate}`                      : ''}
+        ${e.dueDate      ? `<br><span style="color:#ffb74d">📅 देय: ${formatDate(e.dueDate)}</span>` : ''}
+        ${e.note         ? `<br><span style="color:#b0bec5">📝 ${esc(e.note)}</span>` : ''}
       </div>
 
       ${recon.status === 'partly_paid' && !isSettled ? `
@@ -1168,6 +1169,14 @@ function renderAddEntry() {
                  value="${prefill?.quantity || ''}" />
         </div>
 
+        <!-- Design Number (shown for saree/blanket/readymade) -->
+        <div class="form-group" id="design-number-group">
+          <label>${S.labelDesignNumber}</label>
+          <input id="inp-design-number" type="text"
+                 placeholder="${S.designNumberPlaceholder}"
+                 value="${esc(prefill?.designNumber || '')}" />
+        </div>
+
         <!-- Due date shortcuts -->
         <div class="form-group">
           <label>${S.labelDueDate}</label>
@@ -1319,22 +1328,26 @@ function renderAddEntry() {
     navigate('customerDetail', { customerId }));
 }
 
-/** Show meters or quantity field depending on selected category */
+/** Show meters or quantity & design number depending on selected category */
 function updateMeasurementFields(cat) {
   const metersGrp   = document.getElementById('meters-group');
   const quantityGrp = document.getElementById('quantity-group');
+  const designGrp   = document.getElementById('design-number-group');
   if (!metersGrp || !quantityGrp) return;
 
   if (METER_CATS.has(cat)) {
     metersGrp.style.display   = '';
     quantityGrp.style.display = 'none';
+    if (designGrp) designGrp.style.display = 'none';
   } else if (PIECE_CATS.has(cat)) {
     metersGrp.style.display   = 'none';
     quantityGrp.style.display = '';
+    if (designGrp) designGrp.style.display = '';
   } else {
     // 'other' or unknown — show neither (item + note suffice)
     metersGrp.style.display   = 'none';
     quantityGrp.style.display = 'none';
+    if (designGrp) designGrp.style.display = 'none';
   }
 }
 
@@ -1405,18 +1418,19 @@ function parseVoiceIntoEntryFields(transcript) {
 }
 
 function prepareConfirmation() {
-  const errEl    = document.getElementById('ae-error');
-  const type     = document.getElementById('inp-type').value;
-  const amount   = document.getElementById('inp-amount').value.trim();
-  const item     = document.getElementById('inp-item')?.value.trim()     || '';
-  const meters   = document.getElementById('inp-meters')?.value.trim()   || '';
-  const date     = document.getElementById('inp-date').value;
-  const note     = document.getElementById('inp-note').value.trim();
-  const category = document.getElementById('inp-category')?.value        || 'other';
-  const brand    = document.getElementById('inp-brand')?.value.trim()    || '';
-  const rate     = document.getElementById('inp-rate')?.value.trim()     || '';
-  const quantity = document.getElementById('inp-quantity')?.value.trim() || '';
-  const dueDate  = document.getElementById('inp-due-date-value')?.value  || '';
+  const errEl        = document.getElementById('ae-error');
+  const type         = document.getElementById('inp-type').value;
+  const amount       = document.getElementById('inp-amount').value.trim();
+  const item         = document.getElementById('inp-item')?.value.trim()         || '';
+  const meters       = document.getElementById('inp-meters')?.value.trim()       || '';
+  const date         = document.getElementById('inp-date')?.value                || todayISO();
+  const note         = document.getElementById('inp-note')?.value.trim()         || '';
+  const category     = document.getElementById('inp-category')?.value            || 'other';
+  const brand        = document.getElementById('inp-brand')?.value.trim()        || '';
+  const designNumber = document.getElementById('inp-design-number')?.value.trim() || '';
+  const rate         = document.getElementById('inp-rate')?.value.trim()         || '';
+  const quantity     = document.getElementById('inp-quantity')?.value.trim()     || '';
+  const dueDate      = document.getElementById('inp-due-date-value')?.value      || '';
 
   errEl.style.display = 'none';
 
@@ -1425,26 +1439,22 @@ function prepareConfirmation() {
     errEl.style.display = 'block';
     return;
   }
-  if (!date) {
-    errEl.textContent   = 'दिनांक जरूरी है';
-    errEl.style.display = 'block';
-    return;
-  }
 
   navigate('confirmEntry', {
     ...state.data,
     type,
-    amount:   Math.round(Number(amount)),
+    amount:       Math.round(Number(amount)),
     item,
-    meters:   meters   ? Number(meters)   : null,
+    meters:       meters       ? Number(meters)   : null,
     date,
     note,
-    photo:    state.activePhoto || '',
+    photo:        state.activePhoto || '',
     category,
     brand,
-    rate:     rate     ? Number(rate)     : null,
-    quantity: quantity ? Math.round(Number(quantity)) : null,
-    dueDate:  dueDate  || null,
+    designNumber,
+    rate:         rate         ? Number(rate)     : null,
+    quantity:     quantity     ? Math.round(Number(quantity)) : null,
+    dueDate:      dueDate      || null,
   });
 }
 
@@ -1491,6 +1501,11 @@ function renderConfirmEntry() {
         <div class="confirm-row">
           <span class="confirm-key">${S.labelBrand}</span>
           <span class="confirm-value">${esc(d.brand)}</span>
+        </div>` : ''}
+        ${d.designNumber ? `
+        <div class="confirm-row">
+          <span class="confirm-key">${S.labelDesignNumber}</span>
+          <span class="confirm-value">#${esc(d.designNumber)}</span>
         </div>` : ''}
         ${d.meters ? `
         <div class="confirm-row">
@@ -1560,19 +1575,20 @@ async function doSaveEntry() {
     await api('/api/entries', {
       method: 'POST',
       body: {
-        customerId: d.customerId,
-        type:       d.type,
-        amount:     d.amount,
-        item:       d.item     || '',
-        meters:     d.meters   || null,
-        date:       d.date,
-        note:       d.note     || '',
-        photo:      d.photo    || '',
-        category:   d.category || 'other',
-        brand:      d.brand    || '',
-        rate:       d.rate     || null,
-        quantity:   d.quantity || null,
-        dueDate:    d.dueDate  || null,
+        customerId:   d.customerId,
+        type:         d.type,
+        amount:       d.amount,
+        item:         d.item         || '',
+        meters:       d.meters       || null,
+        date:         d.date         || todayISO(),
+        note:         d.note         || '',
+        photo:        d.photo        || '',
+        category:     d.category     || 'other',
+        brand:        d.brand        || '',
+        designNumber: d.designNumber || '',
+        rate:         d.rate         || null,
+        quantity:     d.quantity     || null,
+        dueDate:      d.dueDate      || null,
       },
     });
 
@@ -1654,9 +1670,12 @@ function renderToday() {
               <div class="entry-meta">
                 <strong>${esc(e.customer?.name || '')}</strong>
                 ${e.customer?.village ? ` · 📍${esc(e.customer.village)}` : ''}
-                ${e.item   ? ` · ${esc(e.item)}` : ''}
-                ${e.meters ? ` · ${e.meters} ${S.meters_unit}` : ''}
-                ${e.note   ? `<br><span style="color:#90a4ae">📝 ${esc(e.note)}</span>` : ''}
+                ${e.brand        ? ` · 🏷️ <strong>${esc(e.brand)}</strong>` : ''}
+                ${e.designNumber ? ` · 🎨 <strong>#${esc(e.designNumber)}</strong>` : ''}
+                ${e.item         ? ` · ${esc(e.item)}` : ''}
+                ${e.meters       ? ` · ${e.meters} ${S.meters_unit}` : ''}
+                ${e.quantity     ? ` · ${e.quantity} पीस` : ''}
+                ${e.note         ? `<br><span style="color:#90a4ae">📝 ${esc(e.note)}</span>` : ''}
               </div>
               ${e.photo ? `
                 <div class="receipt-thumbnail-badge" data-photo="${esc(e.photo)}">
@@ -2273,6 +2292,146 @@ function closeVoiceOverlay() {
  *   3. ADD ENTRY  — "... ko ... rupaye" (add sale)
  *   4. FALLBACK   — search customer database
  */
+/**
+ * Advanced Spoken Hindi NLP Parser for Textile Business:
+ * Parses multi-attribute sentences such as:
+ * "Ramesh ka ladka Monu, gaon Manoharpur, 1 Laxmipati saree, design number 405, daam 1200 rupaye"
+ */
+function parseSpokenTextileSentence(rawTranscript) {
+  let text = normalizeDevanagariNumbers(rawTranscript).trim();
+
+  // 1. Village Extraction: e.g. "gaon Manoharpur" or "गांव मनोहरपुर"
+  let village = '';
+  const villageMatch = text.match(/(?:गांव|गाँव|गाव|gaon|gram)\s+([^\s,]+)/i);
+  if (villageMatch) {
+    village = villageMatch[1].trim();
+    text = text.replace(villageMatch[0], ' ');
+  }
+
+  // 2. Price / Amount Extraction:
+  // e.g. "daam 1200 rupaye", "1200 rupaye", "daam 1200", "मूल्य 1200"
+  let amount = null;
+  const amountMatch = text.match(/(?:दाम|मूल्य|daam|moolya|price)\s*(\d[\d,]*)(?:\s*(?:रुपये?|rupaye?|rs\.?|₹))?/i)
+                   || text.match(/(\d[\d,]*)\s*(?:रुपये?|rupaye?|rs\.?|₹)/i);
+  if (amountMatch) {
+    amount = amountMatch[1].replace(',', '');
+    text = text.replace(amountMatch[0], ' ');
+  }
+
+  // 3. Design / Article Number Extraction:
+  // e.g. "design number 405", "design no 405", "design 405", "डिजाइन नंबर 405"
+  let designNumber = '';
+  const designMatch = text.match(/(?:design\s*number|design\s*no\.?|design|डिजाइन\s*नंबर|डिजाइन|डीजाइन|आर्टिकल)\s*(?:#|no\.?)?\s*([a-zA-Z0-9\-_]+)/i);
+  if (designMatch) {
+    designNumber = designMatch[1].trim();
+    text = text.replace(designMatch[0], ' ');
+  }
+
+  // 4. Meters Extraction: e.g. "6.5 meter" or "6 मीटर"
+  let meters = null;
+  const metersMatch = text.match(/(\d+(\.\d+)?)\s*(?:मीटर|meter|mtr)/i);
+  if (metersMatch) {
+    meters = metersMatch[1];
+    text = text.replace(metersMatch[0], ' ');
+  }
+
+  // 5. Quantity Extraction: e.g. "1 saree", "2 piece", "1 Laxmipati"
+  let quantity = null;
+  const qtyMatch = text.match(/(\d+)\s*(?:पीस|थान|जोड़ी|जोड़ी|piece|pieces)/i)
+                || text.match(/(\d+)\s+(?:saree|साड़ी|साड़ी|चादर|कम्बल|blanket|bedsheet|laxmipati|लक्ष्मीपति|vimal|raymond)/i);
+  if (qtyMatch) {
+    quantity = qtyMatch[1];
+    text = text.replace(qtyMatch[0], qtyMatch[0].replace(qtyMatch[1], '').trim());
+  }
+
+  // 6. Brand Extraction
+  let brand = '';
+  const brandMap = {
+    'laxmipati': 'लक्ष्मीपति',
+    'लक्ष्मीपति': 'लक्ष्मीपति',
+    'raymond': 'रेमंड',
+    'रेमंड': 'रेमंड',
+    'vimal': 'विमल',
+    'विमल': 'विमल',
+    'arvind': 'अरविंद',
+    'अरविंद': 'अरविंद',
+    'bombay dyeing': 'बॉम्बे डाइंग',
+    'बॉम्बे डाइंग': 'बॉम्बे डाइंग',
+    'siyaram': 'सियाराम',
+    'सियाराम': 'सियाराम',
+    'vardhman': 'वर्धमान',
+    'वर्धमान': 'वर्धमान',
+    'subhash': 'सुभाष',
+    'सुभाष': 'सुभाष',
+    'vishal': 'विशाल',
+    'विशाल': 'विशाल',
+  };
+  const lcText = text.toLowerCase();
+  for (const [key, bLabel] of Object.entries(brandMap)) {
+    if (lcText.includes(key)) {
+      brand = bLabel;
+      text = text.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), ' ');
+      break;
+    }
+  }
+
+  // 7. Category Extraction
+  let category = 'other';
+  const catKeywords = {
+    saree:            ['saree', 'sari', 'साड़ी', 'साड़ी', 'साडी'],
+    pant_shirt:       ['pant', 'shirt', 'पैंट', 'शर्ट', 'trouser'],
+    blanket_bedsheet: ['blanket', 'bedsheet', 'चादर', 'कम्बल', 'रजाई', 'कंबल'],
+    suiting_shirting: ['suiting', 'shirting', 'थान', 'सूटिंग'],
+    readymade:        ['readymade', 'ready', 'रेडीमेड'],
+  };
+  for (const [cat, kws] of Object.entries(catKeywords)) {
+    if (kws.some(k => text.toLowerCase().includes(k))) {
+      category = cat;
+      kws.forEach(k => {
+        text = text.replace(new RegExp(k, 'gi'), ' ');
+      });
+      break;
+    }
+  }
+
+  // 8. If amount was not found, check remaining numbers
+  if (!amount) {
+    const remainingNums = text.match(/\d+/g);
+    if (remainingNums && remainingNums.length > 0) {
+      amount = remainingNums[remainingNums.length - 1];
+      text = text.replace(amount, ' ');
+    }
+  }
+
+  // 9. Clean customer / relationship text
+  let customerText = text
+    .replace(/[,\-–—|।!?;:]/g, ' ')
+    .replace(/\s+(?:को|ko|ke liye|ने|ne)\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!customerText && rawTranscript.includes(',')) {
+    customerText = rawTranscript.split(',')[0].trim();
+  }
+
+  return {
+    customerQuery: customerText,
+    village,
+    amount,
+    meters,
+    quantity,
+    brand,
+    designNumber,
+    category,
+  };
+}
+
+/**
+ * Main intent dispatcher for global voice assistant:
+ * 1. NAVIGATE   — "wapas", "ghar", "aaj", "hisab"
+ * 2. SEARCH     — "... ka hisab" / "... dhundo" / "Ramesh Manoharpur"
+ * 3. ADD SALE   — Multi-attribute NLP parser + smart customer resolution
+ */
 async function handleGlobalIntent(rawTranscript) {
   const normalized = normalizeDevanagariNumbers(rawTranscript);
   const lc = normalized.toLowerCase().trim();
@@ -2303,81 +2462,22 @@ async function handleGlobalIntent(rawTranscript) {
     return;
   }
 
-  // ── 2. Add-entry intent: "रमेश को 6 मीटर पैंट 1200 रुपये" ──
-  //    Pattern: <customer> को / ko <details> <amount> रुपये
-  const entryMatch = normalized.match(/^(.+?)\s+को\s+(.+?)$/i)
-                  || normalized.match(/^(.+?)\s+ko\s+(.+?)$/i);
-  if (entryMatch) {
-    const customerQuery = entryMatch[1].trim();
-    const entryDetails  = entryMatch[2].trim();
-
-    // Parse amount from details
-    const amountMatch = entryDetails.match(/(\d[\d,]*)\s*(रुपये?|rupaye?|rs\.?|₹)/i);
-    const numbers     = entryDetails.match(/\d+/g) || [];
-    const amount      = amountMatch
-      ? amountMatch[1].replace(',', '')
-      : (numbers.length ? numbers[numbers.length - 1] : null);
-
-    // Parse meters
-    const metersMatch = entryDetails.match(/(\d+(\.\d+)?)\s*(मीटर|meter)/i);
-    const meters = metersMatch ? metersMatch[1] : null;
-
-    // Detect category from keywords
-    let category = 'other';
-    const catKeywords = {
-      pant_shirt:       ['pant', 'shirt', 'पैंट', 'शर्ट', 'trouser'],
-      saree:            ['saree', 'sari', 'साड़ी', 'साडी'],
-      blanket_bedsheet: ['blanket', 'bedsheet', 'चादर', 'कम्बल', 'रजाई', 'कंबल'],
-      suiting_shirting: ['suiting', 'shirting', 'थान', 'सूटिंग'],
-      readymade:        ['readymade', 'ready', 'रेडीमेड'],
-    };
-    const lcDetails = entryDetails.toLowerCase();
-    for (const [cat, kws] of Object.entries(catKeywords)) {
-      if (kws.some(k => lcDetails.includes(k))) { category = cat; break; }
-    }
-
-    // Brand detection
-    const brandKeys = ['raymond', 'vimal', 'arvind', 'bombay dyeing', 'vardhman', 'siyaram', 'grasim', 'mafatlal'];
-    let brand = '';
-    for (const bk of brandKeys) {
-      if (lcDetails.includes(bk)) { brand = bk.charAt(0).toUpperCase() + bk.slice(1); break; }
-    }
-
-    // Detect quantity (for piece items)
-    let quantity = null;
-    const qtyMatch = entryDetails.match(/(\d+)\s*(पीस|थान|जोड़ी|जोड़ी|piece|pieces)/i);
-    if (qtyMatch) {
-      quantity = qtyMatch[1];
-    }
-
-    if (!amount) {
-      speakHindi(`राशि समझ नहीं आई, कृपया दोबारा बोलें`);
-      const voHint = document.getElementById('vo-hint');
-      if (voHint) voHint.textContent = 'राशि (रुपये) स्पष्ट बोलें';
-      setTimeout(closeVoiceOverlay, 2400);
-      return;
-    }
-
-    // Look up customer
-    showVoiceConfirmSearching(customerQuery);
+  // ── 2. Check Customer lookup intent explicitly ──────────────
+  // e.g. "Ramesh ka hisab dikhao" or "Ramesh ka hisab"
+  const hisabMatch = normalized.match(/^(.+?)\s+(?:का|के|की)\s+(?:हिसाब|hisab|ledger|बहीखाता|bikri|बिक्री)(?:\s+.*)?$/i);
+  if (hisabMatch) {
+    const query = hisabMatch[1].trim();
+    showVoiceConfirmSearching(query);
     try {
-      const results = await api(`/api/customers/search?q=${encodeURIComponent(customerQuery)}`);
+      const results = await api(`/api/customers/search?q=${encodeURIComponent(query)}`);
       if (results.length === 0) {
-        speakHindi(`${customerQuery} नाम का कोई ग्राहक नहीं मिला`);
-        setTimeout(closeVoiceOverlay, 2400);
+        speakHindi(`${query} नाम का कोई ग्राहक नहीं मिला`);
+        setTimeout(closeVoiceOverlay, 2200);
         return;
       }
-
       const customer = results[0];
-      // Launch Voice Confirmation & Hands-Free Control Loop
-      showVoiceConfirm({
-        customer,
-        amount,
-        meters,
-        quantity,
-        category,
-        brand,
-      });
+      closeVoiceOverlay();
+      navigate('customerDetail', { customerId: customer._id, speakBalanceOnLoad: true });
     } catch (e) {
       showToast(S.error);
       setTimeout(closeVoiceOverlay, 1500);
@@ -2385,16 +2485,54 @@ async function handleGlobalIntent(rawTranscript) {
     return;
   }
 
-  // ── 3. Customer lookup: "रमेश का हिसाब दिखाओ" or "रमेश मनोहरपुर"
-  let query = '';
-  const hisabMatch = normalized.match(/^(.+?)\s+(का|के|की)\s+(हिसाब|hisab|ledger|बहीखाता|bikri|बिक्री)(\s+.*)?$/i);
-  if (hisabMatch) {
-    query = hisabMatch[1].trim();
-  } else {
-    // If not a sentence or add-entry, test if it's a customer query (e.g. "Ramesh Manoharpur")
-    query = normalized.replace(/(का|के|की|हिसाब|दिखाओ|खोलें|खोलो|देखना)/g, '').trim();
+  // ── 3. Multi-Attribute Textile Sale Entry Intent ─────────────
+  // e.g. "Ramesh ka ladka Monu, gaon Manoharpur, 1 Laxmipati saree, design number 405, daam 1200 rupaye"
+  const parsed = parseSpokenTextileSentence(rawTranscript);
+
+  if (parsed.customerQuery && (parsed.amount || parsed.category !== 'other' || parsed.brand || parsed.designNumber)) {
+    if (!parsed.amount) {
+      speakHindi(`राशि समझ नहीं आई, कृपया दोबारा बोलें`);
+      const voHint = document.getElementById('vo-hint');
+      if (voHint) voHint.textContent = 'राशि (रुपये) स्पष्ट बोलें';
+      setTimeout(closeVoiceOverlay, 2400);
+      return;
+    }
+
+    const voTitle = document.getElementById('vo-title');
+    if (voTitle) voTitle.textContent = S.voiceResolvingCustomer;
+
+    try {
+      // Smart customer resolution: matches existing or cleanly formats new relation
+      const res = await api('/api/customers/resolve', {
+        method: 'POST',
+        body: {
+          spokenQuery: parsed.customerQuery,
+          village: parsed.village,
+        },
+      });
+
+      const customer = res.customer;
+      // Launch Interactive Voice Confirmation Loop
+      showVoiceConfirm({
+        customer,
+        amount:       parsed.amount,
+        meters:       parsed.meters,
+        quantity:     parsed.quantity,
+        category:     parsed.category,
+        brand:        parsed.brand,
+        designNumber: parsed.designNumber,
+      });
+      return;
+    } catch (err) {
+      console.warn('Customer resolution error:', err);
+      showToast(S.error);
+      setTimeout(closeVoiceOverlay, 1500);
+      return;
+    }
   }
 
+  // ── 4. Fallback: Search Customer Database ────────────────────
+  const query = normalized.replace(/(का|के|की|हिसाब|दिखाओ|खोलें|खोलो|देखना)/g, '').trim();
   if (query) {
     showVoiceConfirmSearching(query);
     try {
@@ -2406,7 +2544,6 @@ async function handleGlobalIntent(rawTranscript) {
       }
       const customer = results[0];
       closeVoiceOverlay();
-      // Navigate to customer detail with speakBalanceOnLoad flag
       navigate('customerDetail', { customerId: customer._id, speakBalanceOnLoad: true });
     } catch (e) {
       showToast(S.error);
@@ -2415,7 +2552,7 @@ async function handleGlobalIntent(rawTranscript) {
     return;
   }
 
-  // ── 4. Fallback ──────────────────────────────────────────────
+  // ── 5. Unrecognized ──────────────────────────────────────────
   const voHint = document.getElementById('vo-hint');
   if (voHint) voHint.textContent = S.voiceError;
   speakHindi(S.fabError);
@@ -2431,17 +2568,17 @@ function showVoiceConfirmSearching(name) {
 }
 
 /**
- * Full-Screen Voice Confirmation & Voice Control Loop (Hands-Free)
+ * Full-Screen Voice Confirmation & Interactive Control Loop (Hands-Free):
  *
- * Speaks aloud in Hindi:
- * "<name>, <village>। <meters/brand/item>, <amount> रुपये। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।"
+ * App speaks aloud in clear Hindi:
+ * "ग्राहक: रमेश (लड़का मोनू), गांव: मनोहरपुर। 1 साड़ी, ब्रांड: लक्ष्मीपति, डिजाइन नंबर: 405, मूल्य: 1200 रुपये। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।"
  *
  * Voice Command Handler:
  * - "हाँ" / "सही है" / "ठीक है" → Saves entry automatically & plays success chime.
- * - "बदलो" / "1200 नहीं 1500"   → Updates amount, re-reads updated confirmation, and waits for final "हाँ".
+ * - "बदलो" / "1200 nahi 1500"   → Updates Amount to 1500, re-reads confirmation out loud, and waits for final "हाँ".
  */
 function showVoiceConfirm(entryData) {
-  let { customer, amount, meters, quantity, category, brand } = entryData;
+  let { customer, amount, meters, quantity, category, brand, designNumber } = entryData;
 
   const voConfirm = document.getElementById('vo-confirm-area');
   const voTitle   = document.getElementById('vo-title');
@@ -2449,6 +2586,7 @@ function showVoiceConfirm(entryData) {
   if (!voConfirm) return;
 
   if (voTitle) voTitle.textContent = S.voiceConfirmTitle;
+  if (voHint)  voHint.textContent  = '';
 
   const catLabels = {
     pant_shirt: S.cat_pant_shirt, saree: S.cat_saree,
@@ -2462,12 +2600,25 @@ function showVoiceConfirm(entryData) {
       <div class="voice-confirm-card">
         <div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.customer_label}</span>
-          <span style="font-weight:900">${esc(customer.name)}${customer.village ? ` (${esc(customer.village)})` : ''}</span>
+          <span style="font-weight:900;font-size:1.15rem">${esc(customer.name)}</span>
         </div>
+        ${customer.village ? `
+        <div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.village_label}</span>
+          <span style="font-weight:700">📍 ${esc(customer.village)}</span>
+        </div>` : ''}
         <div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.catLabel}</span>
           <span>${esc(catLabels[category] || category)}</span>
         </div>
+        ${brand ? `<div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.labelBrand}</span>
+          <span>🏷️ ${esc(brand)}</span>
+        </div>` : ''}
+        ${designNumber ? `<div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.labelDesignNumber}</span>
+          <span style="font-weight:700;color:#ffb74d">#${esc(designNumber)}</span>
+        </div>` : ''}
         ${meters ? `<div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.labelMeters}</span>
           <span>${meters} ${S.meters_unit}</span>
@@ -2476,13 +2627,9 @@ function showVoiceConfirm(entryData) {
           <span class="voice-confirm-key">${S.labelQuantity}</span>
           <span>${quantity} पीस</span>
         </div>` : ''}
-        ${brand ? `<div class="voice-confirm-row">
-          <span class="voice-confirm-key">${S.labelBrand}</span>
-          <span>${esc(brand)}</span>
-        </div>` : ''}
         <div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.labelAmount}</span>
-          <span style="font-size:1.5rem;font-weight:900;color:var(--primary)">${S.rupee}${Number(amount).toLocaleString('hi-IN')}</span>
+          <span style="font-size:1.6rem;font-weight:900;color:var(--primary)">${S.rupee}${Number(amount).toLocaleString('hi-IN')}</span>
         </div>
       </div>
 
@@ -2504,13 +2651,13 @@ function showVoiceConfirm(entryData) {
         customerId:   customer._id,
         customerName: customer.name,
         type:         'sale',
-        prefill: { amount, meters, quantity, category, brand },
+        prefill: { amount, meters, quantity, category, brand, designNumber },
       });
     });
     document.getElementById('vc-cancel').addEventListener('click', closeVoiceOverlay);
   };
 
-  // Perform direct API save
+  // Save entry automatically to database
   const executeDirectSave = async () => {
     const statusEl = document.getElementById('vc-loop-status');
     if (statusEl) statusEl.textContent = S.loading;
@@ -2519,16 +2666,17 @@ function showVoiceConfirm(entryData) {
       await api('/api/entries', {
         method: 'POST',
         body: {
-          customerId: customer._id,
-          type:       'sale',
-          amount:     Math.round(Number(amount)),
-          item:       brand ? `${brand} ${catLabels[category] || ''}`.trim() : (catLabels[category] || ''),
-          meters:     meters ? Number(meters) : null,
-          quantity:   quantity ? Math.round(Number(quantity)) : null,
-          brand:      brand || '',
-          category:   category || 'other',
-          date:       todayISO(),
-          note:       'बोलकर दर्ज किया गया (Voice Assistant)',
+          customerId:   customer._id,
+          type:         'sale',
+          amount:       Math.round(Number(amount)),
+          item:         brand ? `${brand} ${catLabels[category] || ''}`.trim() : (catLabels[category] || ''),
+          meters:       meters ? Number(meters) : null,
+          quantity:     quantity ? Math.round(Number(quantity)) : null,
+          brand:        brand || '',
+          designNumber: designNumber || '',
+          category:     category || 'other',
+          date:         new Date().toISOString(), // automatically exact timestamp
+          note:         'बोलकर दर्ज किया गया (Voice Assistant)',
         },
       });
 
@@ -2543,23 +2691,25 @@ function showVoiceConfirm(entryData) {
     }
   };
 
-  // Build spoken Hindi question
+  // Build the Hindi spoken question
   const askVoiceConfirmation = () => {
     renderCard();
 
     const catVoiceLabels = {
-      pant_shirt: 'पैंट-शर्ट', saree: 'साड़ी',
+      saree: 'साड़ी', pant_shirt: 'पैंट-शर्ट',
       blanket_bedsheet: 'कम्बल चादर', suiting_shirting: 'थान कपड़ा',
       readymade: 'रेडीमेड', other: 'माल',
     };
 
-    let spokenPrompt = `${customer.name}`;
-    if (customer.village) spokenPrompt += `, ${customer.village}`;
+    let spokenPrompt = `ग्राहक: ${customer.name}`;
+    if (customer.village) spokenPrompt += `, गांव: ${customer.village}`;
     spokenPrompt += '। ';
+    if (quantity) spokenPrompt += `${quantity} `;
     if (meters)   spokenPrompt += `${meters} मीटर `;
-    if (quantity) spokenPrompt += `${quantity} पीस `;
-    if (brand)    spokenPrompt += `${brand} `;
-    spokenPrompt += `${catVoiceLabels[category] || 'माल'}, ${amount} रुपये। `;
+    spokenPrompt += `${catVoiceLabels[category] || 'माल'}, `;
+    if (brand)    spokenPrompt += `ब्रांड: ${brand}, `;
+    if (designNumber) spokenPrompt += `डिजाइन नंबर: ${designNumber}, `;
+    spokenPrompt += `मूल्य: ${amount} रुपये। `;
     spokenPrompt += `क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`;
 
     speakHindi(spokenPrompt, () => {
@@ -2567,7 +2717,7 @@ function showVoiceConfirm(entryData) {
     });
   };
 
-  // Listen for user response ("हाँ" / "सही है" or "बदलो" / "1200 नहीं 1500")
+  // Listen for user voice response
   const startVoiceConfirmListener = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -2598,26 +2748,25 @@ function showVoiceConfirm(entryData) {
         return;
       }
 
-      // Check amount update: e.g. "1200 नहीं 1500" or "1500 रुपये" or any spoken number
+      // Check amount update: e.g. "1200 nahi 1500" or "1500 rupaye"
       const numbers = reply.match(/\d+/g);
       if (numbers && numbers.length > 0) {
-        // Use the newest spoken number as the updated amount
         amount = numbers[numbers.length - 1];
         renderCard();
-        speakHindi(`रकम बदलकर ${amount} रुपये कर दी गई है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+        speakHindi(`मूल्य बदलकर ${amount} रुपये कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
           startVoiceConfirmListener();
         });
         return;
       }
 
-      // If user said "बदलो" or "नहीं" without number, open addEntry screen for manual touch editing
+      // If user said "बदलो" or "नहीं" without a number, open addEntry screen for manual touch editing
       if (/बदलो|बदल|नहीं|change|edit/i.test(lcReply)) {
         closeVoiceOverlay();
         navigate('addEntry', {
           customerId:   customer._id,
           customerName: customer.name,
           type:         'sale',
-          prefill: { amount, meters, quantity, category, brand },
+          prefill: { amount, meters, quantity, category, brand, designNumber },
         });
         showToast('जानकारी बदलें और सेव करें');
         return;
@@ -2632,7 +2781,6 @@ function showVoiceConfirm(entryData) {
     };
 
     rec.onerror = () => {
-      // Keep listening if overlay is still open
       if (!voiceOverlayEl.classList.contains('hidden')) {
         setTimeout(() => {
           try { rec.start(); } catch (_) {}

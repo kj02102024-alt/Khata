@@ -29,15 +29,21 @@ const customerSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    alias: {
+      type: [String],
+      default: [],
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
-// Compound text index: searching name OR village with one query.
-customerSchema.index({ name: 'text', village: 'text' });
+// Compound text index: searching name, village, or alias with one query
+customerSchema.index({ name: 'text', village: 'text', alias: 'text' });
 
-// Regular (ascending) indexes for exact / prefix matching via regex.
+// Regular (ascending) indexes for exact / prefix matching via regex
 customerSchema.index({ name: 1 });
 customerSchema.index({ village: 1 });
+customerSchema.index({ alias: 1 });
 
 module.exports = mongoose.model('Customer', customerSchema);

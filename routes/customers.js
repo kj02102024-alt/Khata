@@ -48,7 +48,7 @@ router.get(
         // If query is empty, return latest customers (up to 30)
         customers = await Customer.find().sort({ updatedAt: -1 }).limit(30).lean();
       } else if (q.length >= 2) {
-        // Text index search — matches anywhere in name or village.
+        // Text index search across name, village, and alias
         customers = await Customer.find(
           { $text: { $search: q } },
           { score: { $meta: 'textScore' } }
@@ -56,11 +56,21 @@ router.get(
           .sort({ score: { $meta: 'textScore' } })
           .limit(30)
           .lean();
+
+        // If text index returned 0 matches, perform regex fallback across name, village, and alias
+        if (customers.length === 0) {
+          const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+          customers = await Customer.find({
+            $or: [{ name: re }, { village: re }, { alias: re }],
+          })
+            .limit(30)
+            .lean();
+        }
       } else {
-        // Single-character: regex prefix on name or village
-        const re = new RegExp(q, 'i');
+        // Single-character: regex prefix on name, village, or alias
+        const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
         customers = await Customer.find({
-          $or: [{ name: re }, { village: re }],
+          $or: [{ name: re }, { village: re }, { alias: re }],
         })
           .limit(30)
           .lean();
@@ -237,6 +247,169 @@ router.get(
   }
 );
 
+// ── Helper: Parse relationships like "Ramesh ka ladka Monu" ─────────
+function parseCustomerRelation(rawText = '') {
+  const text = String(rawText).trim();
+
+  // Common Hindi & Hinglish relationship connectors:
+  // e.g. "Ramesh ka ladka Monu", "रमेश का लड़का मोनू", "Suresh ki bahu Ritu", "Sunil ka bhai Mukesh"
+  const relRegex = /^(.+?)\s+(?:का|की|ke|ka|ki)\s+(?:लड़का|लड़का|बेटा|लड़की|लड़की|बेटी|बहू|पत्नी|भाई|पोता|पोती|भतीजा|ladka|beta|ladki|beti|bahu|patni|bhai|pota|poti|bhatija)\s+(.+)$/i;
+
+  const match = text.match(relRegex);
+  if (!match) {
+    return { isRelation: false, baseName: text, aliasPart: '', formattedName: text };
+  }
+
+  const parentName = match[1].trim();
+  const childName  = match[2].trim();
+
+  // Map relationship keyword to clean Devanagari tag
+  let relLabel = 'लड़का';
+  const lower = text.toLowerCase();
+  if (lower.includes('लड़की') || lower.includes('लड़की') || lower.includes('ladki') || lower.includes('beti') || lower.includes('बेटी')) {
+    relLabel = 'लड़की';
+  } else if (lower.includes('बहू') || lower.includes('bahu')) {
+    relLabel = 'बहू';
+  } else if (lower.includes('पत्नी') || lower.includes('patni') || lower.includes('wife')) {
+    relLabel = 'पत्नी';
+  } else if (lower.includes('भाई') || lower.includes('bhai') || lower.includes('brother')) {
+    relLabel = 'भाई';
+  } else if (lower.includes('पोता') || lower.includes('pota')) {
+    relLabel = 'पोता';
+  } else if (lower.includes('पोती') || lower.includes('poti')) {
+    relLabel = 'पोती';
+  } else if (lower.includes('भतीजा') || lower.includes('bhatija')) {
+    relLabel = 'भतीजा';
+  }
+
+  // Standard clean format: "रमेश (लड़का मोनू)"
+  const formattedName = `${parentName} (${relLabel} ${childName})`;
+
+  return {
+    isRelation: true,
+    parentName,
+    childName,
+    relLabel,
+    formattedName,
+    aliases: [childName, `${relLabel} ${childName}`, text],
+  };
+}
+
+// ── POST /api/customers/resolve ───────────────────────────────────
+/**
+ * Smart Customer Matching & Alias/Relationship Engine:
+ * 1. Checks if customer already exists (by full text, parent name, alias or pet name)
+ * 2. If match found: returns existing customer _id (and updates alias if needed)
+ * 3. If new relation detected: formats as "रमेश (लड़का मोनू)", creates record, returns new _id
+ * 4. If new standard name: creates new record, returns new _id
+ */
+router.post('/resolve', async (req, res) => {
+  const { spokenQuery = '', village = '' } = req.body;
+  const cleanSpoken = spokenQuery.trim();
+  const cleanVillage = village.trim();
+
+  if (!cleanSpoken) {
+    return res.status(400).json({ error: 'ग्राहक का नाम जरूरी है' });
+  }
+
+  try {
+    const relationInfo = parseCustomerRelation(cleanSpoken);
+
+    // 1. First, search for exact formatted name or exact spoken query
+    let existing = await Customer.findOne({
+      $or: [
+        { name: cleanSpoken },
+        { name: relationInfo.formattedName },
+        { alias: cleanSpoken },
+      ],
+    });
+
+    // 2. If village provided, prioritize exact match with village
+    if (existing && cleanVillage && existing.village && existing.village.toLowerCase() !== cleanVillage.toLowerCase()) {
+      // Village mismatch: check if there's a specific record matching this village
+      const villageMatch = await Customer.findOne({
+        $or: [
+          { name: cleanSpoken, village: new RegExp(cleanVillage, 'i') },
+          { name: relationInfo.formattedName, village: new RegExp(cleanVillage, 'i') },
+        ],
+      });
+      if (villageMatch) existing = villageMatch;
+    }
+
+    // 3. If no exact match and relationship was spoken, search by parent name or child alias
+    if (!existing && relationInfo.isRelation) {
+      const parentRegex = new RegExp(relationInfo.parentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      const childRegex  = new RegExp(relationInfo.childName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+      // Look for parent with matching child alias, or name containing both
+      existing = await Customer.findOne({
+        $or: [
+          { name: parentRegex, alias: childRegex },
+          { name: parentRegex, name: childRegex },
+          { alias: childRegex },
+        ],
+      });
+
+      // If existing customer found (e.g. "Ramesh"), attach child alias if missing
+      if (existing) {
+        let updated = false;
+        if (!existing.alias.includes(relationInfo.childName)) {
+          existing.alias.push(relationInfo.childName);
+          updated = true;
+        }
+        if (!existing.alias.includes(cleanSpoken)) {
+          existing.alias.push(cleanSpoken);
+          updated = true;
+        }
+        if (updated) await existing.save();
+
+        return res.json({
+          customer: existing,
+          matched: true,
+          isNew: false,
+          formattedName: existing.name,
+        });
+      }
+    }
+
+    // 4. If existing customer found from step 1
+    if (existing) {
+      return res.json({
+        customer: existing,
+        matched: true,
+        isNew: false,
+        formattedName: existing.name,
+      });
+    }
+
+    // 5. No match found: create new profile based on relation rule
+    let newCustomerName = cleanSpoken;
+    let initialAliases = [];
+
+    if (relationInfo.isRelation) {
+      // Formatted cleanly: "रमेश (लड़का मोनू)"
+      newCustomerName = relationInfo.formattedName;
+      initialAliases  = relationInfo.aliases;
+    }
+
+    const created = await Customer.create({
+      name: newCustomerName,
+      village: cleanVillage,
+      alias: initialAliases,
+    });
+
+    return res.status(201).json({
+      customer: created,
+      matched: false,
+      isNew: true,
+      formattedName: newCustomerName,
+    });
+  } catch (err) {
+    console.error('Resolve customer error:', err);
+    res.status(500).json({ error: 'ग्राहक समाधान में समस्या आई' });
+  }
+});
+
 // ── POST /api/customers ───────────────────────────────────────────
 router.post(
   '/',
@@ -247,6 +420,7 @@ router.post(
       .optional({ checkFalsy: true })
       .isMobilePhone('any')
       .withMessage('फोन नंबर सही नहीं है'),
+    body('alias').optional(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -254,10 +428,11 @@ router.post(
       return res.status(400).json({ error: errors.array()[0].msg });
     }
 
-    const { name, village = '', phone = '' } = req.body;
+    const { name, village = '', phone = '', alias = [] } = req.body;
+    const aliases = Array.isArray(alias) ? alias : (alias ? [String(alias)] : []);
 
     try {
-      const customer = await Customer.create({ name, village, phone });
+      const customer = await Customer.create({ name, village, phone, alias: aliases });
       res.status(201).json(customer);
     } catch (err) {
       console.error('Create customer error:', err);
