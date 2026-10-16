@@ -60,6 +60,10 @@ const entrySchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    photo: {
+      type: String,
+      default: '',        // base64 data URL of receipt/bill
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

@@ -4,129 +4,98 @@ A mobile-first PWA for tracking sales and payments across two textile shops, bui
 
 ---
 
+## 🌟 Enhanced Features
+
+1. **Payment Settlement & FIFO Sales Reconciliation**
+   - **"💰 पैसे मिले"** settlement button on every customer page.
+   - **"पूरा चुकता"**: One-tap full balance payoff.
+   - **"कुछ पैसे मिले"**: Touch-friendly large on-screen number pad for partial payments.
+   - **Confirmation Card**: Displays `<name> ने ₹X दिए. बाकी ₹Y` (or advance `अग्रिम`) before saving.
+   - **Dynamic FIFO Sales Matching**: Oldest sales are settled first without ever modifying or deleting sale entries.
+   - **Collapsible Settled Section**: Paid sales move into `चुकता हिसाब` with strikethrough & faded styling.
+   - **Undo Payment & Daily Collections**: Undo latest payment (soft-delete only) and view **"आज का पैसा"** grouped by shop.
+
+2. **Role-Based Access Control (Admin vs. Shopkeeper UI)**
+   - **User Roles**: `admin` and `shopkeeper`.
+   - **Shopkeeper Mode (Simple View)**: Minimal, high-contrast, large touch targets, 100% Hindi Devanagari labels.
+   - **Admin Mode (Pro View)**: Full cross-shop reporting, complete transaction & soft-delete audit log with **restore ↺** overrides, and **CSV / JSON data export**.
+
+3. **Senior Accessibility (Voice & Camera)**
+   - **Voice Input (Web Speech API)**: Large `🎤 बोलकर भरें` button on search and entry forms converts spoken Hindi into form fields.
+   - **Photo Receipt Attachment**: Camera button `📷 पर्ची / फोटो लें` captures receipt photos, compresses them via HTML5 Canvas, and stores visual proof with entries.
+
+---
+
 ## File Structure
 
 ```
 khata/
-├── server.js              ← Express entry point
+├── server.js              ← Express entry point (10MB body parser, CSP)
 ├── db.js                  ← MongoDB connection helper
-├── package.json
-├── .env.example           ← Copy to .env and fill in
+├── package.json           ← Dependencies & Node engines (>=20)
+├── .env.example           ← Environment secrets template
 ├── .gitignore
 │
 ├── models/
-│   ├── User.js            ← Shop login (username + hashed PIN)
-│   ├── Customer.js        ← Shared customer list (text indexes)
-│   └── Entry.js           ← Ledger entries (soft-delete)
+│   ├── User.js            ← Users with role ("admin" | "shopkeeper")
+│   ├── Customer.js        ← Shared customers (text index on name + village)
+│   └── Entry.js           ← Ledger entries with soft-delete and photo support
 │
 ├── middleware/
-│   └── auth.js            ← JWT verification middleware
+│   └── auth.js            ← JWT guard (`requireAuth`) & Admin guard (`requireAdmin`)
 │
 ├── routes/
-│   ├── auth.js            ← POST /api/auth/login
-│   ├── customers.js       ← GET /api/customers/search, /:id/detail, POST /
-│   └── entries.js         ← POST /api/entries, /undo · GET /today
+│   ├── auth.js            ← Login (returns token, shop, role, displayName)
+│   ├── customers.js       ← Search with dues filter & Detail with FIFO reconciliation
+│   ├── entries.js         ← Entry creation with photo, undo, undo-payment, today-payments
+│   └── admin.js           ← Overview metrics, audit log, restore-entry, CSV/JSON export
 │
 ├── scripts/
-│   └── seed.js            ← Create shop1 / shop2 users (run once)
+│   └── seed.js            ← Seeds shop1, shop2, and admin users
 │
 └── public/                ← Frontend SPA (served statically)
-    ├── index.html         ← App shell
-    ├── style.css          ← Mobile-first, high-contrast styles
-    ├── strings.js         ← ALL Hindi text strings (edit here)
-    ├── app.js             ← Full SPA logic
-    ├── sw.js              ← Service Worker (offline shell)
-    ├── manifest.json      ← PWA manifest
-    └── icons/             ← Put icon-192.png and icon-512.png here
-```
-
----
-
-## Setup (First Time)
-
-### 1. Install dependencies
-```bash
-npm install
-```
-
-### 2. Create `.env`
-```bash
-cp .env.example .env
-```
-Then edit `.env`:
-- Paste your **MongoDB Atlas connection string**
-- Generate a JWT secret: `openssl rand -hex 64`
-
-### 3. Edit PINs in `scripts/seed.js`
-Open `scripts/seed.js` and change the PINs in the `USERS` array.
-
-### 4. Create shop users
-```bash
-node scripts/seed.js
-```
-This creates `shop1` and `shop2` users in the database.
-
-### 5. Add PWA icons
-Place `icon-192.png` and `icon-512.png` in `public/icons/`.
-See `public/icons/README.txt` for quick generation instructions.
-
-### 6. Start the server
-```bash
-npm start
-```
-Open `http://localhost:3000` in a browser.
-
----
-
-## Running in Development
-```bash
-npm run dev      # uses nodemon — auto-restarts on file changes
+    ├── index.html         ← App shell with Photo modal and Admin nav
+    ├── style.css          ← High-contrast styles, number pad, voice pulse, collapsible sections
+    ├── strings.js         ← ALL Hindi text strings (single source of truth)
+    ├── app.js             ← SPA router, settlement, FIFO display, voice & camera logic
+    ├── sw.js              ← Service Worker (offline shell caching)
+    ├── manifest.json      ← PWA install metadata
+    └── icons/             ← PWA icons
 ```
 
 ---
 
 ## API Reference
 
-All `/api/*` routes (except `/api/auth/login`) require:
+All protected routes require:
 ```
 Authorization: Bearer <token>
 ```
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/auth/login` | Login with username + PIN |
-| `GET`  | `/api/customers/search?q=` | Live search by name/village |
-| `GET`  | `/api/customers/:id` | Customer fields |
-| `GET`  | `/api/customers/:id/detail` | Customer + entries + balance |
-| `POST` | `/api/customers` | Create customer |
-| `POST` | `/api/entries` | Add sale or payment |
-| `POST` | `/api/entries/undo` | Soft-delete last entry (this shop) |
-| `GET`  | `/api/entries/today` | Today's entries (all shops) |
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| `POST` | `/api/auth/login` | Public | Login with username + PIN |
+| `GET`  | `/api/customers/search?q=&pendingOnly=` | Auth | Live search with dues filter |
+| `GET`  | `/api/customers/:id/detail` | Auth | Customer + FIFO reconciled sales + balance |
+| `POST` | `/api/customers` | Auth | Create new customer |
+| `POST` | `/api/entries` | Auth | Add sale or payment (with photo) |
+| `POST` | `/api/entries/undo` | Auth | Soft-delete last entry |
+| `POST` | `/api/entries/undo-payment` | Auth | Soft-delete last payment |
+| `GET`  | `/api/entries/today` | Auth | Today's entries |
+| `GET`  | `/api/entries/today-payments` | Auth | Today's collections grouped by shop |
+| `GET`  | `/api/admin/overview` | Admin | Cross-shop sales, collections & balance KPI |
+| `GET`  | `/api/admin/audit-log` | Admin | Full audit log including soft-deleted entries |
+| `POST` | `/api/admin/restore-entry/:id` | Admin | Restore a soft-deleted entry |
+| `GET`  | `/api/admin/export?format=csv` | Admin | Export all ledger data as CSV / JSON |
 
 ---
 
-## Security Notes
+## Default Accounts (Seed Script)
 
-- PINs are hashed with **bcryptjs** (cost 12) — never stored plain
-- JWT tokens expire in **90 days** — so elderly users stay logged in
-- Login route is **rate-limited** to 10 attempts per 15 minutes
-- **Helmet** sets security headers (CSP, HSTS, etc.)
-- Entries use **soft delete only** — data is never physically removed
-- All input is validated with **express-validator**
+Run `node scripts/seed.js` to initialize:
 
----
-
-## Customising Strings
-
-All user-facing text is in **`public/strings.js`**.
-Open that file and change any value — no other file needs to be touched.
-
----
-
-## PWA Installation
-
-On Android Chrome: tap the browser menu → "Add to Home screen"  
-On iOS Safari: tap Share → "Add to Home Screen"
-
-The app shell (HTML/CSS/JS) is cached by the service worker, so it
-opens instantly even without internet. API calls always go to the server.
+| Username | Default PIN | Role | Shop |
+|----------|-------------|------|------|
+| `shop1`  | `123456`    | `shopkeeper` | Shop 1 |
+| `shop2`  | `654321`    | `shopkeeper` | Shop 2 |
+| `admin`  | `999999`    | `admin`      | Shop 1 |

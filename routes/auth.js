@@ -66,6 +66,7 @@ router.post('/login', loginValidation, async (req, res) => {
       shop:        user.shop,
       username:    user.username,
       displayName: user.displayName,
+      role:        user.role || 'shopkeeper',
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -76,6 +77,7 @@ router.post('/login', loginValidation, async (req, res) => {
       token,
       shop:        user.shop,
       displayName: user.displayName,
+      role:        user.role || 'shopkeeper',
     });
 
   } catch (err) {

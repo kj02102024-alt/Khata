@@ -36,7 +36,10 @@
         <div class="header-title" id="header-title">खाता</div>
         <div class="header-sub"   id="header-sub"></div>
       </div>
-      <button class="btn-logout" id="btn-logout" style="display:none">लॉगआउट</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="btn-admin-nav" class="badge-admin" style="display:none;border:none;border-radius:8px;cursor:pointer;font-weight:700;">⚙️ एडमिन</button>
+        <button class="btn-logout" id="btn-logout" style="display:none">लॉगआउट</button>
+      </div>
     </header>
 
     <!-- ── Screen content (swapped by app.js) ─────────────────── -->
@@ -45,6 +48,12 @@
       <div class="spinner"></div>
     </main>
 
+  </div>
+
+  <!-- Fullscreen Photo Modal -->
+  <div id="photo-modal" class="modal-overlay" style="display:none">
+    <img id="photo-modal-img" class="modal-img" src="" alt="रसीद" />
+    <button id="photo-modal-close" class="modal-close-btn">✕ बंद करें</button>
   </div>
 
   <!-- Toast notification (outside #app so it layers above everything) -->

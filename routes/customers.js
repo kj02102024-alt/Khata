@@ -33,35 +33,77 @@ router.use(requireAuth);   // every customer route needs auth
 // ── GET /api/customers/search?q= ─────────────────────────────────
 router.get(
   '/search',
-  [query('q').trim().notEmpty().withMessage('खोज के लिए कुछ लिखें')],
+  [
+    query('q').optional().trim(),
+    query('pendingOnly').optional().isBoolean(),
+  ],
   async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ error: errors.array()[0].msg });
-    }
-
-    const q = req.query.q.trim();
+    const q = (req.query.q || '').trim();
+    const pendingOnly = req.query.pendingOnly === 'true';
 
     try {
-      let customers;
+      let customers = [];
 
-      if (q.length >= 2) {
+      if (!q) {
+        // If query is empty, return latest customers (up to 30)
+        customers = await Customer.find().sort({ updatedAt: -1 }).limit(30).lean();
+      } else if (q.length >= 2) {
         // Text index search — matches anywhere in name or village.
         customers = await Customer.find(
           { $text: { $search: q } },
           { score: { $meta: 'textScore' } }
         )
           .sort({ score: { $meta: 'textScore' } })
-          .limit(20)
+          .limit(30)
           .lean();
       } else {
-        // Single-character: regex prefix on name (text index needs ≥2 chars)
+        // Single-character: regex prefix on name or village
         const re = new RegExp(q, 'i');
         customers = await Customer.find({
           $or: [{ name: re }, { village: re }],
         })
-          .limit(20)
+          .limit(30)
           .lean();
+      }
+
+      // Compute balances for these customers
+      if (customers.length > 0) {
+        const customerIds = customers.map(c => c._id);
+        const balances = await Entry.aggregate([
+          { $match: { customer: { $in: customerIds }, deleted: false } },
+          {
+            $group: {
+              _id: '$customer',
+              totalSales: { $sum: { $cond: [{ $eq: ['$type', 'sale'] }, '$amount', 0] } },
+              totalPayments: { $sum: { $cond: [{ $eq: ['$type', 'payment'] }, '$amount', 0] } },
+            },
+          },
+        ]);
+
+        const balanceMap = new Map();
+        for (const b of balances) {
+          balanceMap.set(String(b._id), {
+            balance: b.totalSales - b.totalPayments,
+            totalSales: b.totalSales,
+            totalPayments: b.totalPayments,
+          });
+        }
+
+        customers = customers.map(c => {
+          const stats = balanceMap.get(String(c._id)) || { balance: 0, totalSales: 0, totalPayments: 0 };
+          return {
+            ...c,
+            balance: stats.balance,
+            dues: stats.balance > 0 ? stats.balance : 0,
+            advance: stats.balance < 0 ? Math.abs(stats.balance) : 0,
+            totalSales: stats.totalSales,
+            totalPayments: stats.totalPayments,
+          };
+        });
+
+        if (pendingOnly) {
+          customers = customers.filter(c => c.balance > 0);
+        }
       }
 
       res.json(customers);
@@ -96,31 +138,79 @@ router.get(
         .sort({ date: -1, createdAt: -1 })
         .lean();
 
-      // Balance via aggregation (sales − payments, deleted excluded)
-      const [balanceResult] = await Entry.aggregate([
-        { $match: { customer: customer._id, deleted: false } },
-        {
-          $group: {
-            _id: null,
-            totalSales:    { $sum: { $cond: [{ $eq: ['$type', 'sale']    }, '$amount', 0] } },
-            totalPayments: { $sum: { $cond: [{ $eq: ['$type', 'payment'] }, '$amount', 0] } },
-          },
-        },
-        {
-          $project: {
-            _id: 0,
-            balance: { $subtract: ['$totalSales', '$totalPayments'] },
-            totalSales: 1,
-            totalPayments: 1,
-          },
-        },
-      ]);
+      // Separate sales in ascending order (oldest first) for FIFO reconciliation
+      const salesAsc = entries
+        .filter(e => e.type === 'sale')
+        .slice()
+        .sort((a, b) => new Date(a.date) - new Date(b.date) || new Date(a.createdAt) - new Date(b.createdAt));
 
-      const balance = balanceResult?.balance        ?? 0;
-      const totalSales = balanceResult?.totalSales     ?? 0;
-      const totalPayments = balanceResult?.totalPayments ?? 0;
+      const totalSales = salesAsc.reduce((sum, s) => sum + s.amount, 0);
+      const totalPayments = entries
+        .filter(e => e.type === 'payment')
+        .reduce((sum, p) => sum + p.amount, 0);
 
-      res.json({ customer, entries, balance, totalSales, totalPayments });
+      const balance = totalSales - totalPayments;
+      const dues = balance > 0 ? balance : 0;
+      const advance = balance < 0 ? Math.abs(balance) : 0;
+
+      // FIFO Reconciliation: apply total payments to sales from oldest to newest
+      let remainingPaymentPool = totalPayments;
+      const reconMap = new Map();
+
+      for (const sale of salesAsc) {
+        const saleAmt = sale.amount;
+        if (remainingPaymentPool >= saleAmt) {
+          reconMap.set(String(sale._id), {
+            status: 'paid',
+            paidAmount: saleAmt,
+            remainingAmount: 0,
+          });
+          remainingPaymentPool -= saleAmt;
+        } else if (remainingPaymentPool > 0) {
+          reconMap.set(String(sale._id), {
+            status: 'partly_paid',
+            paidAmount: remainingPaymentPool,
+            remainingAmount: saleAmt - remainingPaymentPool,
+          });
+          remainingPaymentPool = 0;
+        } else {
+          reconMap.set(String(sale._id), {
+            status: 'unpaid',
+            paidAmount: 0,
+            remainingAmount: saleAmt,
+          });
+        }
+      }
+
+      // Attach reconciliation details to entries
+      const reconciledEntries = entries.map(e => {
+        if (e.type === 'sale') {
+          const recon = reconMap.get(String(e._id)) || {
+            status: 'unpaid',
+            paidAmount: 0,
+            remainingAmount: e.amount,
+          };
+          return { ...e, reconciliation: recon };
+        }
+        return e;
+      });
+
+      const paidSales = reconciledEntries.filter(e => e.type === 'sale' && e.reconciliation?.status === 'paid');
+      const pendingSales = reconciledEntries.filter(e => e.type === 'sale' && e.reconciliation?.status !== 'paid');
+      const payments = reconciledEntries.filter(e => e.type === 'payment');
+
+      res.json({
+        customer,
+        entries: reconciledEntries,
+        paidSales,
+        pendingSales,
+        payments,
+        balance,
+        dues,
+        advance,
+        totalSales,
+        totalPayments,
+      });
     } catch (err) {
       console.error('Detail error:', err);
       res.status(500).json({ error: 'जानकारी लाने में समस्या आई' });

@@ -28,7 +28,7 @@ function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    // payload contains: { userId, shop, username, iat, exp }
+    // payload contains: { userId, shop, username, role, displayName, iat, exp }
     req.user = payload;
     next();
   } catch (err) {
@@ -36,4 +36,13 @@ function requireAuth(req, res, next) {
   }
 }
 
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'केवल एडमिन को अनुमति है' });
+  }
+  next();
+}
+
 module.exports = requireAuth;
+module.exports.requireAuth = requireAuth;
+module.exports.requireAdmin = requireAdmin;

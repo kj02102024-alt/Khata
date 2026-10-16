@@ -18,19 +18,28 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 const mongoose = require('mongoose');
 const User     = require('../models/User');
 
-// ── Configure your shops here ─────────────────────────────────────
+// ── Configure your shops & admin here ─────────────────────────────
 const USERS = [
   {
     username:    'shop1',
     pin:         '123456',     // ← change to your actual 6-digit PIN
     shop:        'shop1',
     displayName: 'दुकान १',
+    role:        'shopkeeper',
   },
   {
     username:    'shop2',
     pin:         '654321',     // ← change to your actual 6-digit PIN
     shop:        'shop2',
     displayName: 'दुकान २',
+    role:        'shopkeeper',
+  },
+  {
+    username:    'admin',
+    pin:         '999999',     // ← Admin 6-digit PIN
+    shop:        'shop1',
+    displayName: 'मालिक (एडमिन)',
+    role:        'admin',
   },
 ];
 
@@ -44,11 +53,11 @@ const USERS = [
 
       await User.findOneAndUpdate(
         { username: u.username },
-        { pinHash, shop: u.shop, displayName: u.displayName },
+        { pinHash, shop: u.shop, displayName: u.displayName, role: u.role },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
 
-      console.log(`✅  User "${u.username}" (${u.displayName}) upserted`);
+      console.log(`✅  User "${u.username}" (${u.displayName} - ${u.role}) upserted`);
     }
 
     console.log('\nDone. You can now log in.');

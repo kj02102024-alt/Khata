@@ -506,3 +506,410 @@ input[type=number]::-webkit-outer-spin-button {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ─── Settlement Screen & Big Green Button ────────────────────── */
+.btn-settle {
+  background: #2e7d32;
+  color: #ffffff;
+  border: 3px solid #66bb6a;
+  font-size: 1.4rem;
+  padding: 20px;
+  margin-bottom: 16px;
+  font-weight: 900;
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+}
+
+.btn-settle:active {
+  background: #1b5e20;
+}
+
+.settlement-options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.settlement-card-btn {
+  background: var(--bg2);
+  border: 3px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 90px;
+}
+
+.settlement-card-btn:active {
+  border-color: var(--primary);
+  background: var(--bg3);
+}
+
+.settlement-card-btn.full-pay {
+  border-color: #66bb6a;
+  background: #0f3319;
+}
+
+.settlement-card-title {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.settlement-card-sub {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+/* ─── Touch-friendly Large Number Pad ─────────────────────────── */
+.numpad-display-box {
+  background: #060d24;
+  border: 3px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.numpad-display-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.numpad-display-value {
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: var(--primary);
+  line-height: 1.2;
+}
+
+.numpad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.numpad-btn {
+  background: var(--bg2);
+  color: #ffffff;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1.8rem;
+  font-weight: 900;
+  padding: 16px 0;
+  min-height: 72px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.numpad-btn:active {
+  background: var(--primary);
+  color: #000;
+  border-color: var(--primary);
+}
+
+.numpad-btn.btn-fn {
+  background: #1c2b54;
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.numpad-btn.btn-fn:active {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ─── FIFO Collapsible Paid Section ───────────────────────────── */
+details.settled-section {
+  background: rgba(10, 21, 64, 0.6);
+  border: 2px dashed #3a4d80;
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-top: 24px;
+}
+
+details.settled-section summary {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #90a4ae;
+  cursor: pointer;
+  user-select: none;
+  padding: 6px 4px;
+}
+
+details.settled-section[open] summary {
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.entry-item.paid-sale {
+  opacity: 0.65;
+  filter: grayscale(40%);
+  background: #101c38;
+}
+
+.entry-item.paid-sale .entry-amount {
+  text-decoration: line-through;
+  color: #90a4ae;
+}
+
+.entry-item.partly-paid-sale {
+  border-left-color: #ffb74d;
+  background: #252e18;
+}
+
+.badge-paid { background: #388e3c; color: #fff; }
+.badge-partly { background: #f57c00; color: #fff; }
+.badge-unpaid { background: var(--danger); color: #fff; }
+.badge-advance { background: #00897b; color: #fff; }
+.badge-admin { background: #7b1fa2; color: #fff; font-size: 0.8rem; padding: 4px 10px; }
+
+/* ─── Voice Recognition (Web Speech API) ──────────────────────── */
+.voice-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.btn-voice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #1f3060;
+  border: 2px solid #3d548f;
+  color: #ffffff;
+  border-radius: var(--radius-sm);
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 12px 18px;
+  cursor: pointer;
+  min-height: 52px;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.btn-voice:active {
+  background: var(--primary);
+  color: #000;
+}
+
+.btn-voice.listening {
+  background: #c62828 !important;
+  color: #ffffff !important;
+  border-color: #ff5252 !important;
+  animation: voicePulse 1.2s infinite;
+}
+
+@keyframes voicePulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 82, 82, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(255, 82, 82, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 82, 82, 0);
+  }
+}
+
+.voice-status-text {
+  font-size: 0.95rem;
+  color: var(--primary);
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+/* ─── Camera / Receipt Attachment ─────────────────────────────── */
+.photo-box {
+  margin-top: 10px;
+}
+
+.btn-photo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #1f3060;
+  border: 2px solid #3d548f;
+  color: #fff;
+  border-radius: var(--radius-sm);
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 12px 18px;
+  cursor: pointer;
+  min-height: 54px;
+  width: 100%;
+}
+
+.photo-preview-card {
+  position: relative;
+  margin-top: 10px;
+  border: 2px solid var(--primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: #000;
+  max-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-preview-img {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.photo-remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #ff5252;
+  border: 2px solid #ff5252;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 1.1rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.receipt-thumbnail-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1b3a5c;
+  border: 1px solid #4fc3f7;
+  color: #e1f5fe;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 6px;
+}
+
+/* Fullscreen Photo Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal-img {
+  max-width: 95vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 2px solid #fff;
+}
+
+.modal-close-btn {
+  margin-top: 16px;
+  background: #ffffff;
+  color: #000000;
+  font-weight: 900;
+  font-size: 1.2rem;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 30px;
+  cursor: pointer;
+}
+
+/* ─── Search Filter Pills ─────────────────────────────────────── */
+.filter-pills {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.pill-btn {
+  background: var(--bg2);
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pill-btn.active {
+  background: var(--primary);
+  color: #000;
+  border-color: var(--primary);
+}
+
+/* ─── Admin Mode (Pro View) Styles ────────────────────────────── */
+.admin-header-card {
+  background: #181438;
+  border: 2px solid #ab47bc;
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+
+.admin-stat-title {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.admin-stat-num {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #fff;
+  margin-top: 4px;
+}
+
+.audit-card {
+  background: var(--bg2);
+  border-left: 6px solid #ab47bc;
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.audit-card.is-deleted {
+  border-left-color: var(--danger);
+  background: #251318;
+}
+
+.audit-card.is-deleted .audit-amount {
+  text-decoration: line-through;
+  opacity: 0.7;
+}

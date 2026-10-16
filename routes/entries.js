@@ -40,6 +40,7 @@ const entryValidation = [
   body('item').optional().trim().isLength({ max: 200 }),
   body('meters').optional({ checkFalsy: true }).isFloat({ min: 0 }),
   body('note').optional().trim().isLength({ max: 500 }),
+  body('photo').optional().isString(),
 ];
 
 router.post('/', entryValidation, async (req, res) => {
@@ -48,7 +49,7 @@ router.post('/', entryValidation, async (req, res) => {
     return res.status(400).json({ error: errors.array()[0].msg });
   }
 
-  const { customerId, type, amount, date, item = '', meters = null, note = '' } = req.body;
+  const { customerId, type, amount, date, item = '', meters = null, note = '', photo = '' } = req.body;
 
   try {
     const entry = await Entry.create({
@@ -60,6 +61,7 @@ router.post('/', entryValidation, async (req, res) => {
       item,
       meters:    meters !== null ? Number(meters) : null,
       note,
+      photo,
       createdBy: req.user.userId,
     });
 
@@ -76,11 +78,15 @@ router.post('/', entryValidation, async (req, res) => {
 // ── POST /api/entries/undo ────────────────────────────────────────
 router.post('/undo', async (req, res) => {
   try {
-    // Find the most recent non-deleted entry created by this user's shop
-    const last = await Entry.findOne({
+    const query = {
       shop:    req.user.shop,
       deleted: false,
-    }).sort({ createdAt: -1 });
+    };
+    if (req.body.customerId) {
+      query.customer = req.body.customerId;
+    }
+
+    const last = await Entry.findOne(query).sort({ createdAt: -1 });
 
     if (!last) {
       return res.status(404).json({ error: 'पिछला हिसाब नहीं मिला' });
@@ -99,16 +105,47 @@ router.post('/undo', async (req, res) => {
   }
 });
 
+// ── POST /api/entries/undo-payment ────────────────────────────────
+router.post('/undo-payment', async (req, res) => {
+  try {
+    const query = {
+      type:    'payment',
+      deleted: false,
+    };
+    // If specific customer or shop passed
+    if (req.body.customerId) {
+      query.customer = req.body.customerId;
+    } else {
+      query.shop = req.user.shop;
+    }
+
+    const lastPayment = await Entry.findOne(query).sort({ createdAt: -1 });
+
+    if (!lastPayment) {
+      return res.status(404).json({ error: 'रद्द करने के लिए कोई भुगतान नहीं मिला' });
+    }
+
+    lastPayment.deleted   = true;
+    lastPayment.deletedAt = new Date();
+    lastPayment.deletedBy = req.user.userId;
+    await lastPayment.save();
+
+    await lastPayment.populate('customer', 'name village');
+    res.json({ message: 'भुगतान रद्द हो गया', entry: lastPayment });
+  } catch (err) {
+    console.error('Undo payment error:', err);
+    res.status(500).json({ error: 'भुगतान रद्द नहीं हो सका' });
+  }
+});
+
 // ── GET /api/entries/today ────────────────────────────────────────
 router.get('/today', async (req, res) => {
   try {
     // Build IST midnight as a UTC Date.
-    // IST = UTC+5:30, so IST midnight = UTC 18:30 of the previous day.
     const now    = new Date();
     const istOffset = 5.5 * 60 * 60 * 1000; // ms
     const istNow = new Date(now.getTime() + istOffset);
 
-    // IST midnight expressed in UTC
     const istMidnight = new Date(
       Date.UTC(
         istNow.getUTCFullYear(),
@@ -129,6 +166,61 @@ router.get('/today', async (req, res) => {
   } catch (err) {
     console.error('Today error:', err);
     res.status(500).json({ error: 'आज का हिसाब नहीं आया' });
+  }
+});
+
+// ── GET /api/entries/today-payments ───────────────────────────────
+router.get('/today-payments', async (req, res) => {
+  try {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+
+    const istMidnight = new Date(
+      Date.UTC(
+        istNow.getUTCFullYear(),
+        istNow.getUTCMonth(),
+        istNow.getUTCDate()
+      ) - istOffset
+    );
+
+    const payments = await Entry.find({
+      type:      'payment',
+      deleted:   false,
+      createdAt: { $gte: istMidnight },
+    })
+      .sort({ createdAt: -1 })
+      .populate('customer', 'name village')
+      .lean();
+
+    let grandTotal = 0;
+    let shop1Total = 0;
+    let shop2Total = 0;
+    const shop1Entries = [];
+    const shop2Entries = [];
+
+    for (const p of payments) {
+      grandTotal += p.amount;
+      if (p.shop === 'shop1') {
+        shop1Total += p.amount;
+        shop1Entries.push(p);
+      } else if (p.shop === 'shop2') {
+        shop2Total += p.amount;
+        shop2Entries.push(p);
+      }
+    }
+
+    res.json({
+      grandTotal,
+      shop1Total,
+      shop2Total,
+      shop1Entries,
+      shop2Entries,
+      allPayments: payments,
+    });
+  } catch (err) {
+    console.error('Today payments error:', err);
+    res.status(500).json({ error: 'आज के पैसे की जानकारी नहीं मिली' });
   }
 });
 

@@ -35,6 +35,11 @@ const userSchema = new mongoose.Schema(
       type: String,   // e.g. "दुकान १" — shown in the UI header
       default: '',
     },
+    role: {
+      type: String,
+      enum: ['admin', 'shopkeeper'],
+      default: 'shopkeeper',
+    },
   },
   { timestamps: true }
 );

@@ -25,9 +25,10 @@ const helmet       = require('helmet');
 const rateLimit    = require('express-rate-limit');
 
 const connectDB    = require('./db');
-const authRoutes   = require('./routes/auth');
+const authRoutes     = require('./routes/auth');
 const customerRoutes = require('./routes/customers');
-const entryRoutes  = require('./routes/entries');
+const entryRoutes    = require('./routes/entries');
+const adminRoutes    = require('./routes/admin');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -43,7 +44,7 @@ app.use(
         scriptSrc:  ["'self'", "'unsafe-inline'"],  // needed for inline <script>
         styleSrc:   ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc:    ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc:     ["'self'", 'data:'],
+        imgSrc:     ["'self'", 'data:', 'blob:'],
         connectSrc: ["'self'"],
       },
     },
@@ -65,13 +66,14 @@ const loginLimiter = rateLimit({
   },
 });
 
-// ── JSON body parser ──────────────────────────────────────────────
-app.use(express.json());
+// ── JSON body parser (10MB for photo receipts) ────────────────────
+app.use(express.json({ limit: '10mb' }));
 
 // ── API routes ────────────────────────────────────────────────────
 app.use('/api/auth',      loginLimiter, authRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/entries',   entryRoutes);
+app.use('/api/admin',     adminRoutes);
 
 // ── Static frontend ───────────────────────────────────────────────
 const PUBLIC = path.join(__dirname, 'public');
