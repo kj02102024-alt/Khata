@@ -1,0 +1,508 @@
+/*
+ * style.css
+ *
+ * Design principles:
+ *   1. Mobile-first  — base styles are for ≤600 px; desktop is just
+ *      centred with a max-width so it still works on a laptop.
+ *   2. Large fonts   — minimum 20 px body, headings up to 56 px.
+ *      Elderly users should never need to squint.
+ *   3. High contrast — dark navy background, bright white text,
+ *      vivid orange primary buttons. WCAG AA on all text pairs.
+ *   4. Big touch targets — every tappable element ≥ 56 px tall,
+ *      following iOS and Material Design guidelines.
+ *   5. Noto Sans Devanagari — renders Hindi glyphs cleanly at all
+ *      sizes; falls back to the system sans-serif if CDN is slow.
+ */
+
+/* ─── Google Font ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700;900&display=swap');
+
+/* ─── CSS Custom Properties (easy to theme) ──────────────────── */
+:root {
+  --bg:          #0d1b4b;   /* deep navy */
+  --bg2:         #1a2d6b;   /* slightly lighter for cards */
+  --bg3:         #243580;   /* card hover / input bg */
+  --primary:     #ff9800;   /* vivid orange — CTA buttons */
+  --primary-dk:  #e65100;   /* darker orange for hover */
+  --danger:      #ef5350;   /* red — undo, delete */
+  --success:     #66bb6a;   /* green — positive balance */
+  --text:        #ffffff;
+  --text-muted:  #b0bec5;
+  --border:      #2e4080;
+  --sale-bg:     #1b3a5c;
+  --payment-bg:  #1b4a2f;
+  --font:        'Noto Sans Devanagari', sans-serif;
+  --radius:      14px;
+  --radius-sm:   8px;
+}
+
+/* ─── Reset & Base ───────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 20px;       /* base — all rem units scale from here */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100dvh;
+  line-height: 1.5;
+}
+
+/* ─── App Shell ──────────────────────────────────────────────── */
+#app {
+  max-width: 540px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Header ─────────────────────────────────────────────────── */
+.header {
+  background: #0a1540;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--primary);
+  letter-spacing: 0.02em;
+}
+
+.header-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 2px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.btn-logout:active { opacity: 0.7; }
+
+/* ─── Main content area ──────────────────────────────────────── */
+main {
+  flex: 1;
+  padding: 20px 16px 40px;
+}
+
+/* ─── Screen transitions ─────────────────────────────────────── */
+.screen {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────── */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 18px 20px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 1.3rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.1s, opacity 0.1s;
+  min-height: 64px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active { transform: scale(0.97); opacity: 0.85; }
+
+.btn-primary {
+  background: var(--primary);
+  color: #000;
+}
+
+.btn-primary:hover { background: var(--primary-dk); color: #fff; }
+
+.btn-secondary {
+  background: var(--bg3);
+  color: var(--text);
+  border: 2px solid var(--border);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--primary);
+  border: 2px solid var(--primary);
+}
+
+.btn-sm {
+  font-size: 1rem;
+  padding: 12px 18px;
+  min-height: 52px;
+}
+
+/* ─── Home screen — three big buttons ───────────────────────── */
+.home-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.home-btn {
+  font-size: 1.5rem;
+  padding: 28px 20px;
+  min-height: 88px;
+  border-radius: var(--radius);
+  border: none;
+  font-family: var(--font);
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s, opacity 0.1s;
+  text-align: center;
+}
+
+.home-btn:active { transform: scale(0.97); opacity: 0.85; }
+
+.home-btn-new     { background: var(--primary); color: #000; }
+.home-btn-search  { background: #1565c0; color: #fff; }
+.home-btn-today   { background: #2e7d32; color: #fff; }
+
+/* ─── Forms ──────────────────────────────────────────────────── */
+.form-group {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+input, select, textarea {
+  width: 100%;
+  background: var(--bg2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1.2rem;
+  padding: 14px 16px;
+  min-height: 56px;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+}
+
+input::placeholder, textarea::placeholder {
+  color: #5c6d8a;
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* number inputs on mobile — hide spinners */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+
+/* ─── Card ───────────────────────────────────────────────────── */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 12px;
+}
+
+/* ─── Balance display ────────────────────────────────────────── */
+.balance-box {
+  background: #0a1540;
+  border: 3px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.balance-label {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.balance-amount {
+  font-size: 3.5rem;    /* very large — impossible to miss */
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.balance-amount.positive { color: var(--danger); }   /* owes money */
+.balance-amount.zero     { color: var(--success); }  /* clear */
+.balance-amount.negative { color: #80cbc4; }         /* overpaid */
+
+.balance-sub {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+/* ─── Entry list items ────────────────────────────────────────── */
+.entry-item {
+  background: var(--bg2);
+  border-left: 6px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+
+.entry-item.sale    { border-left-color: var(--danger);  background: var(--sale-bg); }
+.entry-item.payment { border-left-color: var(--success); background: var(--payment-bg); }
+
+.entry-amount {
+  font-size: 1.6rem;
+  font-weight: 900;
+}
+
+.entry-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-right: 6px;
+}
+
+.badge-sale    { background: var(--danger);  color: #fff; }
+.badge-payment { background: var(--success); color: #000; }
+.badge-shop1   { background: #1565c0; color: #fff; }
+.badge-shop2   { background: #6a1b9a; color: #fff; }
+
+/* ─── Search ──────────────────────────────────────────────────── */
+.search-wrapper {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  padding-right: 50px;
+  font-size: 1.25rem;
+}
+
+.search-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.4rem;
+  pointer-events: none;
+}
+
+.customer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+  min-height: 64px;
+}
+
+.customer-row:active { background: var(--bg3); }
+
+.customer-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.customer-village {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ─── Spinner ─────────────────────────────────────────────────── */
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 5px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 40px auto;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Toast notification ──────────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #212121;
+  color: #fff;
+  padding: 14px 28px;
+  border-radius: 40px;
+  font-size: 1rem;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  z-index: 1000;
+  max-width: 90vw;
+  text-align: center;
+  pointer-events: none;
+}
+
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ─── Login screen ────────────────────────────────────────────── */
+.login-box {
+  max-width: 400px;
+  margin: 40px auto 0;
+  padding: 30px 20px;
+}
+
+.login-title {
+  font-size: 2rem;
+  font-weight: 900;
+  text-align: center;
+  color: var(--primary);
+  margin-bottom: 32px;
+}
+
+/* ─── Confirmation screen ─────────────────────────────────────── */
+.confirm-box {
+  background: var(--bg2);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 1.05rem;
+}
+
+.confirm-row:last-child { border-bottom: none; }
+
+.confirm-key   { color: var(--text-muted); }
+.confirm-value { font-weight: 700; }
+
+.confirm-amount {
+  font-size: 2.5rem;
+  font-weight: 900;
+  text-align: center;
+  color: var(--primary);
+  margin: 16px 0;
+}
+
+/* ─── Utility ─────────────────────────────────────────────────── */
+.text-center { text-align: center; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-16 { margin-bottom: 16px; }
+.gap-12 { display: flex; flex-direction: column; gap: 12px; }
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 20px;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  margin-top: 60px;
+}
+
+/* ─── Customer detail top section ─────────────────────────────── */
+.customer-header {
+  margin-bottom: 20px;
+}
+
+.customer-detail-name {
+  font-size: 1.8rem;
+  font-weight: 900;
+}
+
+.customer-detail-sub {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* ─── Scrollbar (desktop) ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

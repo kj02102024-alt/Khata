@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <!--
+    viewport meta is the key to mobile-first rendering.
+    width=device-width  — match the physical screen width
+    initial-scale=1     — do not zoom out on first load
+    user-scalable=no    — prevent accidental pinch-zoom on elderly users
+                          (accessibility trade-off: pinch-zoom helps
+                           visually impaired, but our font is already large)
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#1a237e" />
+  <meta name="description"  content="कपड़ा दुकान का हिसाब-किताब" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
+  <!-- iOS home screen support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="खाता" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <title>खाता</title>
+
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- ── Header (persistent across all screens) ─────────────── -->
+    <header class="header">
+      <div>
+        <div class="header-title" id="header-title">खाता</div>
+        <div class="header-sub"   id="header-sub"></div>
+      </div>
+      <button class="btn-logout" id="btn-logout" style="display:none">लॉगआउट</button>
+    </header>
+
+    <!-- ── Screen content (swapped by app.js) ─────────────────── -->
+    <main id="main">
+      <!-- Loading state before JS runs -->
+      <div class="spinner"></div>
+    </main>
+
+  </div>
+
+  <!-- Toast notification (outside #app so it layers above everything) -->
+  <div id="toast"></div>
+
+  <!--
+    Script loading order matters:
+      1. strings.js  — defines window.S (all Hindi text)
+      2. app.js      — uses window.S, so must come after
+  -->
+  <script src="/strings.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
