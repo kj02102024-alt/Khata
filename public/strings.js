@@ -234,4 +234,18 @@ window.S = {
   quantity_label:      'पीस',
   village_label:       'गाँव',
   dueDate_label:       'देय तारीख',
+
+  // ── Active vs Settled (Cleared) Tabs ──────────────────────────
+  tabActiveCustomers:  'बकायादार ग्राहक',
+  tabSettledCustomers: 'चुकता ग्राहक (पुराना हिसाब)',
+  noSettledCustomers:  'कोई चुकता ग्राहक नहीं है',
+  noPendingCustomers:  'सबका हिसाब साफ है! कोई बकाया नहीं',
+
+  // ── Homonym (Same-Name) Disambiguation ────────────────────────
+  homonymTitle:        'एक ही नाम के कई ग्राहक',
+  homonymPrompt:       'किस ग्राहक का खाता खोलना है? नंबर बोलें या छुएं:',
+  homonymChoice1:      '1',
+  homonymChoice2:      '2',
+  homonymChoice3:      '3',
+  micListeningExtended:'🔴 सुन रहे हैं... आराम से बोलिए...',
 };

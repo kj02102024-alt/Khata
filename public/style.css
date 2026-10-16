@@ -1193,7 +1193,115 @@ details.settled-section[open] summary {
 .voice-confirm-actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
   max-width: 420px;
+}
+
+/* ─── Active vs. Settled Customer Tabs ───────────────────────── */
+.customer-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.customer-tab {
+  flex: 1;
+  background: var(--bg2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 16px 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  min-height: 60px;
+}
+
+.customer-tab.active {
+  background: var(--primary);
+  border-color: #ffffff;
+  color: #000000;
+  font-weight: 900;
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+}
+
+/* ─── Homonym (Same-Name) Disambiguation Picker ──────────────── */
+.homonym-picker-box {
+  width: 100%;
+  max-width: 440px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.homonym-header {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #ffb74d;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.homonym-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.homonym-btn {
+  background: var(--bg2);
+  border: 3px solid var(--primary);
+  border-radius: var(--radius);
+  color: #ffffff;
+  padding: 18px 20px;
+  font-family: var(--font);
+  font-size: 1.2rem;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: transform 0.15s, background 0.15s;
+}
+
+.homonym-btn:active {
+  transform: scale(0.97);
+  background: #3a2200;
+}
+
+.homonym-index-badge {
+  background: var(--primary);
+  color: #000000;
+  font-size: 1.3rem;
+  font-weight: 900;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  flex-shrink: 0;
+}
+
+.homonym-info {
+  flex: 1;
+}
+
+.homonym-name {
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.homonym-sub {
+  font-size: 0.95rem;
+  color: #b0bec5;
+  margin-top: 4px;
 }

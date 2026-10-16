@@ -111,8 +111,13 @@ router.get(
           };
         });
 
-        if (pendingOnly) {
+        const status = req.query.status || (req.query.pendingOnly === 'true' ? 'pending' : (req.query.settledOnly === 'true' ? 'settled' : 'all'));
+        if (status === 'pending') {
+          // Primary daily list: only customers with pending dues
           customers = customers.filter(c => c.balance > 0);
+        } else if (status === 'settled') {
+          // Settled / cleared accounts: balance zero or advance
+          customers = customers.filter(c => c.balance <= 0);
         }
       }
 
@@ -315,26 +320,59 @@ router.post('/resolve', async (req, res) => {
   try {
     const relationInfo = parseCustomerRelation(cleanSpoken);
 
-    // 1. First, search for exact formatted name or exact spoken query
-    let existing = await Customer.findOne({
+    // 1. Search for all candidate customers sharing this exact or base name / alias
+    let candidates = await Customer.find({
       $or: [
         { name: cleanSpoken },
+        { name: new RegExp('^' + cleanSpoken.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') },
         { name: relationInfo.formattedName },
         { alias: cleanSpoken },
       ],
-    });
+    }).limit(6).lean();
 
-    // 2. If village provided, prioritize exact match with village
-    if (existing && cleanVillage && existing.village && existing.village.toLowerCase() !== cleanVillage.toLowerCase()) {
-      // Village mismatch: check if there's a specific record matching this village
-      const villageMatch = await Customer.findOne({
-        $or: [
-          { name: cleanSpoken, village: new RegExp(cleanVillage, 'i') },
-          { name: relationInfo.formattedName, village: new RegExp(cleanVillage, 'i') },
-        ],
-      });
-      if (villageMatch) existing = villageMatch;
+    // If village was explicitly provided, filter candidates by that village
+    if (cleanVillage && candidates.length > 0) {
+      const vFiltered = candidates.filter(
+        c => c.village && c.village.toLowerCase().includes(cleanVillage.toLowerCase())
+      );
+      if (vFiltered.length === 1) {
+        candidates = vFiltered;
+      }
     }
+
+    // 2. Homonym Disambiguation Rule: If multiple customers share the same name across villages,
+    // do NOT pick blindly. Return homonym list with their balances for elderly user choice!
+    if (candidates.length > 1) {
+      const candidateIds = candidates.map(c => c._id);
+      const balances = await Entry.aggregate([
+        { $match: { customer: { $in: candidateIds }, deleted: false } },
+        {
+          $group: {
+            _id: '$customer',
+            totalSales: { $sum: { $cond: [{ $eq: ['$type', 'sale'] }, '$amount', 0] } },
+            totalPayments: { $sum: { $cond: [{ $eq: ['$type', 'payment'] }, '$amount', 0] } },
+          },
+        },
+      ]);
+      const bMap = new Map();
+      for (const b of balances) {
+        bMap.set(String(b._id), b.totalSales - b.totalPayments);
+      }
+      candidates = candidates.map(c => ({
+        ...c,
+        balance: bMap.get(String(c._id)) || 0,
+      }));
+
+      return res.json({
+        homonym: true,
+        count: candidates.length,
+        candidates,
+        spokenQuery: cleanSpoken,
+        village: cleanVillage,
+      });
+    }
+
+    let existing = candidates.length === 1 ? candidates[0] : null;
 
     // 3. If no exact match and relationship was spoken, search by parent name or child alias
     if (!existing && relationInfo.isRelation) {

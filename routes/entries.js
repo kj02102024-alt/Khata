@@ -41,11 +41,9 @@ const entryValidation = [
   body('meters').optional({ checkFalsy: true }).isFloat({ min: 0 }),
   body('note').optional().trim().isLength({ max: 500 }),
   body('photo').optional().isString(),
-  // Textile fields
-  body('category')
-    .optional()
-    .isIn(['pant_shirt', 'saree', 'blanket_bedsheet', 'suiting_shirting', 'readymade', 'other'])
-    .withMessage('श्रेणी गलत है'),
+  // Textile & Handloom product fields (100% Dynamic & Open)
+  body('category').optional().trim().isLength({ max: 100 }),
+  body('unitType').optional().trim().isLength({ max: 50 }),
   body('quantity').optional({ checkFalsy: true }).isInt({ min: 0 }),
   body('brand').optional().trim().isLength({ max: 100 }),
   body('designNumber').optional().trim().isLength({ max: 100 }),
@@ -62,7 +60,7 @@ router.post('/', entryValidation, async (req, res) => {
   const {
     customerId, type, amount, date,
     item = '', meters = null, note = '', photo = '',
-    category = 'other', quantity = null, brand = '', designNumber = '',
+    category = 'अन्य', unitType = 'piece', quantity = null, brand = '', designNumber = '',
     rate = null, dueDate = null,
   } = req.body;
 
@@ -79,7 +77,8 @@ router.post('/', entryValidation, async (req, res) => {
       meters:       meters !== null ? Number(meters) : null,
       note,
       photo,
-      category,
+      category:     category || 'अन्य',
+      unitType:     unitType || 'piece',
       quantity:     quantity !== null ? Math.round(Number(quantity)) : null,
       brand,
       designNumber,

@@ -300,38 +300,40 @@ function renderSearch() {
         <span class="search-icon">🔍</span>
       </div>
 
-      <!-- Filter Pills: All vs Pending Dues -->
-      <div class="filter-pills">
-        <button class="pill-btn ${state.searchFilter === 'all' ? 'active' : ''}" id="filter-all">
-          ${S.allFilter}
+      <!-- Active vs Settled Customer Tabs -->
+      <div class="customer-tabs">
+        <button class="customer-tab ${(!state.searchTab || state.searchTab === 'pending') ? 'active' : ''}" id="tab-pending">
+          ⏳ ${S.tabActiveCustomers}
         </button>
-        <button class="pill-btn ${state.searchFilter === 'dues' ? 'active' : ''}" id="filter-dues">
-          ${S.onlyDuesFilter}
+        <button class="customer-tab ${state.searchTab === 'settled' ? 'active' : ''}" id="tab-settled">
+          ✓ ${S.tabSettledCustomers}
         </button>
       </div>
 
       <div id="search-results"></div>
 
-      <button class="btn btn-ghost mt-16" id="btn-new-customer">
-        ${S.newCustomer}
+      <button class="btn btn-ghost mt-16" id="btn-new-customer" style="min-height:64px;font-size:1.15rem">
+        ➕ ${S.newCustomer}
       </button>
 
       <button class="btn btn-secondary mt-16" id="btn-back">${S.back}</button>
     </div>
   `;
 
-  const input      = document.getElementById('search-input');
-  const results    = document.getElementById('search-results');
-  const filterAll  = document.getElementById('filter-all');
-  const filterDues = document.getElementById('filter-dues');
-  const voiceBtn   = document.getElementById('btn-voice-search');
+  const input       = document.getElementById('search-input');
+  const results     = document.getElementById('search-results');
+  const tabPending  = document.getElementById('tab-pending');
+  const tabSettled  = document.getElementById('tab-settled');
+  const voiceBtn    = document.getElementById('btn-voice-search');
   const voiceStatus = document.getElementById('voice-search-status');
+
+  state.searchTab = state.searchTab || 'pending';
 
   // Trigger search function
   const triggerSearch = () => {
     const q = input.value.trim();
     results.innerHTML = `<div class="spinner"></div>`;
-    doSearch(q, results, mode, state.searchFilter === 'dues');
+    doSearch(q, results, mode, state.searchTab);
   };
 
   let debounceTimer;
@@ -340,17 +342,17 @@ function renderSearch() {
     debounceTimer = setTimeout(triggerSearch, 300);
   });
 
-  filterAll.addEventListener('click', () => {
-    state.searchFilter = 'all';
-    filterAll.classList.add('active');
-    filterDues.classList.remove('active');
+  tabPending.addEventListener('click', () => {
+    state.searchTab = 'pending';
+    tabPending.classList.add('active');
+    tabSettled.classList.remove('active');
     triggerSearch();
   });
 
-  filterDues.addEventListener('click', () => {
-    state.searchFilter = 'dues';
-    filterDues.classList.add('active');
-    filterAll.classList.remove('active');
+  tabSettled.addEventListener('click', () => {
+    state.searchTab = 'settled';
+    tabSettled.classList.add('active');
+    tabPending.classList.remove('active');
     triggerSearch();
   });
 
@@ -374,13 +376,16 @@ function renderSearch() {
   setTimeout(() => input.focus(), 100);
 }
 
-async function doSearch(q, container, mode, pendingOnly) {
+async function doSearch(q, container, mode, status = 'pending') {
   try {
-    const url = `/api/customers/search?q=${encodeURIComponent(q)}&pendingOnly=${pendingOnly ? 'true' : 'false'}`;
+    const url = `/api/customers/search?q=${encodeURIComponent(q)}&status=${status}`;
     const customers = await api(url);
 
     if (!customers.length) {
-      container.innerHTML = `<p class="empty-state">${S.noResults}</p>`;
+      const emptyMsg = status === 'pending'
+        ? (q ? S.noResults : S.noPendingCustomers)
+        : (q ? S.noResults : S.noSettledCustomers);
+      container.innerHTML = `<p class="empty-state" style="font-size:1.15rem;padding:24px">${emptyMsg}</p>`;
       return;
     }
 
@@ -395,16 +400,16 @@ async function doSearch(q, container, mode, pendingOnly) {
       }
 
       return `
-        <div class="customer-row" data-id="${c._id}" data-mode="${mode}">
+        <div class="customer-row" data-id="${c._id}" data-mode="${mode}" style="min-height:84px;padding:16px">
           <div>
-            <div class="customer-name">${esc(c.name)}</div>
-            <div class="customer-village">
+            <div class="customer-name" style="font-size:1.3rem">${esc(c.name)}</div>
+            <div class="customer-village" style="font-size:1.05rem;margin-top:4px">
               ${c.village ? `📍 ${esc(c.village)}` : ''}
               ${c.phone ? ` · 📞 ${esc(c.phone)}` : ''}
             </div>
-            <div style="margin-top:6px">${balanceBadge}</div>
+            <div style="margin-top:8px">${balanceBadge}</div>
           </div>
-          <span style="font-size:1.6rem;color:var(--text-muted)">›</span>
+          <span style="font-size:2rem;color:var(--text-muted)">›</span>
         </div>
       `;
     }).join('');
@@ -1356,64 +1361,46 @@ function toggleSaleFields() {
   document.getElementById('sale-fields').style.display = type === 'sale' ? '' : 'none';
 }
 
-/** Fill entry form fields from a voice transcript string */
+/** Fill entry form fields from a voice transcript string using NLP textile parser */
 function parseVoiceIntoEntryFields(transcript) {
   showToast(`${S.voiceSuccess}: "${transcript}"`);
+  const parsed = parseSpokenTextileSentence(transcript);
 
-  // Extract amount — look for "rupaye/रुपये" context or largest number
-  const amountMatch = transcript.match(/(\d[\d,]*)\s*(रुपये?|rupaye?|rs\.?|₹)/i);
-  const numbers     = transcript.match(/\d[\d,]*/g) || [];
-  const amount      = amountMatch
-    ? amountMatch[1].replace(',', '')
-    : (numbers.length ? numbers[numbers.length - 1] : '');
-  if (amount) document.getElementById('inp-amount').value = amount;
-
-  // Extract meters
-  const meterMatch = transcript.match(/(\d+(\.\d+)?)\s*(मीटर|meter)/i);
-  if (meterMatch) {
-    const metersEl = document.getElementById('inp-meters');
-    if (metersEl) metersEl.value = meterMatch[1];
+  if (parsed.amount) {
+    const el = document.getElementById('inp-amount');
+    if (el) el.value = parsed.amount;
   }
-
-  // Detect brand keywords
-  const brandKeys = ['raymond', 'vimal', 'arvind', 'bombay dyeing', 'vardhman',
-                     'siyaram', 'grasim', 'mafatlal', 'lux'];
-  const lc = transcript.toLowerCase();
-  for (const bk of brandKeys) {
-    if (lc.includes(bk)) {
-      const brandEl = document.getElementById('inp-brand');
-      if (brandEl) brandEl.value = bk.charAt(0).toUpperCase() + bk.slice(1);
-      break;
-    }
+  if (parsed.meters) {
+    const el = document.getElementById('inp-meters');
+    if (el) el.value = parsed.meters;
   }
-
-  // Detect category keywords → select category
-  const catKeywords = {
-    pant_shirt:       ['pant', 'shirt', 'पैंट', 'शर्ट', 'trouser', 'कपड़ा'],
-    saree:            ['saree', 'sari', 'साड़ी'],
-    blanket_bedsheet: ['blanket', 'bedsheet', 'चादर', 'कम्बल', 'रजाई'],
-    suiting_shirting: ['suiting', 'shirting', 'थान', 'सूटिंग'],
-    readymade:        ['readymade', 'ready', 'रेडीमेड'],
-  };
-  for (const [cat, keywords] of Object.entries(catKeywords)) {
-    if (keywords.some(kw => lc.includes(kw))) {
-      document.getElementById('inp-category').value = cat;
-      document.querySelectorAll('.category-btn').forEach(b => {
-        b.classList.toggle('selected', b.dataset.cat === cat);
-      });
-      updateMeasurementFields(cat);
-      break;
-    }
+  if (parsed.quantity) {
+    const el = document.getElementById('inp-quantity');
+    if (el) el.value = parsed.quantity;
   }
-
-  // Set item description from remaining text
-  const itemInput = document.getElementById('inp-item');
-  if (itemInput && !itemInput.value) {
-    const cleanItem = transcript
-      .replace(/\d+(\.\d+)?\s*(मीटर|meter|रुपये?|rupaye?|rs\.?|₹)?/gi, '')
-      .replace(/(raymond|vimal|arvind|bombay dyeing|vardhman|siyaram|grasim|mafatlal|lux)/gi, '')
-      .trim();
-    if (cleanItem) itemInput.value = cleanItem;
+  if (parsed.brand) {
+    const el = document.getElementById('inp-brand');
+    if (el) el.value = parsed.brand;
+  }
+  if (parsed.designNumber) {
+    const el = document.getElementById('inp-design-number');
+    if (el) el.value = parsed.designNumber;
+  }
+  if (parsed.rate) {
+    const el = document.getElementById('inp-rate');
+    if (el) el.value = parsed.rate;
+  }
+  if (parsed.item) {
+    const el = document.getElementById('inp-item');
+    if (el) el.value = parsed.item;
+  }
+  if (parsed.category) {
+    const el = document.getElementById('inp-category');
+    if (el) el.value = parsed.category;
+    document.querySelectorAll('.category-btn').forEach(b => {
+      b.classList.toggle('selected', b.dataset.cat === parsed.category);
+    });
+    updateMeasurementFields(parsed.category);
   }
 }
 
@@ -2202,18 +2189,53 @@ function setupGlobalVoiceAssistant() {
     return;
   }
 
-  // Create a single SpeechRecognition instance for the FAB
+  // Create SpeechRecognition instance with continuous listening for elderly speech pauses
   globalRecognition = new SpeechRecognition();
   globalRecognition.lang             = 'hi-IN';
   globalRecognition.interimResults   = true;  // show partial transcript live
   globalRecognition.maxAlternatives  = 1;
-  globalRecognition.continuous       = false;
+  globalRecognition.continuous       = true;  // continuous listening to prevent premature cut-off
+
+  let silenceTimer = null;
+  let accumulatedFinalText = '';
+  let lastInterimText = '';
+
+  const resetSilenceTimer = () => {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    // 3.2-second timeout: gives elderly shopkeepers enough time to pause and think without cut-off
+    silenceTimer = setTimeout(() => {
+      finishSpeechSession();
+    }, 3200);
+  };
+
+  const finishSpeechSession = () => {
+    if (silenceTimer) {
+      clearTimeout(silenceTimer);
+      silenceTimer = null;
+    }
+    const fullText = (accumulatedFinalText + ' ' + lastInterimText).trim();
+    try { globalRecognition.stop(); } catch (_) {}
+    globalRecognitionActive = false;
+    if (fabMicEl) fabMicEl.classList.remove('listening');
+
+    if (fullText) {
+      const voTranscript = document.getElementById('vo-transcript');
+      if (voTranscript) voTranscript.textContent = `"${fullText}"`;
+      handleGlobalIntent(fullText);
+    } else {
+      const voHint = document.getElementById('vo-hint');
+      if (voHint) voHint.textContent = S.fabError;
+      setTimeout(closeVoiceOverlay, 1800);
+    }
+  };
 
   fabMicEl.addEventListener('click', () => {
     if (globalRecognitionActive) {
-      globalRecognition.stop();
-      closeVoiceOverlay();
+      // Tap while listening finalizes immediately
+      finishSpeechSession();
     } else {
+      accumulatedFinalText = '';
+      lastInterimText = '';
       playMicBeep();
       openVoiceOverlay();
     }
@@ -2221,32 +2243,49 @@ function setupGlobalVoiceAssistant() {
 
   globalRecognition.onstart = () => {
     globalRecognitionActive = true;
+    accumulatedFinalText = '';
+    lastInterimText = '';
     fabMicEl.classList.add('listening');
     const voTitle = document.getElementById('vo-title');
     if (voTitle) voTitle.textContent = S.fabListening;
+    const voHint = document.getElementById('vo-hint');
+    if (voHint) voHint.textContent = S.micListeningExtended;
+    resetSilenceTimer();
   };
 
   globalRecognition.onresult = (event) => {
-    let interimText = '';
-    let finalText   = '';
-    for (const result of event.results) {
-      if (result.isFinal) {
-        finalText += result[0].transcript;
+    let interim = '';
+    let finals = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const res = event.results[i];
+      if (res.isFinal) {
+        finals += res[0].transcript + ' ';
       } else {
-        interimText += result[0].transcript;
+        interim += res[0].transcript;
       }
     }
-    const display = finalText || interimText;
-    const voTranscript = document.getElementById('vo-transcript');
-    if (voTranscript) voTranscript.textContent = `"${display}"`;
 
-    if (finalText.trim()) {
-      handleGlobalIntent(finalText.trim());
-    }
+    if (finals) accumulatedFinalText += finals;
+    lastInterimText = interim;
+
+    const currentDisplay = (accumulatedFinalText + ' ' + interim).trim();
+    const voTranscript = document.getElementById('vo-transcript');
+    if (voTranscript) voTranscript.textContent = `"${currentDisplay}"`;
+
+    const voHint = document.getElementById('vo-hint');
+    if (voHint) voHint.textContent = S.micListeningExtended;
+
+    // Reset silence timer on every spoken word/chunk
+    resetSilenceTimer();
   };
 
   globalRecognition.onerror = (event) => {
     console.warn('Global speech error:', event.error);
+    if (event.error === 'no-speech') {
+      // Ignore initial no-speech in continuous mode, let silence timer govern timeout
+      return;
+    }
+    if (silenceTimer) clearTimeout(silenceTimer);
     const voTitle = document.getElementById('vo-title');
     if (voTitle) voTitle.textContent = S.fabError;
     setTimeout(closeVoiceOverlay, 1800);
@@ -2254,7 +2293,7 @@ function setupGlobalVoiceAssistant() {
 
   globalRecognition.onend = () => {
     globalRecognitionActive = false;
-    fabMicEl.classList.remove('listening');
+    if (fabMicEl) fabMicEl.classList.remove('listening');
   };
 }
 
@@ -2281,120 +2320,174 @@ function closeVoiceOverlay() {
   if (window.confirmRecognition) {
     try { window.confirmRecognition.stop(); } catch (_) {}
   }
+  if (window.homonymRecognition) {
+    try { window.homonymRecognition.stop(); } catch (_) {}
+  }
+  if (window.speechSynthesis) {
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+  }
   globalRecognitionActive = false;
   if (fabMicEl) fabMicEl.classList.remove('listening');
 }
 
 /**
- * Parse the spoken transcript into one of these intents:
- *   1. NAVIGATE   — "wapas", "ghar", "aaj", "hisab"
- *   2. SEARCH     — "... ka hisab" / "... dhundo" / "Ramesh Manoharpur"
- *   3. ADD ENTRY  — "... ko ... rupaye" (add sale)
- *   4. FALLBACK   — search customer database
- */
-/**
- * Advanced Spoken Hindi NLP Parser for Textile Business:
+ * Advanced Spoken Hindi NLP Parser for Textile & Handloom Business:
+ * 100% Dynamic & Open text: No rigid restriction on brands, items, or categories.
  * Parses multi-attribute sentences such as:
- * "Ramesh ka ladka Monu, gaon Manoharpur, 1 Laxmipati saree, design number 405, daam 1200 rupaye"
+ * - "Ramesh ka ladka Monu, gaon Manoharpur, 1 Laxmipati saree, design number 405, daam 1200 rupaye"
+ * - "सुरेश कुंडा 6.5 मीटर अरविंद कपड़ा रेट 200 कुल 1300 रुपये"
+ * - "मोहन लाल कमल छाप गड्डा 2 पीस 3500 टका"
  */
 function parseSpokenTextileSentence(rawTranscript) {
   let text = normalizeDevanagariNumbers(rawTranscript).trim();
 
-  // 1. Village Extraction: e.g. "gaon Manoharpur" or "गांव मनोहरपुर"
+  // 1. Village Extraction: e.g. "गांव मनोहरपुर", "gaon Manoharpur", "ग्राम कुंडा"
   let village = '';
-  const villageMatch = text.match(/(?:गांव|गाँव|गाव|gaon|gram)\s+([^\s,]+)/i);
+  const villageMatch = text.match(/(?:गांव|गाँव|गाव|ग्राम|निवासी|वार्ड|gaon|gram|ward)\s+([^\s,]+)/i);
   if (villageMatch) {
     village = villageMatch[1].trim();
     text = text.replace(villageMatch[0], ' ');
   }
 
-  // 2. Price / Amount Extraction:
-  // e.g. "daam 1200 rupaye", "1200 rupaye", "daam 1200", "मूल्य 1200"
-  let amount = null;
-  const amountMatch = text.match(/(?:दाम|मूल्य|daam|moolya|price)\s*(\d[\d,]*)(?:\s*(?:रुपये?|rupaye?|rs\.?|₹))?/i)
-                   || text.match(/(\d[\d,]*)\s*(?:रुपये?|rupaye?|rs\.?|₹)/i);
-  if (amountMatch) {
-    amount = amountMatch[1].replace(',', '');
-    text = text.replace(amountMatch[0], ' ');
-  }
-
-  // 3. Design / Article Number Extraction:
-  // e.g. "design number 405", "design no 405", "design 405", "डिजाइन नंबर 405"
+  // 2. Design / Article Number Extraction
   let designNumber = '';
-  const designMatch = text.match(/(?:design\s*number|design\s*no\.?|design|डिजाइन\s*नंबर|डिजाइन|डीजाइन|आर्टिकल)\s*(?:#|no\.?)?\s*([a-zA-Z0-9\-_]+)/i);
+  const designMatch = text.match(/(?:design\s*number|design\s*no\.?|design|डिजाइन\s*नंबर|डिजाइन\s*नं\.?|डिजाइन|डीजाइन|आर्टिकल|article\s*no\.?)\s*(?:#|no\.?)?\s*([a-zA-Z0-9\-_]+)/i);
   if (designMatch) {
     designNumber = designMatch[1].trim();
     text = text.replace(designMatch[0], ' ');
   }
 
-  // 4. Meters Extraction: e.g. "6.5 meter" or "6 मीटर"
+  // 3. Meters / Gaj / Length Units (Cloth cuts)
   let meters = null;
-  const metersMatch = text.match(/(\d+(\.\d+)?)\s*(?:मीटर|meter|mtr)/i);
-  if (metersMatch) {
-    meters = metersMatch[1];
-    text = text.replace(metersMatch[0], ' ');
+  let unitType = 'piece';
+  const meterMatch = text.match(/(\d+(\.\d+)?)\s*(?:मीटर|meter|mtr|लम्बाई|lambai|m\b)/i);
+  const gajMatch   = text.match(/(\d+(\.\d+)?)\s*(?:गज|gaj)/i);
+  if (meterMatch) {
+    meters = meterMatch[1];
+    unitType = 'meter';
+    text = text.replace(meterMatch[0], ' ');
+  } else if (gajMatch) {
+    meters = gajMatch[1];
+    unitType = 'gaj';
+    text = text.replace(gajMatch[0], ' ');
   }
 
-  // 5. Quantity Extraction: e.g. "1 saree", "2 piece", "1 Laxmipati"
+  // 4. Quantity & Count Units (nag, piece, thān, jodi, etc.)
   let quantity = null;
-  const qtyMatch = text.match(/(\d+)\s*(?:पीस|थान|जोड़ी|जोड़ी|piece|pieces)/i)
-                || text.match(/(\d+)\s+(?:saree|साड़ी|साड़ी|चादर|कम्बल|blanket|bedsheet|laxmipati|लक्ष्मीपति|vimal|raymond)/i);
+  const qtyMatch = text.match(/(\d+)\s*(?:पीस|piece|pieces|नग|nag|थान|than|thān|जोड़ी|जोड़ी|jodi|सेट|set|गिनती|ginaati|किलो|kilo|kg|पौ|pau)/i);
   if (qtyMatch) {
     quantity = qtyMatch[1];
-    text = text.replace(qtyMatch[0], qtyMatch[0].replace(qtyMatch[1], '').trim());
+    if (!meters) {
+      const uWord = qtyMatch[0].replace(qtyMatch[1], '').trim().toLowerCase();
+      if (/थान|than|thān/.test(uWord)) unitType = 'than';
+      else if (/नग|nag/.test(uWord)) unitType = 'nag';
+      else if (/जोड़ी|जोड़ी|jodi/.test(uWord)) unitType = 'jodi';
+      else if (/किलो|kilo|kg/.test(uWord)) unitType = 'kg';
+      else unitType = 'piece';
+    }
+    text = text.replace(qtyMatch[0], ' ');
   }
 
-  // 6. Brand Extraction
+  // 5. Price / Amount Extraction with broad Hindi synonyms:
+  // daam, keemat, rupaye, paise, rate, rs, rupya, kitne ka, टका, मूल्य, भाव, दर
+  let amount = null;
+  let rate = null;
+
+  // Rate check: e.g. "rate 250" or "रेट 250" or "भाव 250"
+  const rateMatch = text.match(/(?:रेट|भाव|दर|rate)\s*(\d[\d,]*)/i);
+  if (rateMatch) {
+    rate = rateMatch[1].replace(',', '');
+    text = text.replace(rateMatch[0], ' ');
+  }
+
+  // Amount extraction
+  const amountMatch = text.match(/(?:दाम|कीमत|मूल्य|रुपये?|रुपया|पैसे?|टका|daam|keemat|moolya|price|rupaye?|rupya|rs\.?|₹)\s*(\d[\d,]*)/i)
+                   || text.match(/(\d[\d,]*)\s*(?:रुपये?|रुपया|पैसे?|टका|rupaye?|rupya|rs\.?|₹|दाम|कीमत)/i);
+  if (amountMatch) {
+    amount = (amountMatch[1] || amountMatch[0]).match(/\d[\d,]*/)[0].replace(',', '');
+    text = text.replace(amountMatch[0], ' ');
+  }
+
+  // 6. Brand / Mill / Company Extraction
   let brand = '';
-  const brandMap = {
-    'laxmipati': 'लक्ष्मीपति',
-    'लक्ष्मीपति': 'लक्ष्मीपति',
-    'raymond': 'रेमंड',
-    'रेमंड': 'रेमंड',
-    'vimal': 'विमल',
-    'विमल': 'विमल',
-    'arvind': 'अरविंद',
-    'अरविंद': 'अरविंद',
-    'bombay dyeing': 'बॉम्बे डाइंग',
-    'बॉम्बे डाइंग': 'बॉम्बे डाइंग',
-    'siyaram': 'सियाराम',
-    'सियाराम': 'सियाराम',
-    'vardhman': 'वर्धमान',
-    'वर्धमान': 'वर्धमान',
-    'subhash': 'सुभाष',
-    'सुभाष': 'सुभाष',
-    'vishal': 'विशाल',
-    'विशाल': 'विशाल',
-  };
-  const lcText = text.toLowerCase();
-  for (const [key, bLabel] of Object.entries(brandMap)) {
-    if (lcText.includes(key)) {
-      brand = bLabel;
-      text = text.replace(new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), ' ');
+  // Explicit brand/chap/marka/mill keyword:
+  // e.g. "ब्रांड लक्ष्मीपति", "विमल छाप", "रेमंड मार्का", "बॉम्बे डाइंग कंपनी", "कमल छाप"
+  const chapMatch = text.match(/(?:ब्रांड|brand|कंपनी|company|मिल|mill|छाप|chap|मार्का|marka|naam)\s+([a-zA-Z\u0900-\u097F]+)/i)
+                 || text.match(/([a-zA-Z\u0900-\u097F]+)\s+(?:छाप|chap|मार्का|marka|ब्रांड|brand|मिल|mill|कंपनी|company)/i);
+  if (chapMatch) {
+    brand = chapMatch[1].trim();
+    text = text.replace(chapMatch[0], ' ');
+  } else {
+    // Known textile mills dictionary
+    const knownBrands = [
+      { key: /लक्ष्मीपति|laxmipati/i, val: 'लक्ष्मीपति' },
+      { key: /बॉम्बे\s*डाइंग|bombay\s*dyeing/i, val: 'बॉम्बे डाइंग' },
+      { key: /रेमंड|raymond/i, val: 'रेमंड' },
+      { key: /विमल|vimal/i, val: 'विमल' },
+      { key: /अरविंद|arvind/i, val: 'अरविंद' },
+      { key: /सियाराम|siyaram/i, val: 'सियाराम' },
+      { key: /वर्धमान|vardhman/i, val: 'वर्धमान' },
+      { key: /सुभाष|subhash/i, val: 'सुभाष' },
+      { key: /विशाल|vishal/i, val: 'विशाल' },
+      { key: /ग्वालियर|gwalior/i, val: 'ग्वालियर' },
+      { key: /मफतलाल|mafatlal/i, val: 'मफतलाल' },
+      { key: /दिग्विजय|digvijay/i, val: 'दिग्विजय' },
+      { key: /ग्रेसिम|grasim/i, val: 'ग्रेसिम' },
+      { key: /वेलस्पन|welspun/i, val: 'वेलस्पन' },
+      { key: /ओसवाल|oswal/i, val: 'ओसवाल' },
+      { key: /रूचि|रुचि|ruchi/i, val: 'रुचि' },
+      { key: /स्पर्श|sparsh/i, val: 'स्पर्श' },
+    ];
+    for (const b of knownBrands) {
+      if (b.key.test(text)) {
+        brand = b.val;
+        text = text.replace(b.key, ' ');
+        break;
+      }
+    }
+  }
+
+  // 7. Dynamic Category & Product / Item Extraction (Open Handloom & Textile)
+  let category = '';
+  let item = '';
+  const textileProducts = [
+    { key: /साड़ी|साड़ी|साडी|saree|sari/i, cat: 'साड़ी', item: 'साड़ी' },
+    { key: /पैंट[\s\-]*शर्ट|pant[\s\-]*shirt|सूट[\s\-]*कपड़ा|कुर्ता[\s\-]*पायजामा/i, cat: 'पैंट-शर्ट', item: 'पैंट-शर्ट' },
+    { key: /पैंट|pant|trouser/i, cat: 'पैंट-शर्ट', item: 'पैंट' },
+    { key: /शर्ट|shirt/i, cat: 'पैंट-शर्ट', item: 'शर्ट' },
+    { key: /चादर|bedsheet|बेडशीट/i, cat: 'चादर/कम्बल', item: 'चादर' },
+    { key: /कम्बल|कंबल|blanket|रजाई|खेश/i, cat: 'चादर/कम्बल', item: 'कम्बल' },
+    { key: /तौलिया|gamchha|गमछा|towel/i, cat: 'चादर/कम्बल', item: 'तौलिया' },
+    { key: /पर्दा|पर्दे|curtain|parda/i, cat: 'पर्दा/होम', item: 'पर्दा' },
+    { key: /गड्डा|गद्दे|mattress|gadde|gadda/i, cat: 'गड्डा/बिस्तर', item: 'गड्डा' },
+    { key: /तकिया|pillow|तकिया\s*कवर/i, cat: 'गड्डा/बिस्तर', item: 'तकिया कवर' },
+    { key: /मच्छरदानी|mosquito\s*net/i, cat: 'चादर/कम्बल', item: 'मच्छरदानी' },
+    { key: /चटाई|mat/i, cat: 'चादर/कम्बल', item: 'चटाई' },
+    { key: /सूती\s*थान|थान\s*कपड़ा|थान|suiting|shirting|सूटिंग|शर्टिंग/i, cat: 'थान/कपड़ा', item: 'थान कपड़ा' },
+    { key: /कॉटन\s*रोल|cotton\s*roll|कॉटन|cotton|लठ्ठा|मलमल|पोपलीन|अस्तर/i, cat: 'थान/कपड़ा', item: 'कॉटन कपड़ा' },
+    { key: /रेडीमेड|readymade|बनियान|अंडरवियर|टी[\s\-]*शर्ट/i, cat: 'रेडीमेड', item: 'रेडीमेड' },
+  ];
+
+  for (const prod of textileProducts) {
+    if (prod.key.test(text)) {
+      category = prod.cat;
+      item     = prod.item;
+      text     = text.replace(prod.key, ' ');
       break;
     }
   }
 
-  // 7. Category Extraction
-  let category = 'other';
-  const catKeywords = {
-    saree:            ['saree', 'sari', 'साड़ी', 'साड़ी', 'साडी'],
-    pant_shirt:       ['pant', 'shirt', 'पैंट', 'शर्ट', 'trouser'],
-    blanket_bedsheet: ['blanket', 'bedsheet', 'चादर', 'कम्बल', 'रजाई', 'कंबल'],
-    suiting_shirting: ['suiting', 'shirting', 'थान', 'सूटिंग'],
-    readymade:        ['readymade', 'ready', 'रेडीमेड'],
-  };
-  for (const [cat, kws] of Object.entries(catKeywords)) {
-    if (kws.some(k => text.toLowerCase().includes(k))) {
-      category = cat;
-      kws.forEach(k => {
-        text = text.replace(new RegExp(k, 'gi'), ' ');
-      });
-      break;
+  // 8. If quantity not found but leading digit before product existed:
+  // e.g. "1 साड़ी"
+  if (!quantity && !meters) {
+    const lonelyNum = text.match(/\b([1-9]\d?)\b/);
+    if (lonelyNum && Number(lonelyNum[1]) <= 50) {
+      quantity = lonelyNum[1];
+      text = text.replace(lonelyNum[0], ' ');
     }
   }
 
-  // 8. If amount was not found, check remaining numbers
+  // 9. If amount still not set, look for remaining number (often total price)
   if (!amount) {
     const remainingNums = text.match(/\d+/g);
     if (remainingNums && remainingNums.length > 0) {
@@ -2403,10 +2496,17 @@ function parseSpokenTextileSentence(rawTranscript) {
     }
   }
 
-  // 9. Clean customer / relationship text
+  // If rate and meters/quantity are present, but no amount: amount = rate * (meters || quantity)
+  if (!amount && rate) {
+    if (meters) amount = String(Math.round(Number(rate) * Number(meters)));
+    else if (quantity) amount = String(Math.round(Number(rate) * Number(quantity)));
+    else amount = rate;
+  }
+
+  // 10. Clean Customer Query
   let customerText = text
     .replace(/[,\-–—|।!?;:]/g, ' ')
-    .replace(/\s+(?:को|ko|ke liye|ने|ne)\s*$/i, '')
+    .replace(/\b(?:को|ko|ke liye|ने|ne|का|ki|ke|वाला|wali)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 
@@ -2414,15 +2514,23 @@ function parseSpokenTextileSentence(rawTranscript) {
     customerText = rawTranscript.split(',')[0].trim();
   }
 
+  // Default category and item if none detected
+  if (!category) category = 'अन्य';
+  if (!item && brand) item = brand;
+  if (!item) item = category;
+
   return {
     customerQuery: customerText,
     village,
     amount,
+    rate,
     meters,
+    unitType,
     quantity,
     brand,
     designNumber,
     category,
+    item,
   };
 }
 
@@ -2430,7 +2538,7 @@ function parseSpokenTextileSentence(rawTranscript) {
  * Main intent dispatcher for global voice assistant:
  * 1. NAVIGATE   — "wapas", "ghar", "aaj", "hisab"
  * 2. SEARCH     — "... ka hisab" / "... dhundo" / "Ramesh Manoharpur"
- * 3. ADD SALE   — Multi-attribute NLP parser + smart customer resolution
+ * 3. ADD SALE   — Multi-attribute NLP parser + smart customer resolution with homonym picker
  */
 async function handleGlobalIntent(rawTranscript) {
   const normalized = normalizeDevanagariNumbers(rawTranscript);
@@ -2475,6 +2583,20 @@ async function handleGlobalIntent(rawTranscript) {
         setTimeout(closeVoiceOverlay, 2200);
         return;
       }
+      if (results.length > 1) {
+        // Homonym Disambiguation: Multiple customers match!
+        renderHomonymPicker({
+          title: S.homonymTitle,
+          prompt: S.homonymPrompt,
+          candidates: results.slice(0, 4),
+          spokenName: query,
+          onSelect: (selectedCustomer) => {
+            closeVoiceOverlay();
+            navigate('customerDetail', { customerId: selectedCustomer._id, speakBalanceOnLoad: true });
+          },
+        });
+        return;
+      }
       const customer = results[0];
       closeVoiceOverlay();
       navigate('customerDetail', { customerId: customer._id, speakBalanceOnLoad: true });
@@ -2489,7 +2611,7 @@ async function handleGlobalIntent(rawTranscript) {
   // e.g. "Ramesh ka ladka Monu, gaon Manoharpur, 1 Laxmipati saree, design number 405, daam 1200 rupaye"
   const parsed = parseSpokenTextileSentence(rawTranscript);
 
-  if (parsed.customerQuery && (parsed.amount || parsed.category !== 'other' || parsed.brand || parsed.designNumber)) {
+  if (parsed.customerQuery && (parsed.amount || parsed.category !== 'अन्य' || parsed.brand || parsed.designNumber)) {
     if (!parsed.amount) {
       speakHindi(`राशि समझ नहीं आई, कृपया दोबारा बोलें`);
       const voHint = document.getElementById('vo-hint');
@@ -2511,14 +2633,40 @@ async function handleGlobalIntent(rawTranscript) {
         },
       });
 
+      // Homonym Disambiguation Rule:
+      if (res.homonym && res.candidates?.length > 1) {
+        renderHomonymPicker({
+          title: S.homonymTitle,
+          prompt: S.homonymPrompt,
+          candidates: res.candidates,
+          spokenName: parsed.customerQuery,
+          onSelect: (selectedCustomer) => {
+            showVoiceConfirm({
+              customer:     selectedCustomer,
+              amount:       parsed.amount,
+              meters:       parsed.meters,
+              unitType:     parsed.unitType,
+              quantity:     parsed.quantity,
+              category:     parsed.category,
+              item:         parsed.item,
+              brand:        parsed.brand,
+              designNumber: parsed.designNumber,
+            });
+          },
+        });
+        return;
+      }
+
       const customer = res.customer;
       // Launch Interactive Voice Confirmation Loop
       showVoiceConfirm({
         customer,
         amount:       parsed.amount,
         meters:       parsed.meters,
+        unitType:     parsed.unitType,
         quantity:     parsed.quantity,
         category:     parsed.category,
+        item:         parsed.item,
         brand:        parsed.brand,
         designNumber: parsed.designNumber,
       });
@@ -2540,6 +2688,20 @@ async function handleGlobalIntent(rawTranscript) {
       if (results.length === 0) {
         speakHindi(`${query} नाम का कोई ग्राहक नहीं मिला`);
         setTimeout(closeVoiceOverlay, 2200);
+        return;
+      }
+      if (results.length > 1) {
+        // Homonym Disambiguation: Multiple customers match!
+        renderHomonymPicker({
+          title: S.homonymTitle,
+          prompt: S.homonymPrompt,
+          candidates: results.slice(0, 4),
+          spokenName: query,
+          onSelect: (selectedCustomer) => {
+            closeVoiceOverlay();
+            navigate('customerDetail', { customerId: selectedCustomer._id, speakBalanceOnLoad: true });
+          },
+        });
         return;
       }
       const customer = results[0];
@@ -2568,17 +2730,165 @@ function showVoiceConfirmSearching(name) {
 }
 
 /**
+ * Homonym (Same-Name) Disambiguation Picker:
+ * Displays massive numbered touch targets (88px+ buttons, high-contrast) and
+ * speaks aloud in Hindi: "किस रमेश का खाता खोलना है? एक या दो?"
+ * Supports selecting via touch or voice ("1", "2", "पहला", "दूसरा").
+ */
+function renderHomonymPicker({ title, prompt, candidates, spokenName, onSelect }) {
+  const voConfirm = document.getElementById('vo-confirm-area');
+  const voTitle   = document.getElementById('vo-title');
+  const voHint    = document.getElementById('vo-hint');
+  if (!voConfirm) return;
+
+  if (voTitle) voTitle.textContent = title || S.homonymTitle;
+  if (voHint)  voHint.textContent  = '';
+
+  voConfirm.innerHTML = `
+    <div class="homonym-picker-box">
+      <div class="homonym-header">${prompt || S.homonymPrompt}</div>
+      <div class="homonym-list">
+        ${candidates.map((c, idx) => {
+          const num = idx + 1;
+          let balHtml = '';
+          if (c.balance > 0) {
+            balHtml = `<span style="color:#ffb74d;font-weight:700"> · बकाया ₹${c.balance.toLocaleString('hi-IN')}</span>`;
+          } else if (c.balance < 0) {
+            balHtml = `<span style="color:#81c784;font-weight:700"> · अग्रिम ₹${Math.abs(c.balance).toLocaleString('hi-IN')}</span>`;
+          } else {
+            balHtml = `<span style="color:#b0bec5"> · हिसाब साफ</span>`;
+          }
+
+          return `
+            <button class="homonym-btn" data-index="${idx}" type="button">
+              <span class="homonym-index-badge">${num}</span>
+              <div class="homonym-info">
+                <div class="homonym-name">${esc(c.name)}</div>
+                <div class="homonym-sub">
+                  ${c.village ? `📍 ${esc(c.village)}` : 'गाँव दर्ज नहीं'}
+                  ${c.phone ? ` · 📞 ${esc(c.phone)}` : ''}
+                  ${balHtml}
+                </div>
+              </div>
+              <span style="font-size:1.8rem;color:var(--primary);margin-left:8px">›</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+      <div style="font-size:1.05rem;color:#80cbc4;margin-top:16px;text-align:center;font-weight:700" id="homonym-voice-status">
+        🔴 नंबर बोलें (1, 2) या स्क्रीन पर छुएं
+      </div>
+    </div>
+  `;
+
+  // Attach touch listeners
+  voConfirm.querySelectorAll('.homonym-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (window.homonymRecognition) {
+        try { window.homonymRecognition.stop(); } catch (_) {}
+      }
+      const idx = Number(btn.dataset.index);
+      const chosen = candidates[idx];
+      if (chosen) onSelect(chosen);
+    });
+  });
+
+  // Build spoken question: e.g. "किस रमेश का खाता खोलना है? एक या दो?"
+  let question = `किस ${spokenName || 'ग्राहक'} का खाता खोलना है? `;
+  if (candidates.length === 2) {
+    question += `एक या दो?`;
+  } else {
+    question += `नंबर एक, दो या तीन बोलें?`;
+  }
+
+  speakHindi(question, () => {
+    startHomonymVoiceListener(candidates, onSelect);
+  });
+}
+
+/**
+ * Listens for user response during Homonym Disambiguation:
+ * Supports "1", "2", "3", "एक", "दो", "तीन", "पहला", "दूसरा", or village name.
+ */
+function startHomonymVoiceListener(candidates, onSelect) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) return;
+
+  if (window.homonymRecognition) {
+    try { window.homonymRecognition.stop(); } catch (_) {}
+  }
+
+  const rec = new SpeechRecognition();
+  window.homonymRecognition = rec;
+  rec.lang            = 'hi-IN';
+  rec.interimResults  = false;
+  rec.maxAlternatives = 1;
+
+  rec.onresult = (event) => {
+    const raw = normalizeDevanagariNumbers(event.results?.[0]?.[0]?.transcript || '').trim();
+    const lc = raw.toLowerCase();
+
+    // Check numbers 1, 2, 3, 4 or ordinal/cardinal words
+    let chosenIdx = -1;
+    if (/\b1\b|एक|पहला|one|first/i.test(lc)) chosenIdx = 0;
+    else if (/\b2\b|दो|दूसरा|two|second/i.test(lc)) chosenIdx = 1;
+    else if (/\b3\b|तीन|तीसरा|three|third/i.test(lc)) chosenIdx = 2;
+    else if (/\b4\b|चार|चौथा|four|fourth/i.test(lc)) chosenIdx = 3;
+
+    // Check if user spoke a candidate village name
+    if (chosenIdx === -1) {
+      for (let i = 0; i < candidates.length; i++) {
+        if (candidates[i].village && lc.includes(candidates[i].village.toLowerCase())) {
+          chosenIdx = i;
+          break;
+        }
+      }
+    }
+
+    if (chosenIdx >= 0 && candidates[chosenIdx]) {
+      try { rec.stop(); } catch (_) {}
+      onSelect(candidates[chosenIdx]);
+      return;
+    }
+
+    // Cancel command
+    if (/रद्द|कैंसिल|बंद|cancel/i.test(lc)) {
+      closeVoiceOverlay();
+      return;
+    }
+
+    // Re-prompt
+    const statusEl = document.getElementById('homonym-voice-status');
+    if (statusEl) statusEl.textContent = 'कृपया 1 या 2 बोलें…';
+    setTimeout(() => {
+      try { rec.start(); } catch (_) {}
+    }, 600);
+  };
+
+  rec.onerror = () => {
+    if (!voiceOverlayEl.classList.contains('hidden')) {
+      setTimeout(() => {
+        try { rec.start(); } catch (_) {}
+      }, 1200);
+    }
+  };
+
+  try { rec.start(); } catch (_) {}
+}
+
+/**
  * Full-Screen Voice Confirmation & Interactive Control Loop (Hands-Free):
- *
  * App speaks aloud in clear Hindi:
  * "ग्राहक: रमेश (लड़का मोनू), गांव: मनोहरपुर। 1 साड़ी, ब्रांड: लक्ष्मीपति, डिजाइन नंबर: 405, मूल्य: 1200 रुपये। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।"
  *
- * Voice Command Handler:
- * - "हाँ" / "सही है" / "ठीक है" → Saves entry automatically & plays success chime.
- * - "बदलो" / "1200 nahi 1500"   → Updates Amount to 1500, re-reads confirmation out loud, and waits for final "हाँ".
+ * Intelligent Mid-Sentence Field Correction:
+ * - "1200 नहीं 1500 दाम है" -> Updates Amount to 1500, re-reads aloud, and waits for final "हाँ".
+ * - "लक्ष्मीपति नहीं बॉम्बे डाइंग है" -> Updates Brand, re-reads aloud, and waits for final "हाँ".
+ * - "साड़ी नहीं पर्दा है" -> Updates Product/Item, re-reads aloud, and waits for final "हाँ".
+ * - "हाँ" / "सही है" / "ठीक है" -> Saves entry automatically & plays success chime.
  */
 function showVoiceConfirm(entryData) {
-  let { customer, amount, meters, quantity, category, brand, designNumber } = entryData;
+  let { customer, amount, meters, quantity, category, item, brand, designNumber, unitType } = entryData;
 
   const voConfirm = document.getElementById('vo-confirm-area');
   const voTitle   = document.getElementById('vo-title');
@@ -2588,19 +2898,12 @@ function showVoiceConfirm(entryData) {
   if (voTitle) voTitle.textContent = S.voiceConfirmTitle;
   if (voHint)  voHint.textContent  = '';
 
-  const catLabels = {
-    pant_shirt: S.cat_pant_shirt, saree: S.cat_saree,
-    blanket_bedsheet: S.cat_blanket_bedsheet,
-    suiting_shirting: S.cat_suiting_shirting,
-    readymade: S.cat_readymade, other: S.cat_other,
-  };
-
   const renderCard = () => {
     voConfirm.innerHTML = `
       <div class="voice-confirm-card">
         <div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.customer_label}</span>
-          <span style="font-weight:900;font-size:1.15rem">${esc(customer.name)}</span>
+          <span style="font-weight:900;font-size:1.2rem">${esc(customer.name)}</span>
         </div>
         ${customer.village ? `
         <div class="voice-confirm-row">
@@ -2609,7 +2912,7 @@ function showVoiceConfirm(entryData) {
         </div>` : ''}
         <div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.catLabel}</span>
-          <span>${esc(catLabels[category] || category)}</span>
+          <span style="font-weight:800;color:#ffb74d">${esc(item || category || 'माल')}</span>
         </div>
         ${brand ? `<div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.labelBrand}</span>
@@ -2621,7 +2924,7 @@ function showVoiceConfirm(entryData) {
         </div>` : ''}
         ${meters ? `<div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.labelMeters}</span>
-          <span>${meters} ${S.meters_unit}</span>
+          <span>${meters} ${unitType === 'gaj' ? 'गज' : S.meters_unit}</span>
         </div>` : ''}
         ${quantity ? `<div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.labelQuantity}</span>
@@ -2629,17 +2932,17 @@ function showVoiceConfirm(entryData) {
         </div>` : ''}
         <div class="voice-confirm-row">
           <span class="voice-confirm-key">${S.labelAmount}</span>
-          <span style="font-size:1.6rem;font-weight:900;color:var(--primary)">${S.rupee}${Number(amount).toLocaleString('hi-IN')}</span>
+          <span style="font-size:1.7rem;font-weight:900;color:var(--primary)">${S.rupee}${Number(amount).toLocaleString('hi-IN')}</span>
         </div>
       </div>
 
-      <div style="font-size:1rem;color:#80cbc4;margin-bottom:16px;font-weight:700" id="vc-loop-status">
+      <div style="font-size:1.05rem;color:#80cbc4;margin-bottom:16px;font-weight:700" id="vc-loop-status">
         ${S.voiceLoopListening}
       </div>
 
       <div class="voice-confirm-actions">
-        <button class="btn btn-primary" id="vc-confirm" style="font-size:1.15rem;padding:16px">${S.voiceConfirmYes}</button>
-        <button class="btn btn-secondary" id="vc-edit">${S.voiceConfirmEdit}</button>
+        <button class="btn btn-primary" id="vc-confirm" style="font-size:1.2rem;padding:18px;min-height:72px">${S.voiceConfirmYes}</button>
+        <button class="btn btn-secondary" id="vc-edit" style="min-height:64px">${S.voiceConfirmEdit}</button>
         <button class="voice-overlay-close" id="vc-cancel">${S.voiceConfirmCancel}</button>
       </div>
     `;
@@ -2651,13 +2954,13 @@ function showVoiceConfirm(entryData) {
         customerId:   customer._id,
         customerName: customer.name,
         type:         'sale',
-        prefill: { amount, meters, quantity, category, brand, designNumber },
+        prefill: { amount, meters, quantity, category, item, brand, designNumber, unitType },
       });
     });
     document.getElementById('vc-cancel').addEventListener('click', closeVoiceOverlay);
   };
 
-  // Save entry automatically to database
+  // Save entry automatically to database with exact current timestamp
   const executeDirectSave = async () => {
     const statusEl = document.getElementById('vc-loop-status');
     if (statusEl) statusEl.textContent = S.loading;
@@ -2669,13 +2972,14 @@ function showVoiceConfirm(entryData) {
           customerId:   customer._id,
           type:         'sale',
           amount:       Math.round(Number(amount)),
-          item:         brand ? `${brand} ${catLabels[category] || ''}`.trim() : (catLabels[category] || ''),
+          item:         item || (brand ? `${brand} ${category}`.trim() : category),
           meters:       meters ? Number(meters) : null,
           quantity:     quantity ? Math.round(Number(quantity)) : null,
+          unitType:     unitType || 'piece',
           brand:        brand || '',
           designNumber: designNumber || '',
-          category:     category || 'other',
-          date:         new Date().toISOString(), // automatically exact timestamp
+          category:     category || 'अन्य',
+          date:         new Date().toISOString(), // automatically exact timestamp (never spoken or entered manually)
           note:         'बोलकर दर्ज किया गया (Voice Assistant)',
         },
       });
@@ -2695,18 +2999,12 @@ function showVoiceConfirm(entryData) {
   const askVoiceConfirmation = () => {
     renderCard();
 
-    const catVoiceLabels = {
-      saree: 'साड़ी', pant_shirt: 'पैंट-शर्ट',
-      blanket_bedsheet: 'कम्बल चादर', suiting_shirting: 'थान कपड़ा',
-      readymade: 'रेडीमेड', other: 'माल',
-    };
-
     let spokenPrompt = `ग्राहक: ${customer.name}`;
     if (customer.village) spokenPrompt += `, गांव: ${customer.village}`;
     spokenPrompt += '। ';
-    if (quantity) spokenPrompt += `${quantity} `;
-    if (meters)   spokenPrompt += `${meters} मीटर `;
-    spokenPrompt += `${catVoiceLabels[category] || 'माल'}, `;
+    if (quantity) spokenPrompt += `${quantity} पीस `;
+    if (meters)   spokenPrompt += `${meters} ${unitType === 'gaj' ? 'गज' : 'मीटर'} `;
+    spokenPrompt += `${item || category || 'माल'}, `;
     if (brand)    spokenPrompt += `ब्रांड: ${brand}, `;
     if (designNumber) spokenPrompt += `डिजाइन नंबर: ${designNumber}, `;
     spokenPrompt += `मूल्य: ${amount} रुपये। `;
@@ -2717,7 +3015,7 @@ function showVoiceConfirm(entryData) {
     });
   };
 
-  // Listen for user voice response
+  // Listen for user voice response and handle mid-sentence corrections
   const startVoiceConfirmListener = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) return;
@@ -2736,37 +3034,144 @@ function showVoiceConfirm(entryData) {
       const reply = normalizeDevanagariNumbers(event.results?.[0]?.[0]?.transcript || '').trim();
       const lcReply = reply.toLowerCase();
 
-      // Check affirmative: "हाँ", "सही है", "ठीक है", "save", "कर दो"
+      // 1. Check affirmative: "हाँ", "सही है", "ठीक है", "save", "कर दो"
       if (/हाँ|हां|सही|ठीक|कर दो|सेव|yes|ha|haan|sahi|thik|save/i.test(lcReply)) {
         executeDirectSave();
         return;
       }
 
-      // Check cancel: "रद्द", "cancel", "बंद"
+      // 2. Check cancel: "रद्द", "cancel", "बंद"
       if (/रद्द|कैंसिल|बंद|cancel/i.test(lcReply)) {
         closeVoiceOverlay();
         return;
       }
 
-      // Check amount update: e.g. "1200 nahi 1500" or "1500 rupaye"
-      const numbers = reply.match(/\d+/g);
-      if (numbers && numbers.length > 0) {
-        amount = numbers[numbers.length - 1];
+      // 3. Mid-Sentence Field Correction: Brand correction
+      // e.g. "लक्ष्मीपति नहीं बॉम्बे डाइंग है", "ब्रांड विमल है", "रेमंड नहीं अरविंद"
+      const knownBrands = [
+        { key: /लक्ष्मीपति|laxmipati/i, val: 'लक्ष्मीपति' },
+        { key: /बॉम्बे\s*डाइंग|bombay\s*dyeing/i, val: 'बॉम्बे डाइंग' },
+        { key: /रेमंड|raymond/i, val: 'रेमंड' },
+        { key: /विमल|vimal/i, val: 'विमल' },
+        { key: /अरविंद|arvind/i, val: 'अरविंद' },
+        { key: /सियाराम|siyaram/i, val: 'सियाराम' },
+        { key: /वर्धमान|vardhman/i, val: 'वर्धमान' },
+        { key: /सुभाष|subhash/i, val: 'सुभाष' },
+        { key: /विशाल|vishal/i, val: 'विशाल' },
+        { key: /ग्वालियर|gwalior/i, val: 'ग्वालियर' },
+        { key: /मफतलाल|mafatlal/i, val: 'मफतलाल' },
+        { key: /दिग्विजय|digvijay/i, val: 'दिग्विजय' },
+        { key: /ग्रेसिम|grasim/i, val: 'ग्रेसिम' },
+        { key: /वेलस्पन|welspun/i, val: 'वेलस्पन' },
+        { key: /ओसवाल|oswal/i, val: 'ओसवाल' },
+      ];
+      let newBrand = '';
+      if (/नहीं|nahi/i.test(reply)) {
+        const afterNahi = reply.split(/नहीं|nahi/i)[1];
+        for (const b of knownBrands) {
+          if (b.key.test(afterNahi)) { newBrand = b.val; break; }
+        }
+        if (!newBrand) {
+          const m = afterNahi.match(/(?:ब्रांड|brand|छाप|कंपनी|मिल)?\s*([a-zA-Z\u0900-\u097F]+)/i);
+          if (m && m[1].length > 2 && !/है|hai|karo|करो/.test(m[1])) newBrand = m[1].trim();
+        }
+      } else if (/ब्रांड|brand|छाप|कंपनी|मिल/i.test(reply)) {
+        for (const b of knownBrands) {
+          if (b.key.test(reply)) { newBrand = b.val; break; }
+        }
+      }
+
+      if (newBrand && newBrand !== brand) {
+        brand = newBrand;
         renderCard();
-        speakHindi(`मूल्य बदलकर ${amount} रुपये कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+        speakHindi(`ब्रांड बदलकर ${brand} कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
           startVoiceConfirmListener();
         });
         return;
       }
 
-      // If user said "बदलो" or "नहीं" without a number, open addEntry screen for manual touch editing
+      // 4. Mid-Sentence Field Correction: Product / Item correction
+      // e.g. "साड़ी नहीं पर्दा है", "चादर नहीं कम्बल", "item parda hai", "गड्डा है"
+      const textProds = [
+        { key: /साड़ी|साड़ी|साडी|saree|sari/i, cat: 'साड़ी', item: 'साड़ी' },
+        { key: /पैंट[\s\-]*शर्ट|pant[\s\-]*shirt|सूट/i, cat: 'पैंट-शर्ट', item: 'पैंट-शर्ट' },
+        { key: /पैंट|pant/i, cat: 'पैंट-शर्ट', item: 'पैंट' },
+        { key: /शर्ट|shirt/i, cat: 'पैंट-शर्ट', item: 'शर्ट' },
+        { key: /चादर|bedsheet/i, cat: 'चादर/कम्बल', item: 'चादर' },
+        { key: /कम्बल|कंबल|blanket|रजाई/i, cat: 'चादर/कम्बल', item: 'कम्बल' },
+        { key: /पर्दा|पर्दे|curtain|parda/i, cat: 'पर्दा/होम', item: 'पर्दा' },
+        { key: /गड्डा|गद्दे|mattress|gadde/i, cat: 'गड्डा/बिस्तर', item: 'गड्डा' },
+        { key: /मच्छरदानी/i, cat: 'चादर/कम्बल', item: 'मच्छरदानी' },
+        { key: /थान|कपड़ा|suiting/i, cat: 'थान/कपड़ा', item: 'थान कपड़ा' },
+      ];
+      let newItem = '';
+      let newCat = '';
+      if (/नहीं|nahi/i.test(reply)) {
+        const afterNahi = reply.split(/नहीं|nahi/i)[1];
+        for (const p of textProds) {
+          if (p.key.test(afterNahi)) { newItem = p.item; newCat = p.cat; break; }
+        }
+      } else {
+        for (const p of textProds) {
+          if (p.key.test(reply)) { newItem = p.item; newCat = p.cat; break; }
+        }
+      }
+
+      if (newItem && newItem !== item) {
+        item = newItem;
+        category = newCat || newItem;
+        renderCard();
+        speakHindi(`सामान बदलकर ${item} कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+          startVoiceConfirmListener();
+        });
+        return;
+      }
+
+      // 5. Mid-Sentence Field Correction: Meters or Quantity
+      const meterCheck = reply.match(/(\d+(\.\d+)?)\s*(?:मीटर|meter)/i);
+      if (meterCheck) {
+        meters = meterCheck[1];
+        renderCard();
+        speakHindi(`मीटर बदलकर ${meters} मीटर कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+          startVoiceConfirmListener();
+        });
+        return;
+      }
+
+      const qtyCheck = reply.match(/(\d+)\s*(?:पीस|piece|थान|नग)/i);
+      if (qtyCheck) {
+        quantity = qtyCheck[1];
+        renderCard();
+        speakHindi(`पीस बदलकर ${quantity} कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+          startVoiceConfirmListener();
+        });
+        return;
+      }
+
+      // 6. Mid-Sentence Field Correction: Price / Amount update
+      // e.g. "1200 nahi 1500 daam hai", "1500 rupaye karo", "rate 1500"
+      const numbers = reply.match(/\d+/g);
+      const isPriceContext = /दाम|मूल्य|रुपये|rupaye|रेट|rate|कीमत|keemat|टका|nahi|नहीं|karo|करो/i.test(lcReply);
+      if (numbers && numbers.length > 0 && isPriceContext && !/मीटर|meter|पीस|piece|नग/i.test(lcReply)) {
+        const newAmt = numbers[numbers.length - 1];
+        if (newAmt !== amount) {
+          amount = newAmt;
+          renderCard();
+          speakHindi(`मूल्य बदलकर ${amount} रुपये कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+            startVoiceConfirmListener();
+          });
+          return;
+        }
+      }
+
+      // 7. General "बदलो" without specific field: open Add Entry screen
       if (/बदलो|बदल|नहीं|change|edit/i.test(lcReply)) {
         closeVoiceOverlay();
         navigate('addEntry', {
           customerId:   customer._id,
           customerName: customer.name,
           type:         'sale',
-          prefill: { amount, meters, quantity, category, brand, designNumber },
+          prefill: { amount, meters, quantity, category, item, brand, designNumber, unitType },
         });
         showToast('जानकारी बदलें और सेव करें');
         return;
@@ -2808,7 +3213,7 @@ function speakHindi(text, onEnd) {
     window.speechSynthesis.cancel(); // stop any ongoing speech
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang  = 'hi-IN';
-    utterance.rate  = 0.92;  // slightly slower for elderly users
+    utterance.rate  = 0.92;  // slightly slower pace for elderly shopkeepers
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
     if (onEnd) {

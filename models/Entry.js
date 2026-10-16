@@ -50,15 +50,20 @@ const entrySchema = new mongoose.Schema(
       type: Number,
       default: null,      // decimal meters for cut pieces (पैंट-शर्ट / थान)
     },
-    // ── Textile-specific fields ───────────────────────────────────
+    // ── Textile / Handloom product fields (100% Dynamic & Open) ──
     category: {
       type: String,
-      enum: ['pant_shirt', 'saree', 'blanket_bedsheet', 'suiting_shirting', 'readymade', 'other'],
-      default: 'other',
+      trim: true,
+      default: 'अन्य',     // open text: e.g. गड्डा, सूती पर्दा, पैंट-शर्ट, साड़ी, चादर, कॉटन roll, अन्य
+    },
+    unitType: {
+      type: String,
+      trim: true,
+      default: 'piece',   // dynamic: meter, piece/nag, kg, set, thān, etc.
     },
     quantity: {
       type: Number,
-      default: null,      // integer count (saree, blanket pieces)
+      default: null,      // integer count (saree, blanket, parda, gadde pieces)
     },
     brand: {
       type: String,
