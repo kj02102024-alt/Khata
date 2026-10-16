@@ -56,6 +56,20 @@
     <button id="photo-modal-close" class="modal-close-btn">✕ बंद करें</button>
   </div>
 
+  <!-- Floating Mic FAB (Permanent Global Voice Assistant) -->
+  <button id="fab-mic" aria-label="आवाज़ से बोलें" title="आवाज़ से बोलें">🎤</button>
+
+  <!-- Full-screen Voice Overlay (shown while listening / confirming) -->
+  <div id="voice-overlay" class="hidden">
+    <div class="voice-overlay-mic">🎤</div>
+    <div class="voice-overlay-title" id="vo-title">बोलिए…</div>
+    <div class="voice-overlay-transcript" id="vo-transcript"></div>
+    <div class="voice-overlay-hint" id="vo-hint"></div>
+    <!-- Voice confirm card (injected by JS after intent parsed) -->
+    <div id="vo-confirm-area"></div>
+    <button class="voice-overlay-close" id="vo-close">✕ रद्द करें</button>
+  </div>
+
   <!-- Toast notification (outside #app so it layers above everything) -->
   <div id="toast"></div>
 

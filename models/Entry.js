@@ -48,7 +48,30 @@ const entrySchema = new mongoose.Schema(
     },
     meters: {
       type: Number,
-      default: null,      // only meaningful for sales
+      default: null,      // decimal meters for cut pieces (पैंट-शर्ट / थान)
+    },
+    // ── Textile-specific fields ───────────────────────────────────
+    category: {
+      type: String,
+      enum: ['pant_shirt', 'saree', 'blanket_bedsheet', 'suiting_shirting', 'readymade', 'other'],
+      default: 'other',
+    },
+    quantity: {
+      type: Number,
+      default: null,      // integer count (saree, blanket pieces)
+    },
+    brand: {
+      type: String,
+      trim: true,
+      default: '',        // e.g. Raymond, Vimal, Arvind
+    },
+    rate: {
+      type: Number,
+      default: null,      // price per meter or per piece
+    },
+    dueDate: {
+      type: Date,
+      default: null,      // promised payment date (उधार चुकाने की तारीख)
     },
     date: {
       type: Date,

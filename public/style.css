@@ -913,3 +913,287 @@ details.settled-section[open] summary {
   text-decoration: line-through;
   opacity: 0.7;
 }
+
+/* ─── Textile Category Grid ──────────────────────────────────── */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.category-btn {
+  background: var(--bg2);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 14px 6px;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.3;
+  min-height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+}
+
+.category-btn:active {
+  transform: scale(0.96);
+  opacity: 0.85;
+}
+
+/* Category individual colors */
+.category-btn[data-cat="pant_shirt"] {
+  background: #0d284f;
+  border-color: #1e88e5;
+  color: #90caf9;
+}
+.category-btn[data-cat="saree"] {
+  background: #3b0f24;
+  border-color: #d81b60;
+  color: #f48fb1;
+}
+.category-btn[data-cat="blanket_bedsheet"] {
+  background: #0c312d;
+  border-color: #00897b;
+  color: #80cbc4;
+}
+.category-btn[data-cat="suiting_shirting"] {
+  background: #3b2308;
+  border-color: #fb8c00;
+  color: #ffcc80;
+}
+.category-btn[data-cat="readymade"] {
+  background: #2b1138;
+  border-color: #8e24aa;
+  color: #ce93d8;
+}
+.category-btn[data-cat="other"] {
+  background: #1c2635;
+  border-color: #78909c;
+  color: #b0bec5;
+}
+
+/* Selected state with bright contrast and glowing outline */
+.category-btn.selected {
+  border-width: 3px;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+  font-weight: 900;
+  transform: scale(1.03);
+  box-shadow: 0 0 16px rgba(255, 152, 0, 0.6), 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* Category badge in lists */
+.badge-cat {
+  background: #2e4080;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-right: 4px;
+}
+.badge-cat-pant_shirt { background: #1565c0; color: #fff; }
+.badge-cat-saree { background: #ad1457; color: #fff; }
+.badge-cat-blanket_bedsheet { background: #00695c; color: #fff; }
+.badge-cat-suiting_shirting { background: #e65100; color: #fff; }
+.badge-cat-readymade { background: #6a1b9a; color: #fff; }
+.badge-cat-other { background: #455a64; color: #fff; }
+
+/* Speaker hear-balance button */
+.btn-hear-balance {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font);
+  font-weight: 700;
+  transition: background 0.15s;
+}
+.btn-hear-balance:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Due-date shortcut row */
+.due-date-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.due-date-chip {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.9rem;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.due-date-chip.selected {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* ─── Floating Mic FAB ───────────────────────────────────────── */
+#fab-mic {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  z-index: 200;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #000;
+  font-size: 1.8rem;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s;
+}
+
+#fab-mic:active { transform: scale(0.92); }
+
+/* Pulsing ring when not listening — draws elder attention */
+#fab-mic::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 3px solid var(--primary);
+  opacity: 0.5;
+  animation: fabPulse 2s ease-in-out infinite;
+}
+
+/* Solid strong ring when actively listening */
+#fab-mic.listening::before {
+  border-color: #ff3d00;
+  opacity: 0.9;
+  animation: fabPulse 0.7s ease-in-out infinite;
+}
+
+#fab-mic.listening {
+  background: #ff3d00;
+}
+
+@keyframes fabPulse {
+  0%   { transform: scale(1);   opacity: 0.5; }
+  50%  { transform: scale(1.18); opacity: 0.2; }
+  100% { transform: scale(1);   opacity: 0.5; }
+}
+
+/* ─── Global Voice Overlay ───────────────────────────────────── */
+#voice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: rgba(5, 10, 35, 0.96);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  text-align: center;
+}
+
+#voice-overlay.hidden { display: none; }
+
+.voice-overlay-mic {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  animation: fabPulse 1s ease-in-out infinite;
+}
+
+.voice-overlay-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.voice-overlay-transcript {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fff;
+  min-height: 2.5rem;
+  margin-bottom: 24px;
+  word-break: break-word;
+}
+
+.voice-overlay-hint {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.voice-overlay-close {
+  background: transparent;
+  border: 2px solid var(--text-muted);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 1rem;
+  padding: 12px 28px;
+  cursor: pointer;
+}
+
+/* Voice confirm card (shown after intent parsed) */
+.voice-confirm-card {
+  background: var(--bg2);
+  border: 2px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 20px;
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.voice-confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 1rem;
+}
+
+.voice-confirm-row:last-child { border-bottom: none; }
+
+.voice-confirm-key {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.voice-confirm-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+}

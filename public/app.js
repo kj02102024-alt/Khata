@@ -37,6 +37,12 @@ const state = {
   adminTab:   'overview', // 'overview' | 'audit' | 'export'
 };
 
+// ── Voice Assistant globals ────────────────────────────────────────
+let fabMicEl = null;
+let voiceOverlayEl = null;
+let globalRecognition = null; // SpeechRecognition instance (reused)
+let globalRecognitionActive = false;
+
 // ── DOM references ─────────────────────────────────────────────────
 let mainEl, headerTitleEl, headerSubEl, logoutBtn, adminNavBtn;
 
@@ -47,6 +53,8 @@ function init() {
   headerSubEl   = document.getElementById('header-sub');
   logoutBtn     = document.getElementById('btn-logout');
   adminNavBtn   = document.getElementById('btn-admin-nav');
+  fabMicEl      = document.getElementById('fab-mic');
+  voiceOverlayEl = document.getElementById('voice-overlay');
 
   logoutBtn.textContent = S.logout;
   logoutBtn.addEventListener('click', logout);
@@ -73,6 +81,13 @@ function init() {
       if (e.target === photoModal) photoModal.style.display = 'none';
     });
   }
+
+  // ── Floating Voice Assistant FAB ─────────────────────────────
+  setupGlobalVoiceAssistant();
+
+  // ── Voice Overlay close button ───────────────────────────────
+  const voClose = document.getElementById('vo-close');
+  if (voClose) voClose.addEventListener('click', closeVoiceOverlay);
 
   // Register service worker
   if ('serviceWorker' in navigator) {
@@ -556,6 +571,11 @@ function showCustomerDetail(data) {
           ${S.totalSales} ${S.rupee}${totalSales.toLocaleString('hi-IN')} &nbsp;|&nbsp;
           ${S.totalPayments} ${S.rupee}${totalPayments.toLocaleString('hi-IN')}
         </div>
+        <div>
+          <button class="btn-hear-balance" id="btn-hear-balance" type="button">
+            ${S.voiceHearBalance}
+          </button>
+        </div>
       </div>
 
       <!-- Prominent Green Settlement Button -->
@@ -611,6 +631,30 @@ function showCustomerDetail(data) {
 
   document.getElementById('btn-back').addEventListener('click', () => navigate('home'));
 
+  // Read balance aloud helper
+  const triggerBalanceSpeech = () => {
+    let balanceText = '';
+    if (balance > 0) {
+      balanceText = `${customer.name} का कुल बकाया ${balance.toLocaleString('hi-IN')} रुपये है।`;
+    } else if (balance < 0) {
+      balanceText = `${customer.name} के ${Math.abs(balance).toLocaleString('hi-IN')} रुपये अग्रिम जमा हैं।`;
+    } else {
+      balanceText = `${customer.name} का हिसाब साफ है।`;
+    }
+    speakHindi(balanceText);
+  };
+
+  const hearBalanceBtn = document.getElementById('btn-hear-balance');
+  if (hearBalanceBtn) {
+    hearBalanceBtn.addEventListener('click', triggerBalanceSpeech);
+  }
+
+  // If opened via voice command, speak the balance automatically!
+  if (state.data.speakBalanceOnLoad) {
+    state.data.speakBalanceOnLoad = false;
+    setTimeout(triggerBalanceSpeech, 350);
+  }
+
   // Settlement button opens the two settlement options
   document.getElementById('btn-settle').addEventListener('click', () => {
     navigate('settlement', {
@@ -650,21 +694,37 @@ function renderSaleItem(e, isSettled) {
 
   const itemClass = isSettled ? 'entry-item sale paid-sale' : recon.status === 'partly_paid' ? 'entry-item sale partly-paid-sale' : 'entry-item sale';
 
+  const catLabelMap = {
+    pant_shirt: S.cat_pant_shirt, saree: S.cat_saree,
+    blanket_bedsheet: S.cat_blanket_bedsheet,
+    suiting_shirting: S.cat_suiting_shirting,
+    readymade: S.cat_readymade, other: S.cat_other,
+  };
+
   return `
     <div class="${itemClass}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div>
           ${statusBadge}
           <span class="badge badge-${e.shop}">${shopLabel}</span>
+          ${e.category && e.category !== 'other' ? `
+            <span class="badge-cat badge-cat-${e.category}">
+              ${esc(catLabelMap[e.category] || e.category)}
+            </span>
+          ` : ''}
         </div>
         <div class="entry-amount">${S.rupee}${Number(e.amount).toLocaleString('hi-IN')}</div>
       </div>
 
       <div class="entry-meta">
         ${dateStr}
-        ${e.item   ? ` · <strong>${esc(e.item)}</strong>` : ''}
-        ${e.meters ? ` · ${e.meters} ${S.meters_unit}`   : ''}
-        ${e.note   ? `<br><span style="color:#b0bec5">📝 ${esc(e.note)}</span>` : ''}
+        ${e.item     ? ` · <strong>${esc(e.item)}</strong>` : ''}
+        ${e.brand    ? ` · 🏷️ <strong>${esc(e.brand)}</strong>` : ''}
+        ${e.meters   ? ` · 📏 ${e.meters} ${S.meters_unit}`   : ''}
+        ${e.quantity ? ` · 🔢 ${e.quantity} पीस`              : ''}
+        ${e.rate     ? ` · @ ₹${e.rate}`                      : ''}
+        ${e.dueDate  ? `<br><span style="color:#ffb74d">📅 देय: ${formatDate(e.dueDate)}</span>` : ''}
+        ${e.note     ? `<br><span style="color:#b0bec5">📝 ${esc(e.note)}</span>` : ''}
       </div>
 
       ${recon.status === 'partly_paid' && !isSettled ? `
@@ -1014,8 +1074,22 @@ function renderConfirmPayment() {
 // ═══════════════════════════════════════════════════════════════════
 // SCREEN: Add Entry (Sales & Payments with Voice & Camera)
 // ═══════════════════════════════════════════════════════════════════
+const CATEGORIES = [
+  { key: 'pant_shirt',       label: () => S.cat_pant_shirt },
+  { key: 'saree',            label: () => S.cat_saree },
+  { key: 'blanket_bedsheet', label: () => S.cat_blanket_bedsheet },
+  { key: 'suiting_shirting', label: () => S.cat_suiting_shirting },
+  { key: 'readymade',        label: () => S.cat_readymade },
+  { key: 'other',            label: () => S.cat_other },
+];
+
+// categories that use meters measurement
+const METER_CATS  = new Set(['pant_shirt', 'suiting_shirting', 'other']);
+// categories that use piece count
+const PIECE_CATS  = new Set(['saree', 'blanket_bedsheet', 'readymade']);
+
 function renderAddEntry() {
-  const { customerId, customerName, type: preType } = state.data;
+  const { customerId, customerName, type: preType, prefill } = state.data;
   const isSale = (preType || 'sale') === 'sale';
 
   mainEl.innerHTML = `
@@ -1041,22 +1115,80 @@ function renderAddEntry() {
         </select>
       </div>` : `<input type="hidden" id="inp-type" value="${preType}" />`}
 
+      <!-- ── Sale-only fields ─────────────────────────────────── -->
+      <div id="sale-fields">
+
+        <!-- Category grid -->
+        <div class="form-group">
+          <label>${S.catLabel}</label>
+          <div class="category-grid" id="category-grid">
+            ${CATEGORIES.map(c => `
+              <button class="category-btn${(prefill?.category || 'other') === c.key ? ' selected' : ''}"
+                      data-cat="${c.key}" type="button">
+                ${c.label()}
+              </button>`).join('')}
+          </div>
+          <input type="hidden" id="inp-category" value="${prefill?.category || 'other'}" />
+        </div>
+
+        <div class="form-group">
+          <label>${S.labelItem}</label>
+          <input id="inp-item" type="text" placeholder="${S.itemPlaceholder}"
+                 value="${esc(prefill?.item || '')}" />
+        </div>
+
+        <!-- Brand -->
+        <div class="form-group">
+          <label>${S.labelBrand}</label>
+          <input id="inp-brand" type="text" placeholder="${S.brandPlaceholder}"
+                 value="${esc(prefill?.brand || '')}" />
+        </div>
+
+        <!-- Meters (shown for cloth categories) -->
+        <div class="form-group" id="meters-group">
+          <label>${S.labelMeters}</label>
+          <input id="inp-meters" type="number" inputmode="decimal"
+                 placeholder="${S.metersPlaceholder}" min="0" step="0.25"
+                 value="${prefill?.meters || ''}" />
+        </div>
+
+        <!-- Rate per meter/piece -->
+        <div class="form-group">
+          <label>${S.labelRate}</label>
+          <input id="inp-rate" type="number" inputmode="numeric"
+                 placeholder="${S.ratePlaceholder}" min="0"
+                 value="${prefill?.rate || ''}" />
+        </div>
+
+        <!-- Quantity (shown for piece categories) -->
+        <div class="form-group" id="quantity-group">
+          <label>${S.labelQuantity}</label>
+          <input id="inp-quantity" type="number" inputmode="numeric"
+                 placeholder="${S.quantityPlaceholder}" min="1" step="1"
+                 value="${prefill?.quantity || ''}" />
+        </div>
+
+        <!-- Due date shortcuts -->
+        <div class="form-group">
+          <label>${S.labelDueDate}</label>
+          <div class="due-date-row" id="due-date-row">
+            <button class="due-date-chip selected" data-due="none" type="button">${S.noDueDate}</button>
+            <button class="due-date-chip" data-due="7"   type="button">${S.due7days}</button>
+            <button class="due-date-chip" data-due="15"  type="button">${S.due15days}</button>
+            <button class="due-date-chip" data-due="30"  type="button">${S.due1month}</button>
+            <button class="due-date-chip" data-due="custom" type="button">${S.dueCustom}</button>
+          </div>
+          <input id="inp-due-date" type="date" style="display:none;margin-top:8px;" />
+          <input type="hidden" id="inp-due-date-value" value="" />
+        </div>
+
+      </div><!-- /sale-fields -->
+
       <div class="form-group">
         <label>${S.labelAmount}</label>
         <input id="inp-amount" type="number" inputmode="numeric"
-               placeholder="${S.amountPlaceholder}" min="1" />
-      </div>
-
-      <div id="sale-fields">
-        <div class="form-group">
-          <label>${S.labelItem}</label>
-          <input id="inp-item" type="text" placeholder="${S.itemPlaceholder}" />
-        </div>
-        <div class="form-group">
-          <label>${S.labelMeters}</label>
-          <input id="inp-meters" type="number" inputmode="decimal"
-                 placeholder="${S.metersPlaceholder}" min="0" step="0.25" />
-        </div>
+               placeholder="${S.amountPlaceholder}" min="1"
+               value="${prefill?.amount || ''}" />
       </div>
 
       <div class="form-group">
@@ -1066,7 +1198,7 @@ function renderAddEntry() {
 
       <div class="form-group">
         <label>${S.labelNote}</label>
-        <textarea id="inp-note" placeholder="${S.notePlaceholder}"></textarea>
+        <textarea id="inp-note" placeholder="${S.notePlaceholder}">${esc(prefill?.note || '')}</textarea>
       </div>
 
       <!-- Camera Receipt Attachment -->
@@ -1093,7 +1225,49 @@ function renderAddEntry() {
 
   document.getElementById('inp-date').value = todayISO();
 
-  // Voice recognition parser for Add Entry
+  // ── Category grid wiring ──────────────────────────────────────
+  const catGrid = document.getElementById('category-grid');
+  catGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cat]');
+    if (!btn) return;
+    catGrid.querySelectorAll('.category-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('inp-category').value = btn.dataset.cat;
+    updateMeasurementFields(btn.dataset.cat);
+  });
+  // Show correct measurement fields on load
+  updateMeasurementFields(document.getElementById('inp-category').value);
+
+  // ── Due-date chip wiring ──────────────────────────────────────
+  const dueRow = document.getElementById('due-date-row');
+  const dueDateInput = document.getElementById('inp-due-date');
+  const dueDateValue = document.getElementById('inp-due-date-value');
+
+  dueRow.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-due]');
+    if (!chip) return;
+    dueRow.querySelectorAll('.due-date-chip').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+    const due = chip.dataset.due;
+    if (due === 'none') {
+      dueDateInput.style.display = 'none';
+      dueDateValue.value = '';
+    } else if (due === 'custom') {
+      dueDateInput.style.display = 'block';
+      dueDateInput.value = '';
+      dueDateValue.value = '';
+    } else {
+      dueDateInput.style.display = 'none';
+      const d = new Date();
+      d.setDate(d.getDate() + Number(due));
+      dueDateValue.value = d.toISOString().slice(0, 10);
+    }
+  });
+  dueDateInput.addEventListener('change', () => {
+    dueDateValue.value = dueDateInput.value;
+  });
+
+  // ── Voice recognition parser for Add Entry ───────────────────
   setupVoiceRecognition({
     buttonEl: document.getElementById('btn-voice-entry'),
     statusEl: document.getElementById('voice-entry-status'),
@@ -1102,7 +1276,7 @@ function renderAddEntry() {
     },
   });
 
-  // Photo receipt handler
+  // ── Photo receipt handler ─────────────────────────────────────
   const photoInput = document.getElementById('inp-entry-photo-file');
   const triggerBtn = document.getElementById('btn-entry-trigger-photo');
   const previewBox = document.getElementById('entry-photo-preview');
@@ -1133,6 +1307,7 @@ function renderAddEntry() {
     triggerBtn.textContent = S.photoBtn;
   });
 
+  // Toggle sale-only fields on type switch
   const typeEl = document.getElementById('inp-type');
   if (typeEl.tagName === 'SELECT') {
     typeEl.addEventListener('change', toggleSaleFields);
@@ -1144,45 +1319,104 @@ function renderAddEntry() {
     navigate('customerDetail', { customerId }));
 }
 
+/** Show meters or quantity field depending on selected category */
+function updateMeasurementFields(cat) {
+  const metersGrp   = document.getElementById('meters-group');
+  const quantityGrp = document.getElementById('quantity-group');
+  if (!metersGrp || !quantityGrp) return;
+
+  if (METER_CATS.has(cat)) {
+    metersGrp.style.display   = '';
+    quantityGrp.style.display = 'none';
+  } else if (PIECE_CATS.has(cat)) {
+    metersGrp.style.display   = 'none';
+    quantityGrp.style.display = '';
+  } else {
+    // 'other' or unknown — show neither (item + note suffice)
+    metersGrp.style.display   = 'none';
+    quantityGrp.style.display = 'none';
+  }
+}
+
 function toggleSaleFields() {
   const type = document.getElementById('inp-type').value;
   document.getElementById('sale-fields').style.display = type === 'sale' ? '' : 'none';
 }
 
+/** Fill entry form fields from a voice transcript string */
 function parseVoiceIntoEntryFields(transcript) {
   showToast(`${S.voiceSuccess}: "${transcript}"`);
 
-  // Extract amount (numbers or words)
-  const numbers = transcript.match(/\d+/g);
-  if (numbers && numbers.length > 0) {
-    document.getElementById('inp-amount').value = numbers[0];
-  }
+  // Extract amount — look for "rupaye/रुपये" context or largest number
+  const amountMatch = transcript.match(/(\d[\d,]*)\s*(रुपये?|rupaye?|rs\.?|₹)/i);
+  const numbers     = transcript.match(/\d[\d,]*/g) || [];
+  const amount      = amountMatch
+    ? amountMatch[1].replace(',', '')
+    : (numbers.length ? numbers[numbers.length - 1] : '');
+  if (amount) document.getElementById('inp-amount').value = amount;
 
-  // Extract meters if said (e.g. "5 मीटर" or "5.5 meter")
+  // Extract meters
   const meterMatch = transcript.match(/(\d+(\.\d+)?)\s*(मीटर|meter)/i);
   if (meterMatch) {
-    document.getElementById('inp-meters').value = meterMatch[1];
+    const metersEl = document.getElementById('inp-meters');
+    if (metersEl) metersEl.value = meterMatch[1];
   }
 
-  // Set note or item
+  // Detect brand keywords
+  const brandKeys = ['raymond', 'vimal', 'arvind', 'bombay dyeing', 'vardhman',
+                     'siyaram', 'grasim', 'mafatlal', 'lux'];
+  const lc = transcript.toLowerCase();
+  for (const bk of brandKeys) {
+    if (lc.includes(bk)) {
+      const brandEl = document.getElementById('inp-brand');
+      if (brandEl) brandEl.value = bk.charAt(0).toUpperCase() + bk.slice(1);
+      break;
+    }
+  }
+
+  // Detect category keywords → select category
+  const catKeywords = {
+    pant_shirt:       ['pant', 'shirt', 'पैंट', 'शर्ट', 'trouser', 'कपड़ा'],
+    saree:            ['saree', 'sari', 'साड़ी'],
+    blanket_bedsheet: ['blanket', 'bedsheet', 'चादर', 'कम्बल', 'रजाई'],
+    suiting_shirting: ['suiting', 'shirting', 'थान', 'सूटिंग'],
+    readymade:        ['readymade', 'ready', 'रेडीमेड'],
+  };
+  for (const [cat, keywords] of Object.entries(catKeywords)) {
+    if (keywords.some(kw => lc.includes(kw))) {
+      document.getElementById('inp-category').value = cat;
+      document.querySelectorAll('.category-btn').forEach(b => {
+        b.classList.toggle('selected', b.dataset.cat === cat);
+      });
+      updateMeasurementFields(cat);
+      break;
+    }
+  }
+
+  // Set item description from remaining text
   const itemInput = document.getElementById('inp-item');
   if (itemInput && !itemInput.value) {
-    // Clean text by stripping known number phrases
     const cleanItem = transcript
-      .replace(/\d+(\.\d+)?\s*(मीटर|meter|रुपये|rupaye|rupee)?/gi, '')
+      .replace(/\d+(\.\d+)?\s*(मीटर|meter|रुपये?|rupaye?|rs\.?|₹)?/gi, '')
+      .replace(/(raymond|vimal|arvind|bombay dyeing|vardhman|siyaram|grasim|mafatlal|lux)/gi, '')
       .trim();
     if (cleanItem) itemInput.value = cleanItem;
   }
 }
 
 function prepareConfirmation() {
-  const errEl  = document.getElementById('ae-error');
-  const type   = document.getElementById('inp-type').value;
-  const amount = document.getElementById('inp-amount').value.trim();
-  const item   = document.getElementById('inp-item')?.value.trim()   || '';
-  const meters = document.getElementById('inp-meters')?.value.trim() || '';
-  const date   = document.getElementById('inp-date').value;
-  const note   = document.getElementById('inp-note').value.trim();
+  const errEl    = document.getElementById('ae-error');
+  const type     = document.getElementById('inp-type').value;
+  const amount   = document.getElementById('inp-amount').value.trim();
+  const item     = document.getElementById('inp-item')?.value.trim()     || '';
+  const meters   = document.getElementById('inp-meters')?.value.trim()   || '';
+  const date     = document.getElementById('inp-date').value;
+  const note     = document.getElementById('inp-note').value.trim();
+  const category = document.getElementById('inp-category')?.value        || 'other';
+  const brand    = document.getElementById('inp-brand')?.value.trim()    || '';
+  const rate     = document.getElementById('inp-rate')?.value.trim()     || '';
+  const quantity = document.getElementById('inp-quantity')?.value.trim() || '';
+  const dueDate  = document.getElementById('inp-due-date-value')?.value  || '';
 
   errEl.style.display = 'none';
 
@@ -1200,12 +1434,17 @@ function prepareConfirmation() {
   navigate('confirmEntry', {
     ...state.data,
     type,
-    amount: Math.round(Number(amount)),
+    amount:   Math.round(Number(amount)),
     item,
-    meters: meters ? Number(meters) : null,
+    meters:   meters   ? Number(meters)   : null,
     date,
     note,
-    photo:  state.activePhoto || '',
+    photo:    state.activePhoto || '',
+    category,
+    brand,
+    rate:     rate     ? Number(rate)     : null,
+    quantity: quantity ? Math.round(Number(quantity)) : null,
+    dueDate:  dueDate  || null,
   });
 }
 
@@ -1215,6 +1454,13 @@ function prepareConfirmation() {
 function renderConfirmEntry() {
   const d = state.data;
   const isSale = d.type === 'sale';
+  const catKey  = d.category || 'other';
+  const catLabelMap = {
+    pant_shirt: S.cat_pant_shirt, saree: S.cat_saree,
+    blanket_bedsheet: S.cat_blanket_bedsheet,
+    suiting_shirting: S.cat_suiting_shirting,
+    readymade: S.cat_readymade, other: S.cat_other,
+  };
 
   mainEl.innerHTML = `
     <div class="screen">
@@ -1231,20 +1477,45 @@ function renderConfirmEntry() {
           <span class="confirm-key">प्रकार</span>
           <span class="confirm-value">${isSale ? S.sale : S.payment}</span>
         </div>
+        ${isSale ? `
+        <div class="confirm-row">
+          <span class="confirm-key">${S.catLabel}</span>
+          <span class="confirm-value">${esc(catLabelMap[catKey] || catKey)}</span>
+        </div>` : ''}
         ${d.item ? `
         <div class="confirm-row">
           <span class="confirm-key">${S.labelItem}</span>
           <span class="confirm-value">${esc(d.item)}</span>
+        </div>` : ''}
+        ${d.brand ? `
+        <div class="confirm-row">
+          <span class="confirm-key">${S.labelBrand}</span>
+          <span class="confirm-value">${esc(d.brand)}</span>
         </div>` : ''}
         ${d.meters ? `
         <div class="confirm-row">
           <span class="confirm-key">${S.labelMeters}</span>
           <span class="confirm-value">${d.meters} ${S.meters_unit}</span>
         </div>` : ''}
+        ${d.quantity ? `
+        <div class="confirm-row">
+          <span class="confirm-key">${S.labelQuantity}</span>
+          <span class="confirm-value">${d.quantity} पीस</span>
+        </div>` : ''}
+        ${d.rate ? `
+        <div class="confirm-row">
+          <span class="confirm-key">${S.labelRate}</span>
+          <span class="confirm-value">${S.rupee}${d.rate}</span>
+        </div>` : ''}
         <div class="confirm-row">
           <span class="confirm-key">${S.date_label}</span>
           <span class="confirm-value">${formatDate(d.date)}</span>
         </div>
+        ${d.dueDate ? `
+        <div class="confirm-row">
+          <span class="confirm-key">${S.labelDueDate}</span>
+          <span class="confirm-value">${formatDate(d.dueDate)}</span>
+        </div>` : ''}
         <div class="confirm-row">
           <span class="confirm-key">${S.shop_label}</span>
           <span class="confirm-value">${state.user?.shop === 'shop1' ? S.shop1 : S.shop2}</span>
@@ -1292,21 +1563,45 @@ async function doSaveEntry() {
         customerId: d.customerId,
         type:       d.type,
         amount:     d.amount,
-        item:       d.item   || '',
-        meters:     d.meters || null,
+        item:       d.item     || '',
+        meters:     d.meters   || null,
         date:       d.date,
-        note:       d.note   || '',
-        photo:      d.photo  || '',
+        note:       d.note     || '',
+        photo:      d.photo    || '',
+        category:   d.category || 'other',
+        brand:      d.brand    || '',
+        rate:       d.rate     || null,
+        quantity:   d.quantity || null,
+        dueDate:    d.dueDate  || null,
       },
     });
 
     showToast(S.savedSuccess);
+    // Play success chime if audio is available
+    playSuccessChime();
     navigate('customerDetail', { customerId: d.customerId });
   } catch (err) {
     showToast(err.message || S.error);
     btn.disabled    = false;
     btn.textContent = S.confirmSave;
   }
+}
+
+/** Short audible success chime via Web Audio API */
+function playSuccessChime() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1046, ctx.currentTime + 0.12);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch (_) { /* audio not available */ }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1844,3 +2139,537 @@ function showToast(msg, duration = 3000) {
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), duration);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// GLOBAL FLOATING VOICE ASSISTANT (Permanent FAB & Hands-Free Loop)
+// ═══════════════════════════════════════════════════════════════════
+
+/** Convert Devanagari numerals ०-९ to standard 0-9 */
+function normalizeDevanagariNumbers(str = '') {
+  const deva = ['०','१','२','३','४','५','६','७','८','९'];
+  return String(str).replace(/[०-९]/g, (ch) => deva.indexOf(ch));
+}
+
+/** Subtle audio chime when mic FAB is tapped to start listening */
+function playMicBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(520, ctx.currentTime);
+    osc.frequency.setValueAtTime(680, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.22);
+  } catch (_) { /* audio context unavailable */ }
+}
+
+/**
+ * Sets up the permanent floating mic FAB button.
+ * When tapped → plays beep → opens full-screen overlay → listens → parses intent
+ */
+function setupGlobalVoiceAssistant() {
+  if (!fabMicEl) return;
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    fabMicEl.style.opacity = '0.4';
+    fabMicEl.title = S.fabNotSupported;
+    fabMicEl.addEventListener('click', () => showToast(S.fabNotSupported));
+    return;
+  }
+
+  // Create a single SpeechRecognition instance for the FAB
+  globalRecognition = new SpeechRecognition();
+  globalRecognition.lang             = 'hi-IN';
+  globalRecognition.interimResults   = true;  // show partial transcript live
+  globalRecognition.maxAlternatives  = 1;
+  globalRecognition.continuous       = false;
+
+  fabMicEl.addEventListener('click', () => {
+    if (globalRecognitionActive) {
+      globalRecognition.stop();
+      closeVoiceOverlay();
+    } else {
+      playMicBeep();
+      openVoiceOverlay();
+    }
+  });
+
+  globalRecognition.onstart = () => {
+    globalRecognitionActive = true;
+    fabMicEl.classList.add('listening');
+    const voTitle = document.getElementById('vo-title');
+    if (voTitle) voTitle.textContent = S.fabListening;
+  };
+
+  globalRecognition.onresult = (event) => {
+    let interimText = '';
+    let finalText   = '';
+    for (const result of event.results) {
+      if (result.isFinal) {
+        finalText += result[0].transcript;
+      } else {
+        interimText += result[0].transcript;
+      }
+    }
+    const display = finalText || interimText;
+    const voTranscript = document.getElementById('vo-transcript');
+    if (voTranscript) voTranscript.textContent = `"${display}"`;
+
+    if (finalText.trim()) {
+      handleGlobalIntent(finalText.trim());
+    }
+  };
+
+  globalRecognition.onerror = (event) => {
+    console.warn('Global speech error:', event.error);
+    const voTitle = document.getElementById('vo-title');
+    if (voTitle) voTitle.textContent = S.fabError;
+    setTimeout(closeVoiceOverlay, 1800);
+  };
+
+  globalRecognition.onend = () => {
+    globalRecognitionActive = false;
+    fabMicEl.classList.remove('listening');
+  };
+}
+
+function openVoiceOverlay() {
+  if (!voiceOverlayEl) return;
+  // Clear previous state
+  const voTitle      = document.getElementById('vo-title');
+  const voTranscript = document.getElementById('vo-transcript');
+  const voHint       = document.getElementById('vo-hint');
+  const voConfirm    = document.getElementById('vo-confirm-area');
+  if (voTitle)      voTitle.textContent      = S.fabVoiceTitle;
+  if (voTranscript) voTranscript.textContent = '';
+  if (voHint)       voHint.textContent       = S.fabVoiceHint;
+  if (voConfirm)    voConfirm.innerHTML      = '';
+
+  voiceOverlayEl.classList.remove('hidden');
+  try { globalRecognition.start(); } catch (_) { /* already started */ }
+}
+
+function closeVoiceOverlay() {
+  if (!voiceOverlayEl) return;
+  voiceOverlayEl.classList.add('hidden');
+  try { globalRecognition.stop(); } catch (_) {}
+  if (window.confirmRecognition) {
+    try { window.confirmRecognition.stop(); } catch (_) {}
+  }
+  globalRecognitionActive = false;
+  if (fabMicEl) fabMicEl.classList.remove('listening');
+}
+
+/**
+ * Parse the spoken transcript into one of these intents:
+ *   1. NAVIGATE   — "wapas", "ghar", "aaj", "hisab"
+ *   2. SEARCH     — "... ka hisab" / "... dhundo" / "Ramesh Manoharpur"
+ *   3. ADD ENTRY  — "... ko ... rupaye" (add sale)
+ *   4. FALLBACK   — search customer database
+ */
+async function handleGlobalIntent(rawTranscript) {
+  const normalized = normalizeDevanagariNumbers(rawTranscript);
+  const lc = normalized.toLowerCase().trim();
+
+  // ── 1. Navigation intents ────────────────────────────────────
+  if (/wapas|वापस/.test(lc)) {
+    speakHindi(S.voiceNavHome);
+    closeVoiceOverlay();
+    navigate('home');
+    return;
+  }
+  if (/ghar|घर|home|होम/.test(lc)) {
+    speakHindi(S.voiceNavHome);
+    closeVoiceOverlay();
+    navigate('home');
+    return;
+  }
+  if (/aaj.*(bikri|हिसाब|hisab|sale)|आज का/.test(lc)) {
+    speakHindi(S.voiceNavToday);
+    closeVoiceOverlay();
+    navigate('today');
+    return;
+  }
+  if (/search|khojo|खोजो|ग्राहक/.test(lc)) {
+    speakHindi(S.voiceNavSearch);
+    closeVoiceOverlay();
+    navigate('search');
+    return;
+  }
+
+  // ── 2. Add-entry intent: "रमेश को 6 मीटर पैंट 1200 रुपये" ──
+  //    Pattern: <customer> को / ko <details> <amount> रुपये
+  const entryMatch = normalized.match(/^(.+?)\s+को\s+(.+?)$/i)
+                  || normalized.match(/^(.+?)\s+ko\s+(.+?)$/i);
+  if (entryMatch) {
+    const customerQuery = entryMatch[1].trim();
+    const entryDetails  = entryMatch[2].trim();
+
+    // Parse amount from details
+    const amountMatch = entryDetails.match(/(\d[\d,]*)\s*(रुपये?|rupaye?|rs\.?|₹)/i);
+    const numbers     = entryDetails.match(/\d+/g) || [];
+    const amount      = amountMatch
+      ? amountMatch[1].replace(',', '')
+      : (numbers.length ? numbers[numbers.length - 1] : null);
+
+    // Parse meters
+    const metersMatch = entryDetails.match(/(\d+(\.\d+)?)\s*(मीटर|meter)/i);
+    const meters = metersMatch ? metersMatch[1] : null;
+
+    // Detect category from keywords
+    let category = 'other';
+    const catKeywords = {
+      pant_shirt:       ['pant', 'shirt', 'पैंट', 'शर्ट', 'trouser'],
+      saree:            ['saree', 'sari', 'साड़ी', 'साडी'],
+      blanket_bedsheet: ['blanket', 'bedsheet', 'चादर', 'कम्बल', 'रजाई', 'कंबल'],
+      suiting_shirting: ['suiting', 'shirting', 'थान', 'सूटिंग'],
+      readymade:        ['readymade', 'ready', 'रेडीमेड'],
+    };
+    const lcDetails = entryDetails.toLowerCase();
+    for (const [cat, kws] of Object.entries(catKeywords)) {
+      if (kws.some(k => lcDetails.includes(k))) { category = cat; break; }
+    }
+
+    // Brand detection
+    const brandKeys = ['raymond', 'vimal', 'arvind', 'bombay dyeing', 'vardhman', 'siyaram', 'grasim', 'mafatlal'];
+    let brand = '';
+    for (const bk of brandKeys) {
+      if (lcDetails.includes(bk)) { brand = bk.charAt(0).toUpperCase() + bk.slice(1); break; }
+    }
+
+    // Detect quantity (for piece items)
+    let quantity = null;
+    const qtyMatch = entryDetails.match(/(\d+)\s*(पीस|थान|जोड़ी|जोड़ी|piece|pieces)/i);
+    if (qtyMatch) {
+      quantity = qtyMatch[1];
+    }
+
+    if (!amount) {
+      speakHindi(`राशि समझ नहीं आई, कृपया दोबारा बोलें`);
+      const voHint = document.getElementById('vo-hint');
+      if (voHint) voHint.textContent = 'राशि (रुपये) स्पष्ट बोलें';
+      setTimeout(closeVoiceOverlay, 2400);
+      return;
+    }
+
+    // Look up customer
+    showVoiceConfirmSearching(customerQuery);
+    try {
+      const results = await api(`/api/customers/search?q=${encodeURIComponent(customerQuery)}`);
+      if (results.length === 0) {
+        speakHindi(`${customerQuery} नाम का कोई ग्राहक नहीं मिला`);
+        setTimeout(closeVoiceOverlay, 2400);
+        return;
+      }
+
+      const customer = results[0];
+      // Launch Voice Confirmation & Hands-Free Control Loop
+      showVoiceConfirm({
+        customer,
+        amount,
+        meters,
+        quantity,
+        category,
+        brand,
+      });
+    } catch (e) {
+      showToast(S.error);
+      setTimeout(closeVoiceOverlay, 1500);
+    }
+    return;
+  }
+
+  // ── 3. Customer lookup: "रमेश का हिसाब दिखाओ" or "रमेश मनोहरपुर"
+  let query = '';
+  const hisabMatch = normalized.match(/^(.+?)\s+(का|के|की)\s+(हिसाब|hisab|ledger|बहीखाता|bikri|बिक्री)(\s+.*)?$/i);
+  if (hisabMatch) {
+    query = hisabMatch[1].trim();
+  } else {
+    // If not a sentence or add-entry, test if it's a customer query (e.g. "Ramesh Manoharpur")
+    query = normalized.replace(/(का|के|की|हिसाब|दिखाओ|खोलें|खोलो|देखना)/g, '').trim();
+  }
+
+  if (query) {
+    showVoiceConfirmSearching(query);
+    try {
+      const results = await api(`/api/customers/search?q=${encodeURIComponent(query)}`);
+      if (results.length === 0) {
+        speakHindi(`${query} नाम का कोई ग्राहक नहीं मिला`);
+        setTimeout(closeVoiceOverlay, 2200);
+        return;
+      }
+      const customer = results[0];
+      closeVoiceOverlay();
+      // Navigate to customer detail with speakBalanceOnLoad flag
+      navigate('customerDetail', { customerId: customer._id, speakBalanceOnLoad: true });
+    } catch (e) {
+      showToast(S.error);
+      setTimeout(closeVoiceOverlay, 1500);
+    }
+    return;
+  }
+
+  // ── 4. Fallback ──────────────────────────────────────────────
+  const voHint = document.getElementById('vo-hint');
+  if (voHint) voHint.textContent = S.voiceError;
+  speakHindi(S.fabError);
+  setTimeout(closeVoiceOverlay, 2000);
+}
+
+/** Show "Searching for <name>…" state in voice overlay */
+function showVoiceConfirmSearching(name) {
+  const voTitle = document.getElementById('vo-title');
+  const voHint  = document.getElementById('vo-hint');
+  if (voTitle) voTitle.textContent = `"${name}" खोज रहे हैं…`;
+  if (voHint)  voHint.textContent  = '';
+}
+
+/**
+ * Full-Screen Voice Confirmation & Voice Control Loop (Hands-Free)
+ *
+ * Speaks aloud in Hindi:
+ * "<name>, <village>। <meters/brand/item>, <amount> रुपये। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।"
+ *
+ * Voice Command Handler:
+ * - "हाँ" / "सही है" / "ठीक है" → Saves entry automatically & plays success chime.
+ * - "बदलो" / "1200 नहीं 1500"   → Updates amount, re-reads updated confirmation, and waits for final "हाँ".
+ */
+function showVoiceConfirm(entryData) {
+  let { customer, amount, meters, quantity, category, brand } = entryData;
+
+  const voConfirm = document.getElementById('vo-confirm-area');
+  const voTitle   = document.getElementById('vo-title');
+  const voHint    = document.getElementById('vo-hint');
+  if (!voConfirm) return;
+
+  if (voTitle) voTitle.textContent = S.voiceConfirmTitle;
+
+  const catLabels = {
+    pant_shirt: S.cat_pant_shirt, saree: S.cat_saree,
+    blanket_bedsheet: S.cat_blanket_bedsheet,
+    suiting_shirting: S.cat_suiting_shirting,
+    readymade: S.cat_readymade, other: S.cat_other,
+  };
+
+  const renderCard = () => {
+    voConfirm.innerHTML = `
+      <div class="voice-confirm-card">
+        <div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.customer_label}</span>
+          <span style="font-weight:900">${esc(customer.name)}${customer.village ? ` (${esc(customer.village)})` : ''}</span>
+        </div>
+        <div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.catLabel}</span>
+          <span>${esc(catLabels[category] || category)}</span>
+        </div>
+        ${meters ? `<div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.labelMeters}</span>
+          <span>${meters} ${S.meters_unit}</span>
+        </div>` : ''}
+        ${quantity ? `<div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.labelQuantity}</span>
+          <span>${quantity} पीस</span>
+        </div>` : ''}
+        ${brand ? `<div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.labelBrand}</span>
+          <span>${esc(brand)}</span>
+        </div>` : ''}
+        <div class="voice-confirm-row">
+          <span class="voice-confirm-key">${S.labelAmount}</span>
+          <span style="font-size:1.5rem;font-weight:900;color:var(--primary)">${S.rupee}${Number(amount).toLocaleString('hi-IN')}</span>
+        </div>
+      </div>
+
+      <div style="font-size:1rem;color:#80cbc4;margin-bottom:16px;font-weight:700" id="vc-loop-status">
+        ${S.voiceLoopListening}
+      </div>
+
+      <div class="voice-confirm-actions">
+        <button class="btn btn-primary" id="vc-confirm" style="font-size:1.15rem;padding:16px">${S.voiceConfirmYes}</button>
+        <button class="btn btn-secondary" id="vc-edit">${S.voiceConfirmEdit}</button>
+        <button class="voice-overlay-close" id="vc-cancel">${S.voiceConfirmCancel}</button>
+      </div>
+    `;
+
+    document.getElementById('vc-confirm').addEventListener('click', () => executeDirectSave());
+    document.getElementById('vc-edit').addEventListener('click', () => {
+      closeVoiceOverlay();
+      navigate('addEntry', {
+        customerId:   customer._id,
+        customerName: customer.name,
+        type:         'sale',
+        prefill: { amount, meters, quantity, category, brand },
+      });
+    });
+    document.getElementById('vc-cancel').addEventListener('click', closeVoiceOverlay);
+  };
+
+  // Perform direct API save
+  const executeDirectSave = async () => {
+    const statusEl = document.getElementById('vc-loop-status');
+    if (statusEl) statusEl.textContent = S.loading;
+
+    try {
+      await api('/api/entries', {
+        method: 'POST',
+        body: {
+          customerId: customer._id,
+          type:       'sale',
+          amount:     Math.round(Number(amount)),
+          item:       brand ? `${brand} ${catLabels[category] || ''}`.trim() : (catLabels[category] || ''),
+          meters:     meters ? Number(meters) : null,
+          quantity:   quantity ? Math.round(Number(quantity)) : null,
+          brand:      brand || '',
+          category:   category || 'other',
+          date:       todayISO(),
+          note:       'बोलकर दर्ज किया गया (Voice Assistant)',
+        },
+      });
+
+      playSuccessChime();
+      speakHindi(S.voiceSavedDirect);
+      closeVoiceOverlay();
+      showToast(S.voiceSavedDirect);
+      navigate('customerDetail', { customerId: customer._id });
+    } catch (err) {
+      showToast(err.message || S.error);
+      if (statusEl) statusEl.textContent = S.error;
+    }
+  };
+
+  // Build spoken Hindi question
+  const askVoiceConfirmation = () => {
+    renderCard();
+
+    const catVoiceLabels = {
+      pant_shirt: 'पैंट-शर्ट', saree: 'साड़ी',
+      blanket_bedsheet: 'कम्बल चादर', suiting_shirting: 'थान कपड़ा',
+      readymade: 'रेडीमेड', other: 'माल',
+    };
+
+    let spokenPrompt = `${customer.name}`;
+    if (customer.village) spokenPrompt += `, ${customer.village}`;
+    spokenPrompt += '। ';
+    if (meters)   spokenPrompt += `${meters} मीटर `;
+    if (quantity) spokenPrompt += `${quantity} पीस `;
+    if (brand)    spokenPrompt += `${brand} `;
+    spokenPrompt += `${catVoiceLabels[category] || 'माल'}, ${amount} रुपये। `;
+    spokenPrompt += `क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`;
+
+    speakHindi(spokenPrompt, () => {
+      startVoiceConfirmListener();
+    });
+  };
+
+  // Listen for user response ("हाँ" / "सही है" or "बदलो" / "1200 नहीं 1500")
+  const startVoiceConfirmListener = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (window.confirmRecognition) {
+      try { window.confirmRecognition.stop(); } catch (_) {}
+    }
+
+    const rec = new SpeechRecognition();
+    window.confirmRecognition = rec;
+    rec.lang            = 'hi-IN';
+    rec.interimResults  = false;
+    rec.maxAlternatives = 1;
+
+    rec.onresult = (event) => {
+      const reply = normalizeDevanagariNumbers(event.results?.[0]?.[0]?.transcript || '').trim();
+      const lcReply = reply.toLowerCase();
+
+      // Check affirmative: "हाँ", "सही है", "ठीक है", "save", "कर दो"
+      if (/हाँ|हां|सही|ठीक|कर दो|सेव|yes|ha|haan|sahi|thik|save/i.test(lcReply)) {
+        executeDirectSave();
+        return;
+      }
+
+      // Check cancel: "रद्द", "cancel", "बंद"
+      if (/रद्द|कैंसिल|बंद|cancel/i.test(lcReply)) {
+        closeVoiceOverlay();
+        return;
+      }
+
+      // Check amount update: e.g. "1200 नहीं 1500" or "1500 रुपये" or any spoken number
+      const numbers = reply.match(/\d+/g);
+      if (numbers && numbers.length > 0) {
+        // Use the newest spoken number as the updated amount
+        amount = numbers[numbers.length - 1];
+        renderCard();
+        speakHindi(`रकम बदलकर ${amount} रुपये कर दी गई है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+          startVoiceConfirmListener();
+        });
+        return;
+      }
+
+      // If user said "बदलो" or "नहीं" without number, open addEntry screen for manual touch editing
+      if (/बदलो|बदल|नहीं|change|edit/i.test(lcReply)) {
+        closeVoiceOverlay();
+        navigate('addEntry', {
+          customerId:   customer._id,
+          customerName: customer.name,
+          type:         'sale',
+          prefill: { amount, meters, quantity, category, brand },
+        });
+        showToast('जानकारी बदलें और सेव करें');
+        return;
+      }
+
+      // If not understood, gently re-prompt
+      const statusEl = document.getElementById('vc-loop-status');
+      if (statusEl) statusEl.textContent = 'बोलिए: "हाँ" या "बदलो"…';
+      setTimeout(() => {
+        try { rec.start(); } catch (_) {}
+      }, 500);
+    };
+
+    rec.onerror = () => {
+      // Keep listening if overlay is still open
+      if (!voiceOverlayEl.classList.contains('hidden')) {
+        setTimeout(() => {
+          try { rec.start(); } catch (_) {}
+        }, 1200);
+      }
+    };
+
+    try { rec.start(); } catch (_) {}
+  };
+
+  // Start the voice confirmation flow
+  askVoiceConfirmation();
+}
+
+/**
+ * Speak a Hindi string aloud using the Web Speech Synthesis API.
+ * Calls onEnd callback when speech finishes speaking.
+ */
+function speakHindi(text, onEnd) {
+  if (!window.speechSynthesis) {
+    if (onEnd) onEnd();
+    return;
+  }
+  try {
+    window.speechSynthesis.cancel(); // stop any ongoing speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang  = 'hi-IN';
+    utterance.rate  = 0.92;  // slightly slower for elderly users
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+    if (onEnd) {
+      utterance.onend = () => onEnd();
+      utterance.onerror = () => onEnd();
+    }
+    window.speechSynthesis.speak(utterance);
+  } catch (_) {
+    if (onEnd) onEnd();
+  }
+}
+

@@ -41,6 +41,15 @@ const entryValidation = [
   body('meters').optional({ checkFalsy: true }).isFloat({ min: 0 }),
   body('note').optional().trim().isLength({ max: 500 }),
   body('photo').optional().isString(),
+  // Textile fields
+  body('category')
+    .optional()
+    .isIn(['pant_shirt', 'saree', 'blanket_bedsheet', 'suiting_shirting', 'readymade', 'other'])
+    .withMessage('श्रेणी गलत है'),
+  body('quantity').optional({ checkFalsy: true }).isInt({ min: 0 }),
+  body('brand').optional().trim().isLength({ max: 100 }),
+  body('rate').optional({ checkFalsy: true }).isFloat({ min: 0 }),
+  body('dueDate').optional({ checkFalsy: true }).isISO8601().withMessage('देय तिथि गलत है'),
 ];
 
 router.post('/', entryValidation, async (req, res) => {
@@ -49,7 +58,11 @@ router.post('/', entryValidation, async (req, res) => {
     return res.status(400).json({ error: errors.array()[0].msg });
   }
 
-  const { customerId, type, amount, date, item = '', meters = null, note = '', photo = '' } = req.body;
+  const {
+    customerId, type, amount, date,
+    item = '', meters = null, note = '', photo = '',
+    category = 'other', quantity = null, brand = '', rate = null, dueDate = null,
+  } = req.body;
 
   try {
     const entry = await Entry.create({
@@ -62,6 +75,11 @@ router.post('/', entryValidation, async (req, res) => {
       meters:    meters !== null ? Number(meters) : null,
       note,
       photo,
+      category,
+      quantity:  quantity !== null ? Math.round(Number(quantity)) : null,
+      brand,
+      rate:      rate !== null ? Number(rate) : null,
+      dueDate:   dueDate ? new Date(dueDate) : null,
       createdBy: req.user.userId,
     });
 
