@@ -1383,16 +1383,56 @@ details.settled-section[open] summary {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 220px;
+  min-height: 280px;
+  max-height: 480px;
   border-right: 2px solid var(--border);
   position: relative;
+  overflow: hidden;
+  user-select: none;
 }
 
 .ocr-photo-pane img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  max-height: 300px;
+  max-height: 460px;
+  transition: transform 0.2s ease-out;
+  transform-origin: center center;
+}
+
+.ocr-zoom-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 4px 6px;
+  border-radius: 8px;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ocr-zoom-btn {
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 6px;
+  font-size: 0.95rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.ocr-zoom-btn:hover {
+  background: var(--primary);
+  color: #000;
 }
 
 .ocr-photo-placeholder {

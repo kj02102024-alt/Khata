@@ -120,7 +120,7 @@ const entrySchema = new mongoose.Schema(
     //   affect the customer's displayed balance.
     status: {
       type: String,
-      enum: ['approved', 'pending_admin_approval'],
+      enum: ['approved', 'pending_admin_approval', 'pending_admin_review'],
       default: 'approved',
     },
 

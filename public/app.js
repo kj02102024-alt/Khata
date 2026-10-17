@@ -3448,13 +3448,18 @@ function renderDiaryUpload() {
         ${S.diaryUploadHint}
       </p>
 
-      <!-- Optional Customer Name Tag -->
+      <!-- Optional Customer Name Tag with Voice Input Option -->
       <div class="form-group">
         <label for="diary-customer-name">${S.diaryCustomerTag}</label>
-        <input id="diary-customer-name" type="text"
-               placeholder="जैसे: रमेश मनोहरपुर"
-               autocomplete="off"
-               style="font-size:1.3rem;min-height:60px;" />
+        <div style="display:flex;gap:8px;">
+          <input id="diary-customer-name" type="text"
+                 placeholder="जैसे: श्री संजय पटेल की बहन"
+                 autocomplete="off"
+                 style="font-size:1.3rem;min-height:60px;flex:1;" />
+          <button class="btn-voice" type="button" id="btn-diary-voice-name" style="width:auto;padding:0 18px;min-height:60px;border-radius:var(--radius-sm);display:inline-flex;align-items:center;gap:6px;">
+            🎤 बोलें
+          </button>
+        </div>
       </div>
 
       <!-- Photo Preview Area -->
@@ -3480,12 +3485,21 @@ function renderDiaryUpload() {
       <!-- Upload Button (shown after photo selected) -->
       <button class="btn btn-primary" id="btn-diary-send"
               style="margin-top:16px;min-height:72px;font-size:1.4rem;display:none">
-        📤 फोटो भेजें — एडमिन जाँचेगा
+        💾 फोटो सेव करें
       </button>
     </div>
   `;
 
   document.getElementById('btn-diary-back').addEventListener('click', () => navigate('home'));
+
+  setupVoiceRecognition({
+    buttonEl: document.getElementById('btn-diary-voice-name'),
+    statusEl: document.getElementById('diary-error'),
+    onResult: (transcript) => {
+      document.getElementById('diary-customer-name').value = transcript;
+      showToast(`${S.voiceSuccess}: "${transcript}"`);
+    },
+  });
 
   const photoInput  = document.getElementById('diary-photo-input');
   const captureBtn  = document.getElementById('btn-diary-capture');
@@ -3569,7 +3583,7 @@ function renderDiaryUpload() {
       errEl.textContent = err.message || S.diaryUploadError;
       errEl.style.display = 'block';
       sendBtn.disabled = false;
-      sendBtn.textContent = '📤 फोटो भेजें — एडमिन जाँचेगा';
+      sendBtn.textContent = '💾 फोटो सेव करें';
     }
   });
 }
@@ -3625,13 +3639,21 @@ async function renderAdminOcrQueueTab(container) {
           <span style="font-size:0.85rem;color:var(--text-muted)">${formatDate(entry.createdAt)}</span>
         </div>
 
-        <!-- Split Screen: Photo | AI Data -->
+        <!-- Split Screen: Photo (Left) | AI Form (Right) -->
         <div class="ocr-split-screen">
 
-          <!-- LEFT: Handwritten Diary Photo -->
-          <div class="ocr-photo-pane">
+          <!-- LEFT: Zoomable Handwritten Diary Photo -->
+          <div class="ocr-photo-pane" id="ocr-pane-${idx}">
             ${imageUrl
-              ? `<img src="${esc(imageUrl)}" alt="${A('ocrPhotoLabel')}" />`
+              ? `
+                <div class="ocr-zoom-toolbar">
+                  <button class="ocr-zoom-btn" type="button" data-action="zoom-in" title="Zoom In">🔍+</button>
+                  <button class="ocr-zoom-btn" type="button" data-action="zoom-out" title="Zoom Out">🔍-</button>
+                  <button class="ocr-zoom-btn" type="button" data-action="zoom-reset" title="Reset">↺</button>
+                  <button class="ocr-zoom-btn" type="button" data-action="zoom-full" title="Fullscreen">⛶</button>
+                </div>
+                <img id="ocr-img-${idx}" src="${esc(imageUrl)}" alt="${A('ocrPhotoLabel')}" class="ocr-zoom-img" style="cursor:zoom-in;" />
+              `
               : `<div class="ocr-photo-placeholder">
                    <span style="font-size:2.5rem">📷</span>
                    <span>${state.adminLang === 'en' ? 'Photo not available' : 'फोटो उपलब्ध नहीं'}</span>
@@ -3645,28 +3667,60 @@ async function renderAdminOcrQueueTab(container) {
               ${A('ocrExtractedLabel')} — ${A('ocrEditNote')}
             </div>
 
-            <!-- Customer Name -->
-            <div class="ocr-field-group">
-              <div class="ocr-field-label">${A('ocrCustomerName')}</div>
-              <input class="ocr-field-input" type="text" id="ocr-customer-${idx}"
-                     value="${esc(entry.customer?.name || ocrData.customerName || '')}"
-                     placeholder="${A('ocrCustomerName')}" />
+            <!-- Customer Name & Relation (Brackets) -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="ocr-field-group">
+                <div class="ocr-field-label">${A('ocrCustomerName')}</div>
+                <input class="ocr-field-input" type="text" id="ocr-customer-${idx}"
+                       value="${esc(entry.customer?.name || ocrData.customerName || '')}"
+                       placeholder="${A('ocrCustomerName')}" />
+              </div>
+              <div class="ocr-field-group">
+                <div class="ocr-field-label">${A('ocrRelation')}</div>
+                <input class="ocr-field-input" type="text" id="ocr-relation-${idx}"
+                       value="${esc(entry.customer?.relationTag || ocrData.relationTag || '')}"
+                       placeholder="जैसे: बहन / लड़का मोनू" />
+              </div>
             </div>
 
-            <!-- Item / Description -->
-            <div class="ocr-field-group">
-              <div class="ocr-field-label">${A('ocrItem')}</div>
-              <input class="ocr-field-input" type="text" id="ocr-item-${idx}"
-                     value="${esc(entry.item || ocrData.item || '')}"
-                     placeholder="${A('ocrItem')}" />
+            <!-- Amount & Date -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="ocr-field-group">
+                <div class="ocr-field-label">${A('ocrAmount')} *</div>
+                <input class="ocr-field-input" type="number" id="ocr-amount-${idx}"
+                       value="${entry.amount || ocrData.amount || ''}"
+                       placeholder="${A('ocrAmount')}" inputmode="numeric" min="1" />
+              </div>
+              <div class="ocr-field-group">
+                <div class="ocr-field-label">${A('ocrDate')}</div>
+                <input class="ocr-field-input" type="text" id="ocr-date-${idx}"
+                       value="${entry.date ? new Date(entry.date).toLocaleDateString('en-GB') : (ocrData.date || todayISO())}"
+                       placeholder="DD.MM.YY" />
+              </div>
             </div>
 
-            <!-- Amount -->
+            <!-- Item & Brand -->
+            <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:8px;">
+              <div class="ocr-field-group">
+                <div class="ocr-field-label">${A('ocrItem')}</div>
+                <input class="ocr-field-input" type="text" id="ocr-item-${idx}"
+                       value="${esc(entry.item || ocrData.item || '')}"
+                       placeholder="जैसे: पर्दा, साड़ी, पैंट-शर्ट" />
+              </div>
+              <div class="ocr-field-group">
+                <div class="ocr-field-label">${A('ocrBrand')}</div>
+                <input class="ocr-field-input" type="text" id="ocr-brand-${idx}"
+                       value="${esc(entry.brand || ocrData.brand || '')}"
+                       placeholder="जैसे: लक्ष्मीपति, विमल" />
+              </div>
+            </div>
+
+            <!-- Quantity / Meters -->
             <div class="ocr-field-group">
-              <div class="ocr-field-label">${A('ocrAmount')}</div>
-              <input class="ocr-field-input" type="number" id="ocr-amount-${idx}"
-                     value="${entry.amount || ocrData.amount || ''}"
-                     placeholder="${A('ocrAmount')}" inputmode="numeric" min="1" />
+              <div class="ocr-field-label">${A('ocrQuantity')}</div>
+              <input class="ocr-field-input" type="number" id="ocr-quantity-${idx}"
+                     value="${entry.quantity || entry.meters || ocrData.quantity || ''}"
+                     placeholder="जैसे: 2 पीस या 5.5 मीटर" step="any" />
             </div>
 
             <!-- OCR Confidence -->
@@ -3678,7 +3732,7 @@ async function renderAdminOcrQueueTab(container) {
               </div>
             </div>` : ''}
 
-            <!-- Note -->
+            <!-- Note / Memo -->
             <div class="ocr-field-group">
               <div class="ocr-field-label">${A('ocrNote')}</div>
               <input class="ocr-field-input" type="text" id="ocr-note-${idx}"
@@ -3697,6 +3751,34 @@ async function renderAdminOcrQueueTab(container) {
 
       listEl.appendChild(cardEl);
 
+      // ── Zoom logic for handwritten diary photo ──────────────────
+      let currentZoom = 1.0;
+      const zoomImg = cardEl.querySelector(`#ocr-img-${idx}`);
+      const setZoom = (z) => {
+        currentZoom = Math.max(1.0, Math.min(3.5, z));
+        if (zoomImg) {
+          zoomImg.style.transform = `scale(${currentZoom})`;
+          zoomImg.style.cursor = currentZoom > 1.0 ? 'zoom-out' : 'zoom-in';
+        }
+      };
+
+      cardEl.querySelectorAll('.ocr-zoom-btn').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          const action = btn.dataset.action;
+          if (action === 'zoom-in')    setZoom(currentZoom + 0.4);
+          if (action === 'zoom-out')   setZoom(currentZoom - 0.4);
+          if (action === 'zoom-reset') setZoom(1.0);
+          if (action === 'zoom-full' && imageUrl) openPhotoModal(imageUrl);
+        });
+      });
+
+      if (zoomImg) {
+        zoomImg.addEventListener('click', () => {
+          setZoom(currentZoom > 1.0 ? 1.0 : 2.0);
+        });
+      }
+
       // ── Approve button handler ──────────────────────────────────
       cardEl.querySelector('.ocr-approve-btn').addEventListener('click', async (e) => {
         const btn = e.currentTarget;
@@ -3705,14 +3787,18 @@ async function renderAdminOcrQueueTab(container) {
         btn.textContent = A('loading');
 
         const customerName = document.getElementById(`ocr-customer-${i}`)?.value.trim() || '';
+        const relationTag  = document.getElementById(`ocr-relation-${i}`)?.value.trim() || '';
         const amount       = Number(document.getElementById(`ocr-amount-${i}`)?.value || 0);
         const item         = document.getElementById(`ocr-item-${i}`)?.value.trim() || '';
+        const brand        = document.getElementById(`ocr-brand-${i}`)?.value.trim() || '';
+        const date         = document.getElementById(`ocr-date-${i}`)?.value.trim() || '';
+        const quantity     = document.getElementById(`ocr-quantity-${i}`)?.value ? Number(document.getElementById(`ocr-quantity-${i}`)?.value) : null;
         const note         = document.getElementById(`ocr-note-${i}`)?.value.trim() || '';
 
         try {
           await api(`/api/ocr/approve/${entry._id}`, {
             method: 'POST',
-            body: { amount, item, note, customerName },
+            body: { amount, item, brand, quantity, date, note, customerName, relationTag },
           });
           showToast(A('ocrApproveSuccess'));
           // Remove the card smoothly
@@ -3754,7 +3840,7 @@ async function renderAdminOcrQueueTab(container) {
         } catch (err) {
           showToast(err.message || S.error);
           btn.disabled = false;
-          btn.textContent = S.ocrRejectBtn;
+          btn.textContent = A('ocrRejectBtn');
         }
       });
     });

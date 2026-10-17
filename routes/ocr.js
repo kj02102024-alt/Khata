@@ -220,19 +220,36 @@ router.post(
   }
 );
 
+function parseShortDate(str) {
+  if (!str) return new Date();
+  const trimmed = String(str).trim();
+  // Match DD.MM.YY, DD/MM/YY, DD-MM-YY, DD.MM.YYYY
+  const m = trimmed.match(/^(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{2,4})$/);
+  if (m) {
+    let day = parseInt(m[1], 10);
+    let month = parseInt(m[2], 10) - 1; // 0-indexed month
+    let year = parseInt(m[3], 10);
+    if (year < 100) year += 2000;
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const iso = new Date(trimmed);
+  return isNaN(iso.getTime()) ? new Date() : iso;
+}
+
 // ── GET /api/ocr/queue ────────────────────────────────────────────
 /**
- * Admin-only: returns all entries awaiting approval, newest first.
- * Populates customer name and village so the UI can display them.
+ * Admin-only: returns all entries awaiting approval/review, newest first.
+ * Populates customer name, village, and relationTag so the UI can display them.
  */
 router.get('/queue', requireAuth, requireAdmin, async (req, res) => {
   try {
     const entries = await Entry.find({
-      status:  'pending_admin_approval',
+      status:  { $in: ['pending_admin_approval', 'pending_admin_review'] },
       deleted: false,
     })
       .sort({ createdAt: -1 })
-      .populate('customer', 'name village phone')
+      .populate('customer', 'name village phone relationTag')
       .lean();
 
     res.json(entries);
@@ -246,10 +263,15 @@ router.get('/queue', requireAuth, requireAdmin, async (req, res) => {
 /**
  * Admin-only: approve a pending entry.
  *
- * Optional body fields (all override OCR-extracted values):
+ * Optional body fields:
  *   amount       {number}
  *   item         {string}
- *   customerName {string}  – if provided, rename the customer record
+ *   customerName {string}  – if provided, updates the customer record
+ *   relationTag  {string}  – bracket note / relationship
+ *   date         {string}  – ISO or short date like '16.5.26'
+ *   brand        {string}
+ *   meters       {number}
+ *   quantity     {number}
  *   note         {string}
  */
 router.post('/approve/:id', requireAuth, requireAdmin, async (req, res) => {
@@ -270,22 +292,40 @@ router.post('/approve/:id', requireAuth, requireAdmin, async (req, res) => {
       }
       entry.amount = amt;
     }
-    if (req.body.item         !== undefined) entry.item = String(req.body.item).trim();
-    if (req.body.note         !== undefined) entry.note = String(req.body.note).trim();
+    if (req.body.item        !== undefined) entry.item        = String(req.body.item).trim();
+    if (req.body.brand       !== undefined) entry.brand       = String(req.body.brand).trim();
+    if (req.body.note        !== undefined) entry.note        = String(req.body.note).trim();
+    if (req.body.meters      !== undefined) entry.meters      = req.body.meters ? Number(req.body.meters) : null;
+    if (req.body.quantity    !== undefined) entry.quantity    = req.body.quantity ? Number(req.body.quantity) : null;
+    if (req.body.date)                     entry.date        = parseShortDate(req.body.date);
 
-    // Optionally rename the auto-created placeholder customer
-    if (req.body.customerName) {
-      const newName = String(req.body.customerName).trim();
-      if (newName) {
-        await Customer.findByIdAndUpdate(entry.customer, { name: newName });
+    // Optionally update customer name & relationTag
+    if (entry.customer && (req.body.customerName || req.body.relationTag !== undefined)) {
+      const updateData = {};
+      if (req.body.customerName) {
+        const rawName = String(req.body.customerName).trim();
+        // Check for bracket relation in name, e.g. "संजय पटेल (बहन)"
+        const bMatch = rawName.match(/^(.*?)\s*[\(\[]([^\)\]]+)[\)\]]\s*$/);
+        if (bMatch) {
+          updateData.name = bMatch[1].trim();
+          updateData.relationTag = bMatch[2].trim();
+        } else {
+          updateData.name = rawName;
+          if (req.body.relationTag !== undefined) {
+            updateData.relationTag = String(req.body.relationTag).trim();
+          }
+        }
+      } else if (req.body.relationTag !== undefined) {
+        updateData.relationTag = String(req.body.relationTag).trim();
       }
+      await Customer.findByIdAndUpdate(entry.customer, updateData);
     }
 
     entry.status = 'approved';
     await entry.save();
 
     const updated = await Entry.findById(entry._id)
-      .populate('customer', 'name village')
+      .populate('customer', 'name village relationTag')
       .lean();
 
     res.json({ message: 'Entry अप्रूव हो गई', entry: updated });

@@ -253,43 +253,70 @@ router.get(
   }
 );
 
-// ── Helper: Parse relationships like "Ramesh ka ladka Monu" ─────────
+// ── Helper: Parse relationships like "श्री संजय पटेल की बहन" or "संजय (लड़का मोनू)" ─
 function parseCustomerRelation(rawText = '') {
-  const text = String(rawText).trim();
+  let text = String(rawText).trim();
 
-  // Common Hindi & Hinglish relationship connectors:
-  // e.g. "Ramesh ka ladka Monu", "रमेश का लड़का मोनू", "Suresh ki bahu Ritu", "Sunil ka bhai Mukesh"
-  const relRegex = /^(.+?)\s+(?:का|की|ke|ka|ki)\s+(?:लड़का|लड़का|बेटा|लड़की|लड़की|बेटी|बहू|पत्नी|भाई|पोता|पोती|भतीजा|ladka|beta|ladki|beti|bahu|patni|bhai|pota|poti|bhatija)\s+(.+)$/i;
+  // 1. Strip common honorific prefixes: श्री, श्रीमती, पं., पंडित, मास्टर, लाला, सेठ, etc.
+  text = text.replace(/^(?:श्रीमान|श्रीमती|श्री|पं\.?|पंडित|मास्टर|सेठ|लाला|डॉ\.?|dr\.?|mr\.?|mrs\.?|shri|shree)\s+/i, '').trim();
 
-  const match = text.match(relRegex);
+  // 2. Check if already has brackets: e.g. "संजय पटेल (बहन)" or "रमेश (लड़का मोनू)"
+  const bracketMatch = text.match(/^(.*?)\s*[\(\[]([^\)\]]+)[\)\]]\s*$/);
+  if (bracketMatch) {
+    const parentName = bracketMatch[1].trim();
+    const relTag     = bracketMatch[2].trim();
+    return {
+      isRelation: true,
+      parentName,
+      childName: relTag,
+      relLabel: relTag,
+      formattedName: `${parentName} (${relTag})`,
+      aliases: [relTag, text],
+    };
+  }
+
+  // 3. Match relations with connector: (का / की / ke / ka / ki)
+  // Two forms:
+  //   Form A: with child/kin name, e.g. "संजय पटेल का लड़का मोनू"
+  //   Form B: without child name, e.g. "संजय पटेल की बहन", "रमेश की बहू"
+  const relRegexWithKin = /^(.+?)\s+(?:का|की|के|ke|ka|ki)\s+(लड़का|लड़का|बेटा|लड़की|लड़की|बेटी|बहू|पत्नी|भाई|बहन|पोता|पोती|भतीजा|भतीजी|जीजा|साला|माता|पिता|चाचा|चाची|ताऊ|मौसी|बुआ|दामाद|ladka|beta|ladki|beti|bahu|patni|bhai|behen|sister|brother|pota|poti|bhatija)\s*(.*)$/i;
+
+  const match = text.match(relRegexWithKin);
   if (!match) {
     return { isRelation: false, baseName: text, aliasPart: '', formattedName: text };
   }
 
   const parentName = match[1].trim();
-  const childName  = match[2].trim();
+  const rawRelWord = (match[2] || '').trim();
+  const childName  = (match[3] || '').trim();
 
-  // Map relationship keyword to clean Devanagari tag
-  let relLabel = 'लड़का';
-  const lower = text.toLowerCase();
-  if (lower.includes('लड़की') || lower.includes('लड़की') || lower.includes('ladki') || lower.includes('beti') || lower.includes('बेटी')) {
-    relLabel = 'लड़की';
-  } else if (lower.includes('बहू') || lower.includes('bahu')) {
-    relLabel = 'बहू';
-  } else if (lower.includes('पत्नी') || lower.includes('patni') || lower.includes('wife')) {
-    relLabel = 'पत्नी';
-  } else if (lower.includes('भाई') || lower.includes('bhai') || lower.includes('brother')) {
-    relLabel = 'भाई';
-  } else if (lower.includes('पोता') || lower.includes('pota')) {
-    relLabel = 'पोता';
-  } else if (lower.includes('पोती') || lower.includes('poti')) {
-    relLabel = 'पोती';
-  } else if (lower.includes('भतीजा') || lower.includes('bhatija')) {
-    relLabel = 'भतीजा';
-  }
+  // Normalize relationship label to standard Devanagari
+  let relLabel = rawRelWord;
+  const rw = rawRelWord.toLowerCase();
+  if (/बहन|behen|sister/.test(rw)) relLabel = 'बहन';
+  else if (/भाई|bhai|brother/.test(rw)) relLabel = 'भाई';
+  else if (/लड़की|लड़की|ladki|beti|बेटी/.test(rw)) relLabel = 'लड़की';
+  else if (/लड़का|लड़का|ladka|beta|बेटा/.test(rw)) relLabel = 'लड़का';
+  else if (/बहू|bahu/.test(rw)) relLabel = 'बहू';
+  else if (/पत्नी|patni|wife/.test(rw)) relLabel = 'पत्नी';
+  else if (/पोता|pota/.test(rw)) relLabel = 'पोता';
+  else if (/पोती|poti/.test(rw)) relLabel = 'पोती';
+  else if (/भतीजा|bhatija/.test(rw)) relLabel = 'भतीजा';
+  else if (/भतीजी|bhatiji/.test(rw)) relLabel = 'भतीजी';
+  else if (/जीजा|jija/.test(rw)) relLabel = 'जीजा';
+  else if (/साला|sala/.test(rw)) relLabel = 'साला';
+  else if (/चाचा|chacha/.test(rw)) relLabel = 'चाचा';
+  else if (/चाची|chachi/.test(rw)) relLabel = 'चाची';
+  else if (/ताऊ|tau/.test(rw)) relLabel = 'ताऊ';
+  else if (/मौसी|mausi/.test(rw)) relLabel = 'मौसी';
+  else if (/बुआ|bua/.test(rw)) relLabel = 'बुआ';
+  else if (/दामाद|damad/.test(rw)) relLabel = 'दामाद';
 
-  // Standard clean format: "रमेश (लड़का मोनू)"
-  const formattedName = `${parentName} (${relLabel} ${childName})`;
+  const relTag = childName ? `${relLabel} ${childName}` : relLabel;
+  const formattedName = `${parentName} (${relTag})`;
+
+  const aliases = [relTag, text];
+  if (childName) aliases.push(childName);
 
   return {
     isRelation: true,
@@ -297,7 +324,7 @@ function parseCustomerRelation(rawText = '') {
     childName,
     relLabel,
     formattedName,
-    aliases: [childName, `${relLabel} ${childName}`, text],
+    aliases,
   };
 }
 
@@ -435,6 +462,7 @@ router.post('/resolve', async (req, res) => {
       name: newCustomerName,
       village: cleanVillage,
       alias: initialAliases,
+      relationTag: relationInfo.isRelation ? (relationInfo.childName ? `${relationInfo.relLabel} ${relationInfo.childName}` : relationInfo.relLabel) : '',
     });
 
     return res.status(201).json({
