@@ -61,9 +61,9 @@ window.S = {
   nameRequired:       'नाम जरूरी है',
 
   // ── Customer detail screen ────────────────────────────────────
-  balance:         'बाकी',
+  balance:         'बचा',
   balanceClear:    'हिसाब साफ है',
-  owes:            'बाकी है:',
+  owes:            'बचा है:',
   overpaid:        'अग्रिम (जमा):',
   advance:         'अग्रिम',
   dues:            'बचा',
@@ -248,6 +248,8 @@ window.S = {
   homonymChoice2:      '2',
   homonymChoice3:      '3',
   micListeningExtended:'🔴 सुन रहे हैं... आराम से बोलिए...',
+  voiceDoneBtn:        '✅ बोलना पूरा हुआ (पूर्ण)',
+  voiceWaveformActive: 'आवाज़ रिकॉर्ड हो रही है…',
 
   // ── Shopkeeper Mode: 3-Button Home ───────────────────────────
   shopkeeperVoiceEntry:   '🎤 बोलकर हिसाब लिखें',
@@ -278,6 +280,7 @@ window.S = {
   ocrApproveSuccess:      '✅ हिसाब स्वीकृत होगया!',
   ocrRejectSuccess:       '🗑 हिसाब हटा दिया गया',
   paidReceived:           '💰 मिली राशि',
+  duesLabel:              'बचा:',
 };
 
 // ── Bilingual Dictionaries for Pro Admin Portal ─────────────────
@@ -294,6 +297,8 @@ window.ADMIN_EN = {
   langSwitch:           '🌐 हिंदी',
   
   adminTotalDues:       'Total Outstanding Balance',
+  todayCollections:     "Today's Total Collections",
+  activePendingAccounts:'Active Pending Accounts',
   grandSales:           'Total Sales',
   grandPayments:        'Total Collections',
   shop1Net:             'Shop 1 Net Dues',
@@ -318,10 +323,13 @@ window.ADMIN_EN = {
   ocrDate:              'Date (e.g. 16.5.26)',
   ocrConfidence:        'AI Confidence',
   ocrNote:              'Note / Memo',
-  ocrApproveBtn:        '✅ Approve & Save',
+  ocrApproveBtn:        '✅ Approve & Post to Ledger',
   ocrRejectBtn:         '❌ Reject & Remove',
-  ocrApproveSuccess:    'Transaction approved and balance updated!',
+  ocrApproveSuccess:    'Transaction approved and ledger balance updated!',
   ocrRejectSuccess:     'Entry discarded',
+  rotateLeft:           'Rotate ↺',
+  rotateRight:          'Rotate ↻',
+  dragHint:             'Click & drag or swipe to pan image',
   
   auditTitle:           'Audit Trail & Transaction Ledger',
   searchPlaceholder:    'Search customer, village, item, or amount…',
@@ -349,6 +357,13 @@ window.ADMIN_EN = {
   restoreSuccess:       'Transaction successfully restored!',
   viewReceipt:          'Receipt',
   noAuditRecords:       'No audit records found matching criteria',
+  adjustBalanceBtn:     '⚖️ Adjust Balance',
+  adjustBalanceTitle:   'Manual Balance Adjustment',
+  adjustTypeSale:       'Add Dues / Debit (उधार)',
+  adjustTypePayment:    'Credit / Payment Received (जमा)',
+  adjustAmount:         'Adjustment Amount (₹)',
+  adjustNote:           'Adjustment Reason / Note',
+  adjustSuccess:        'Customer balance adjusted successfully!',
   
   exportTitle:          'Data Backup & CSV / JSON Download',
   exportDesc:           'Safely download and archive your entire customer ledger database to your local machine.',
@@ -369,6 +384,8 @@ window.ADMIN_HI = {
   langSwitch:           '🌐 English',
   
   adminTotalDues:       'कुल बाकी रकम',
+  todayCollections:     'आज की कुल वसूली (जमा)',
+  activePendingAccounts:'बाकी वाले ग्राहक (चालू खाते)',
   grandSales:           'कुल बिक्री',
   grandPayments:        'कुल जमा',
   shop1Net:             'दुकान १ शुद्ध बाकी',
@@ -397,6 +414,9 @@ window.ADMIN_HI = {
   ocrRejectBtn:         '❌ Reject & Remove (हटाएं)',
   ocrApproveSuccess:    'हिसाब स्वीकृत हो गया और खाते में जुड़ गया!',
   ocrRejectSuccess:     'हिसाब हटा दिया गया',
+  rotateLeft:           'घुमाएं ↺',
+  rotateRight:          'घुमाएं ↻',
+  dragHint:             'फोटो को खींचकर (Drag/Pan) देखें',
   
   auditTitle:           'ऑडिट लॉग (सभी लेन-देन विवरण)',
   searchPlaceholder:    'नाम, गाँव, सामान या रकम खोजें…',
@@ -424,6 +444,13 @@ window.ADMIN_HI = {
   restoreSuccess:       'लेन-देन फिर से बहाल हो गया!',
   viewReceipt:          'रसीद',
   noAuditRecords:       'कोई लेन-देन रिकॉर्ड नहीं मिला',
+  adjustBalanceBtn:     '⚖️ खाता समायोजन',
+  adjustBalanceTitle:   'खाता संतुलन समायोजन (मालिक)',
+  adjustTypeSale:       'बाकी जोड़ें (उधार)',
+  adjustTypePayment:    'जमा घटाएं (भुगतान)',
+  adjustAmount:         'समायोजन राशि (₹)',
+  adjustNote:           'समायोजन का कारण / नोट',
+  adjustSuccess:        'खाता सफलतापूर्वक समायोजित किया गया!',
   
   exportTitle:          'डेटा बैकअप और डाउनलोड',
   exportDesc:           'यहाँ से आप अपनी दोनों दुकानों का पूरा हिसाब और ग्राहकों का डेटा कंप्यूटर पर सुरक्षित रख सकते हैं।',

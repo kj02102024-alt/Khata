@@ -61,10 +61,26 @@
 
   <!-- Full-screen Voice Overlay (shown while listening / confirming) -->
   <div id="voice-overlay" class="hidden">
-    <div class="voice-overlay-mic">🎤</div>
+    <div class="voice-overlay-mic" id="vo-mic-icon">🎤</div>
+
+    <!-- Live Animated Waveform Bars (Visual Feedback during Pauses) -->
+    <div class="voice-waveform-container" id="vo-waveform">
+      <span class="wave-bar bar-1"></span>
+      <span class="wave-bar bar-2"></span>
+      <span class="wave-bar bar-3"></span>
+      <span class="wave-bar bar-4"></span>
+      <span class="wave-bar bar-5"></span>
+    </div>
+
     <div class="voice-overlay-title" id="vo-title">बोलिए…</div>
     <div class="voice-overlay-transcript" id="vo-transcript"></div>
     <div class="voice-overlay-hint" id="vo-hint"></div>
+
+    <!-- Large Intuitive Manual Done / पूर्ण Button for Elderly Shopkeepers -->
+    <button id="vo-done-btn" class="voice-done-btn" type="button">
+      ✅ बोलना पूरा हुआ (पूर्ण)
+    </button>
+
     <!-- Voice confirm card (injected by JS after intent parsed) -->
     <div id="vo-confirm-area"></div>
     <button class="voice-overlay-close" id="vo-close">✕ रद्द करें</button>

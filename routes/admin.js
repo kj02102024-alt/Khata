@@ -37,11 +37,64 @@ router.get('/overview', async (req, res) => {
       },
     ]);
 
+    // IST Day Boundary for Today's Collections
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const istStartOfDay = new Date(Date.UTC(istNow.getUTCFullYear(), istNow.getUTCMonth(), istNow.getUTCDate()) - istOffset);
+
+    const todayPaymentsAgg = await Entry.aggregate([
+      {
+        $match: {
+          deleted: false,
+          type: 'payment',
+          status: { $ne: 'pending_admin_approval' },
+          date: { $gte: istStartOfDay },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amount' },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+    const todayCollections = todayPaymentsAgg[0]?.total || 0;
+
+    // Active pending accounts (customers with net dues > 0)
+    const customerBalanceAgg = await Entry.aggregate([
+      { $match: { deleted: false, status: { $ne: 'pending_admin_approval' } } },
+      {
+        $group: {
+          _id: '$customer',
+          totalSales: { $sum: { $cond: [{ $eq: ['$type', 'sale'] }, '$amount', 0] } },
+          totalPayments: { $sum: { $cond: [{ $eq: ['$type', 'payment'] }, '$amount', 0] } },
+        },
+      },
+      {
+        $project: {
+          balance: { $subtract: ['$totalSales', '$totalPayments'] },
+        },
+      },
+      {
+        $match: {
+          balance: { $gt: 0 },
+        },
+      },
+      {
+        $count: 'activeCount',
+      },
+    ]);
+    const activePendingAccounts = customerBalanceAgg[0]?.activeCount || 0;
+
     const report = {
       shop1: { sales: 0, payments: 0, salesCount: 0, paymentsCount: 0 },
       shop2: { sales: 0, payments: 0, salesCount: 0, paymentsCount: 0 },
       grand: { sales: 0, payments: 0, balance: 0 },
       totalCustomers,
+      todayCollections,
+      activePendingAccounts,
       deletedEntriesCount: await Entry.countDocuments({ deleted: true }),
       pendingOcrCount:     await Entry.countDocuments({ status: 'pending_admin_approval', deleted: false }),
       totalEntriesCount:   await Entry.countDocuments(),
@@ -71,6 +124,37 @@ router.get('/overview', async (req, res) => {
   } catch (err) {
     console.error('Admin overview error:', err);
     res.status(500).json({ error: 'एडमिन रिपोर्ट लोड नहीं हो सकी' });
+  }
+});
+
+// ── POST /api/admin/adjust-balance ────────────────────────────────
+router.post('/adjust-balance', async (req, res) => {
+  try {
+    const { customerId, shop, type, amount, note } = req.body;
+    if (!customerId || !amount || Number(amount) <= 0 || !['sale', 'payment'].includes(type)) {
+      return res.status(400).json({ error: 'अमान्य विवरण (Invalid adjustment data)' });
+    }
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ error: 'ग्राहक नहीं मिला' });
+    }
+    const entry = new Entry({
+      customer: customerId,
+      shop: shop || req.user.shop || 'shop1',
+      type,
+      amount: Math.round(Number(amount)),
+      item: 'संतुलन समायोजन (Admin Balance Adjustment)',
+      note: note || 'मालिक द्वारा खाता समायोजन',
+      date: new Date(),
+      createdBy: req.user.userId,
+      status: 'approved',
+    });
+    await entry.save();
+    await entry.populate('customer', 'name village');
+    res.json({ message: 'खाता सफलतापूर्वक समायोजित किया गया', entry });
+  } catch (err) {
+    console.error('Balance adjustment error:', err);
+    res.status(500).json({ error: 'समायोजन विफल' });
   }
 });
 

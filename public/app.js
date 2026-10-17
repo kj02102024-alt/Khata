@@ -1944,65 +1944,284 @@ async function renderAdmin() {
 }
 
 function renderAdminOverviewTab(container, r) {
+  const activeTxCount = (r.totalEntriesCount || 0) - (r.deletedEntriesCount || 0);
+
   container.innerHTML = `
-    <!-- Grand Total Balance -->
-    <div class="admin-header-card">
-      <div style="font-size:1rem;color:#ce93d8;text-transform:uppercase">${A('adminTotalDues')}</div>
-      <div style="font-size:2.8rem;font-weight:900;color:#fff;margin-top:6px">
-        ₹${r.grand.balance.toLocaleString('hi-IN')}
+    <!-- Modern 4-Card SaaS Metrics Bar -->
+    <div class="admin-metrics-strip">
+
+      <!-- Metric 1: Live Outstanding Dues -->
+      <div class="admin-metric-card accent-dues">
+        <div class="metric-header">
+          <span class="metric-label">${A('adminTotalDues')}</span>
+          <span class="metric-icon-badge">💰</span>
+        </div>
+        <div class="metric-value" style="color:#fbbf24">
+          ₹${(r.grand.balance || 0).toLocaleString('hi-IN')}
+        </div>
+        <div class="metric-sub">
+          <span>${A('grandSales')}: ₹${r.grand.sales.toLocaleString('hi-IN')}</span>
+          <span>·</span>
+          <span>${A('grandPayments')}: ₹${r.grand.payments.toLocaleString('hi-IN')}</span>
+        </div>
       </div>
-      <div style="font-size:0.95rem;color:#e1bee7;margin-top:6px">
-        ${A('grandSales')}: ₹${r.grand.sales.toLocaleString('hi-IN')} &nbsp;|&nbsp; ${A('grandPayments')}: ₹${r.grand.payments.toLocaleString('hi-IN')}
+
+      <!-- Metric 2: Today's Collections -->
+      <div class="admin-metric-card accent-collect">
+        <div class="metric-header">
+          <span class="metric-label">${A('todayCollections')}</span>
+          <span class="metric-icon-badge">📈</span>
+        </div>
+        <div class="metric-value" style="color:#34d399">
+          ₹${(r.todayCollections || 0).toLocaleString('hi-IN')}
+        </div>
+        <div class="metric-sub">
+          <span>${state.adminLang === 'en' ? 'Live receipts collected today' : 'आज की तारीख में प्राप्त वसूली'}</span>
+        </div>
       </div>
+
+      <!-- Metric 3: Active Pending Accounts -->
+      <div class="admin-metric-card accent-active">
+        <div class="metric-header">
+          <span class="metric-label">${A('activePendingAccounts')}</span>
+          <span class="metric-icon-badge">👥</span>
+        </div>
+        <div class="metric-value" style="color:#60a5fa">
+          ${r.activePendingAccounts || 0}
+        </div>
+        <div class="metric-sub">
+          <span>${A('totalCustomers')}: ${r.totalCustomers || 0} ${state.adminLang === 'en' ? 'accounts' : 'खाते'}</span>
+        </div>
+      </div>
+
+      <!-- Metric 4: AI Diary Review Queue -->
+      <div class="admin-metric-card accent-ocr" id="card-ocr-metric">
+        <div class="metric-header">
+          <span class="metric-label">${A('pendingOcrEntries')}</span>
+          <span class="metric-icon-badge">📷</span>
+        </div>
+        <div class="metric-value" style="color:#f472b6">
+          ${r.pendingOcrCount || 0}
+        </div>
+        <div class="metric-sub">
+          <span style="color:#f472b6;font-weight:700">${state.adminLang === 'en' ? 'Review queue →' : 'जांच कतार खोलें →'}</span>
+        </div>
+      </div>
+
     </div>
 
-    <!-- Cross-Shop Comparison Grid -->
-    <div class="admin-stats-grid">
-      <div class="admin-stat-card" style="border-top:4px solid #1565c0">
-        <div class="admin-stat-title">${A('shop1Net')}</div>
-        <div class="admin-stat-num" style="color:#90caf9">₹${r.shop1.balance.toLocaleString('hi-IN')}</div>
-        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">
-          ${A('grandSales')}: ₹${r.shop1.sales.toLocaleString('hi-IN')}<br>
-          ${A('grandPayments')}: ₹${r.shop1.payments.toLocaleString('hi-IN')}
+    <!-- Cross-Shop SaaS Comparison Strip -->
+    <div class="admin-shop-comparison-row">
+
+      <!-- Shop 1 SaaS Card -->
+      <div class="admin-shop-card" style="border-top:3px solid #3b82f6;">
+        <div class="shop-card-header">
+          <div>
+            <span class="badge badge-shop1">${A('shop1')}</span>
+            <div class="shop-name" style="margin-top:4px;">${A('shop1Net')}</div>
+          </div>
+          <div class="shop-net-badge" style="color:#60a5fa;">
+            ₹${r.shop1.balance.toLocaleString('hi-IN')}
+          </div>
+        </div>
+        <div class="shop-stats-grid">
+          <div class="shop-mini-stat">
+            ${A('grandSales')}
+            <strong>₹${r.shop1.sales.toLocaleString('hi-IN')}</strong>
+          </div>
+          <div class="shop-mini-stat">
+            ${A('grandPayments')}
+            <strong style="color:#34d399;">₹${r.shop1.payments.toLocaleString('hi-IN')}</strong>
+          </div>
         </div>
       </div>
 
-      <div class="admin-stat-card" style="border-top:4px solid #6a1b9a">
-        <div class="admin-stat-title">${A('shop2Net')}</div>
-        <div class="admin-stat-num" style="color:#ce93d8">₹${r.shop2.balance.toLocaleString('hi-IN')}</div>
-        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">
-          ${A('grandSales')}: ₹${r.shop2.sales.toLocaleString('hi-IN')}<br>
-          ${A('grandPayments')}: ₹${r.shop2.payments.toLocaleString('hi-IN')}
+      <!-- Shop 2 SaaS Card -->
+      <div class="admin-shop-card" style="border-top:3px solid #8b5cf6;">
+        <div class="shop-card-header">
+          <div>
+            <span class="badge badge-shop2">${A('shop2')}</span>
+            <div class="shop-name" style="margin-top:4px;">${A('shop2Net')}</div>
+          </div>
+          <div class="shop-net-badge" style="color:#c084fc;">
+            ₹${r.shop2.balance.toLocaleString('hi-IN')}
+          </div>
+        </div>
+        <div class="shop-stats-grid">
+          <div class="shop-mini-stat">
+            ${A('grandSales')}
+            <strong>₹${r.shop2.sales.toLocaleString('hi-IN')}</strong>
+          </div>
+          <div class="shop-mini-stat">
+            ${A('grandPayments')}
+            <strong style="color:#34d399;">₹${r.shop2.payments.toLocaleString('hi-IN')}</strong>
+          </div>
         </div>
       </div>
 
-      <div class="admin-stat-card" id="card-ocr-queue" style="border-top:4px solid #ff9800;cursor:pointer">
-        <div class="admin-stat-title">🤖 ${A('adminTabOcr')}</div>
-        <div class="admin-stat-num" style="color:#ffb74d">${r.pendingOcrCount || 0}</div>
-        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">
-          ${state.adminLang === 'en' ? 'Photos awaiting verification' : 'सत्यापन हेतु लंबित फोटो'}
+    </div>
+
+    <!-- Quick Ledger & Database Actions -->
+    <div class="card mb-16" style="padding:18px 20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-weight:800;font-size:1.1rem;">
+            ⚙️ ${state.adminLang === 'en' ? 'Quick Ledger Actions' : 'त्वरित खाता प्रबंधन'}
+          </div>
+          <div style="font-size:0.85rem;color:var(--text-muted);margin-top:2px;">
+            ${A('activeEntries')}: <strong>${activeTxCount}</strong> &nbsp;|&nbsp;
+            ${A('deletedEntries')}: <strong style="color:#ef5350">${r.deletedEntriesCount || 0}</strong>
+          </div>
         </div>
-      </div>
-
-      <div class="admin-stat-card">
-        <div class="admin-stat-title">${A('totalCustomers')}</div>
-        <div class="admin-stat-num">${r.totalCustomers}</div>
-      </div>
-
-      <div class="admin-stat-card">
-        <div class="admin-stat-title">${A('deletedEntries')}</div>
-        <div class="admin-stat-num" style="color:#ef5350">${r.deletedEntriesCount}</div>
+        <button class="btn btn-primary" id="btn-quick-adjust" style="font-size:0.95rem;padding:10px 18px;min-height:44px;">
+          ${A('adjustBalanceBtn')}
+        </button>
       </div>
     </div>
   `;
 
-  const ocrCard = container.querySelector('#card-ocr-queue');
+  const ocrCard = container.querySelector('#card-ocr-metric');
   if (ocrCard) {
     ocrCard.addEventListener('click', () => {
       state.adminTab = 'ocr';
       renderAdmin();
     });
   }
+
+  const quickAdjBtn = container.querySelector('#btn-quick-adjust');
+  if (quickAdjBtn) {
+    quickAdjBtn.addEventListener('click', () => openBalanceAdjustmentModal());
+  }
+}
+
+/**
+ * Interactive Modal for Manual Customer Balance Adjustments:
+ * Allows Admin to debit (add dues) or credit (receive payment) with full audit log entry.
+ */
+async function openBalanceAdjustmentModal(prefillCustomerId = '') {
+  let modalEl = document.getElementById('adjust-balance-modal');
+  if (!modalEl) {
+    modalEl = document.createElement('div');
+    modalEl.id = 'adjust-balance-modal';
+    modalEl.className = 'adjust-modal-overlay';
+    document.body.appendChild(modalEl);
+  }
+
+  modalEl.innerHTML = `
+    <div class="adjust-modal-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:1.3rem;font-weight:900;">${A('adjustBalanceTitle')}</div>
+        <button id="btn-close-adj-modal" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">✕</button>
+      </div>
+      <div class="spinner"></div>
+    </div>
+  `;
+  modalEl.style.display = 'flex';
+
+  let customers = [];
+  try {
+    customers = await api('/api/customers');
+  } catch (_) {}
+
+  const cardInner = modalEl.querySelector('.adjust-modal-card');
+  cardInner.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-size:1.25rem;font-weight:900;">${A('adjustBalanceTitle')}</div>
+      <button id="btn-close-adj-modal" style="background:none;border:none;color:var(--text-muted);font-size:1.5rem;cursor:pointer;">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label for="adj-customer">${A('colCustomer')} *</label>
+      <select id="adj-customer" class="ocr-field-input" style="font-size:1rem;">
+        <option value="">-- ${A('colCustomer')} चुनें --</option>
+        ${customers.map(c => `
+          <option value="${c._id}" ${c._id === prefillCustomerId ? 'selected' : ''}>
+            ${esc(c.name)} ${c.relationTag ? `(${esc(c.relationTag)})` : ''} ${c.village ? `· ${esc(c.village)}` : ''}
+          </option>
+        `).join('')}
+      </select>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>${A('colShop')}</label>
+        <select id="adj-shop" class="ocr-field-input" style="font-size:1rem;">
+          <option value="shop1">${A('shop1')}</option>
+          <option value="shop2">${A('shop2')}</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom:0;">
+        <label>${A('colType')}</label>
+        <select id="adj-type" class="ocr-field-input" style="font-size:1rem;">
+          <option value="sale">${A('adjustTypeSale')}</option>
+          <option value="payment">${A('adjustTypePayment')}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="adj-amount">${A('adjustAmount')} *</label>
+      <input id="adj-amount" type="number" min="1" class="ocr-field-input" placeholder="जैसे: 500" inputmode="numeric" />
+    </div>
+
+    <div class="form-group">
+      <label for="adj-note">${A('adjustNote')}</label>
+      <input id="adj-note" type="text" class="ocr-field-input" placeholder="जैसे: हिसाब का अंतर ठीक किया" />
+    </div>
+
+    <div id="adj-error" style="color:#ef5350;font-size:0.95rem;margin-bottom:12px;display:none;"></div>
+
+    <div class="gap-12" style="margin-top:16px;">
+      <button class="btn btn-primary" id="btn-save-adj" style="min-height:52px;font-size:1.1rem;font-weight:900;">
+        💾 ${A('save')}
+      </button>
+    </div>
+  `;
+
+  document.getElementById('btn-close-adj-modal').addEventListener('click', () => {
+    modalEl.style.display = 'none';
+  });
+
+  document.getElementById('btn-save-adj').addEventListener('click', async () => {
+    const customerId = document.getElementById('adj-customer').value;
+    const shop       = document.getElementById('adj-shop').value;
+    const type       = document.getElementById('adj-type').value;
+    const amount     = Number(document.getElementById('adj-amount').value || 0);
+    const note       = document.getElementById('adj-note').value.trim();
+    const errEl      = document.getElementById('adj-error');
+    const saveBtn    = document.getElementById('btn-save-adj');
+
+    if (!customerId) {
+      errEl.textContent = state.adminLang === 'en' ? 'Please select a customer' : 'कृपया ग्राहक चुनें';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (!amount || amount <= 0) {
+      errEl.textContent = state.adminLang === 'en' ? 'Amount must be at least ₹1' : 'राशि कम से कम ₹1 होनी चाहिए';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    errEl.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = A('loading');
+
+    try {
+      await api('/api/admin/adjust-balance', {
+        method: 'POST',
+        body: { customerId, shop, type, amount, note },
+      });
+      showToast(A('adjustSuccess'));
+      modalEl.style.display = 'none';
+      renderAdmin();
+    } catch (err) {
+      errEl.textContent = err.message || S.error;
+      errEl.style.display = 'block';
+      saveBtn.disabled = false;
+      saveBtn.textContent = `💾 ${A('save')}`;
+    }
+  });
 }
 
 async function renderAdminAuditTab(container) {
@@ -2012,7 +2231,12 @@ async function renderAdminAuditTab(container) {
     const allEntries = await api('/api/admin/audit-log');
 
     container.innerHTML = `
-      <div class="page-title" style="font-size:1.2rem;margin-bottom:14px">${A('auditTitle')}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div class="page-title" style="font-size:1.2rem;margin-bottom:0">${A('auditTitle')}</div>
+        <button class="btn btn-primary btn-sm" id="btn-audit-adj" style="padding:8px 14px;font-size:0.9rem;">
+          ${A('adjustBalanceBtn')}
+        </button>
+      </div>
 
       <!-- Search & Filters Bar -->
       <div class="admin-search-bar">
@@ -2054,6 +2278,11 @@ async function renderAdminAuditTab(container) {
     const filterType  = container.querySelector('#audit-filter-type');
     const filterShop  = container.querySelector('#audit-filter-shop');
     const tableBody   = container.querySelector('#audit-table-body');
+    const auditAdjBtn = container.querySelector('#btn-audit-adj');
+
+    if (auditAdjBtn) {
+      auditAdjBtn.addEventListener('click', () => openBalanceAdjustmentModal());
+    }
 
     const renderRows = () => {
       const q = searchInput.value.trim().toLowerCase();
@@ -2126,8 +2355,10 @@ async function renderAdminAuditTab(container) {
               <span class="badge badge-${e.shop}">${e.shop === 'shop1' ? A('shop1') : A('shop2')}</span>
             </td>
             <td>
-              <span class="badge badge-${e.type}">${e.type === 'sale' ? A('sale') : A('payment')}</span>
-              ${isDeleted ? `<span class="badge" style="background:#b71c1c;color:#fff;margin-left:4px">${A('statusDeleted')}</span>` : ''}
+              <span class="status-pill ${e.type === 'sale' ? 'sale-pill' : 'payment-pill'}">
+                ${e.type === 'sale' ? A('sale') : A('payment')}
+              </span>
+              ${isDeleted ? `<span class="status-pill deleted" style="margin-left:4px">${A('statusDeleted')}</span>` : ''}
             </td>
             <td>
               <strong>${esc(e.customer?.name || '—')}</strong>
@@ -2135,7 +2366,7 @@ async function renderAdminAuditTab(container) {
               ${e.customer?.village ? `<br><small style="color:var(--text-muted)">📍 ${esc(e.customer.village)}</small>` : ''}
             </td>
             <td style="font-size:0.9rem">${detailsHtml}</td>
-            <td style="text-align:right;font-weight:900;font-size:1.1rem;${e.type === 'sale' ? 'color:#ffb74d;' : 'color:#81c784;'}">
+            <td style="text-align:right;font-weight:900;font-size:1.1rem;${e.type === 'sale' ? 'color:#fbbf24;' : 'color:#34d399;'}">
               ₹${Number(e.amount).toLocaleString('hi-IN')}
             </td>
             <td style="font-size:0.85rem;color:var(--text-muted)">
@@ -2225,16 +2456,45 @@ function setupVoiceRecognition({ buttonEl, statusEl, onResult }) {
 
   const recognition = new SpeechRecognition();
   recognition.lang = 'hi-IN'; // Hindi (India)
-  recognition.interimResults = false;
+  recognition.interimResults = true;
+  recognition.continuous = true;
   recognition.maxAlternatives = 1;
 
   let isListening = false;
+  let accumulated = '';
+  let lastInterim = '';
+  let silenceTimer = null;
+
+  const resetTimer = () => {
+    if (silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(() => {
+      stopSession();
+    }, 7000); // 7 seconds silence timeout to allow elderly pauses
+  };
+
+  const stopSession = () => {
+    if (silenceTimer) {
+      clearTimeout(silenceTimer);
+      silenceTimer = null;
+    }
+    isListening = false;
+    buttonEl.classList.remove('listening');
+    try { recognition.stop(); } catch (_) {}
+    const fullText = (accumulated + ' ' + lastInterim).trim();
+    if (statusEl) statusEl.textContent = '';
+    if (fullText) {
+      onResult(fullText);
+    }
+  };
 
   buttonEl.addEventListener('click', () => {
     if (isListening) {
-      recognition.stop();
+      stopSession();
       return;
     }
+    accumulated = '';
+    lastInterim = '';
+    isListening = true;
     try {
       recognition.start();
     } catch (_) { /* already started */ }
@@ -2243,26 +2503,47 @@ function setupVoiceRecognition({ buttonEl, statusEl, onResult }) {
   recognition.onstart = () => {
     isListening = true;
     buttonEl.classList.add('listening');
-    if (statusEl) statusEl.textContent = S.voiceListening;
+    if (statusEl) statusEl.textContent = S.micListeningExtended || '🔴 सुन रहे हैं...';
+    resetTimer();
   };
 
   recognition.onresult = (event) => {
-    const transcript = event.results?.[0]?.[0]?.transcript || '';
-    if (transcript.trim()) {
-      onResult(transcript.trim());
+    let interim = '';
+    let finals = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      if (event.results[i].isFinal) {
+        finals += event.results[i][0].transcript + ' ';
+      } else {
+        interim += event.results[i][0].transcript;
+      }
     }
+    if (finals) accumulated += finals;
+    lastInterim = interim;
+    const current = (accumulated + ' ' + interim).trim();
+    if (statusEl && current) {
+      statusEl.textContent = `"${current}"`;
+    }
+    resetTimer();
   };
 
   recognition.onerror = (event) => {
-    console.warn('Speech error:', event.error);
-    if (statusEl) statusEl.textContent = '';
-    showToast(S.voiceError);
-  };
-
-  recognition.onend = () => {
+    console.warn('Form speech error:', event.error);
+    if (event.error === 'no-speech') return; // let silence timer handle it
+    if (silenceTimer) clearTimeout(silenceTimer);
     isListening = false;
     buttonEl.classList.remove('listening');
     if (statusEl) statusEl.textContent = '';
+  };
+
+  recognition.onend = () => {
+    // If still supposed to be listening and user hasn't explicitly stopped, restart to prevent premature cut-off
+    if (isListening && silenceTimer) {
+      try { recognition.start(); } catch (_) {}
+    } else {
+      isListening = false;
+      buttonEl.classList.remove('listening');
+      if (statusEl) statusEl.textContent = '';
+    }
   };
 }
 
@@ -2433,16 +2714,18 @@ function setupGlobalVoiceAssistant() {
   let silenceTimer = null;
   let accumulatedFinalText = '';
   let lastInterimText = '';
+  let manualStop = false;
 
   const resetSilenceTimer = () => {
     if (silenceTimer) clearTimeout(silenceTimer);
-    // 3.2-second timeout: gives elderly shopkeepers enough time to pause and think without cut-off
+    // 8.5-second timeout (7-10s requirement): gives elderly shopkeepers ample time to pause & think without premature cut-off
     silenceTimer = setTimeout(() => {
       finishSpeechSession();
-    }, 3200);
+    }, 8500);
   };
 
   const finishSpeechSession = () => {
+    manualStop = true;
     if (silenceTimer) {
       clearTimeout(silenceTimer);
       silenceTimer = null;
@@ -2451,6 +2734,12 @@ function setupGlobalVoiceAssistant() {
     try { globalRecognition.stop(); } catch (_) {}
     globalRecognitionActive = false;
     if (fabMicEl) fabMicEl.classList.remove('listening');
+
+    // Hide active listening waveform and manual done button
+    const voWaveform = document.getElementById('vo-waveform');
+    const voDoneBtn  = document.getElementById('vo-done-btn');
+    if (voWaveform) voWaveform.style.display = 'none';
+    if (voDoneBtn)  voDoneBtn.style.display  = 'none';
 
     if (fullText) {
       const voTranscript = document.getElementById('vo-transcript');
@@ -2463,11 +2752,22 @@ function setupGlobalVoiceAssistant() {
     }
   };
 
+  // Wire Large Intuitive Done / पूर्ण Button for Elderly Shopkeepers
+  const voDoneBtn = document.getElementById('vo-done-btn');
+  if (voDoneBtn) {
+    voDoneBtn.addEventListener('click', () => {
+      if (globalRecognitionActive) {
+        finishSpeechSession();
+      }
+    });
+  }
+
   fabMicEl.addEventListener('click', () => {
     if (globalRecognitionActive) {
       // Tap while listening finalizes immediately
       finishSpeechSession();
     } else {
+      manualStop = false;
       accumulatedFinalText = '';
       lastInterimText = '';
       playMicBeep();
@@ -2477,13 +2777,21 @@ function setupGlobalVoiceAssistant() {
 
   globalRecognition.onstart = () => {
     globalRecognitionActive = true;
+    manualStop = false;
     accumulatedFinalText = '';
     lastInterimText = '';
     fabMicEl.classList.add('listening');
-    const voTitle = document.getElementById('vo-title');
-    if (voTitle) voTitle.textContent = S.fabListening;
-    const voHint = document.getElementById('vo-hint');
-    if (voHint) voHint.textContent = S.micListeningExtended;
+
+    const voTitle    = document.getElementById('vo-title');
+    const voHint     = document.getElementById('vo-hint');
+    const voWaveform = document.getElementById('vo-waveform');
+    const voDoneBtn  = document.getElementById('vo-done-btn');
+
+    if (voTitle)    voTitle.textContent     = S.fabListening;
+    if (voHint)     voHint.textContent      = S.micListeningExtended;
+    if (voWaveform) voWaveform.style.display = 'flex';
+    if (voDoneBtn)  voDoneBtn.style.display  = 'block';
+
     resetSilenceTimer();
   };
 
@@ -2509,7 +2817,7 @@ function setupGlobalVoiceAssistant() {
     const voHint = document.getElementById('vo-hint');
     if (voHint) voHint.textContent = S.micListeningExtended;
 
-    // Reset silence timer on every spoken word/chunk
+    // Reset silence timer on every spoken chunk
     resetSilenceTimer();
   };
 
@@ -2526,6 +2834,13 @@ function setupGlobalVoiceAssistant() {
   };
 
   globalRecognition.onend = () => {
+    // If still supposed to be listening and user hasn't finished, re-connect automatically
+    if (globalRecognitionActive && !manualStop && silenceTimer) {
+      try {
+        globalRecognition.start();
+        return;
+      } catch (_) {}
+    }
     globalRecognitionActive = false;
     if (fabMicEl) fabMicEl.classList.remove('listening');
   };
@@ -2538,10 +2853,15 @@ function openVoiceOverlay() {
   const voTranscript = document.getElementById('vo-transcript');
   const voHint       = document.getElementById('vo-hint');
   const voConfirm    = document.getElementById('vo-confirm-area');
+  const voWaveform   = document.getElementById('vo-waveform');
+  const voDoneBtn    = document.getElementById('vo-done-btn');
+
   if (voTitle)      voTitle.textContent      = S.fabVoiceTitle;
   if (voTranscript) voTranscript.textContent = '';
   if (voHint)       voHint.textContent       = S.fabVoiceHint;
   if (voConfirm)    voConfirm.innerHTML      = '';
+  if (voWaveform)   voWaveform.style.display = 'flex';
+  if (voDoneBtn)    voDoneBtn.style.display  = 'block';
 
   voiceOverlayEl.classList.remove('hidden');
   try { globalRecognition.start(); } catch (_) { /* already started */ }
@@ -3233,16 +3553,16 @@ function showVoiceConfirm(entryData) {
   const askVoiceConfirmation = () => {
     renderCard();
 
-    let spokenPrompt = `ग्राहक: ${customer.name}`;
-    if (customer.village) spokenPrompt += `, गांव: ${customer.village}`;
-    spokenPrompt += '। ';
-    if (quantity) spokenPrompt += `${quantity} पीस `;
-    if (meters)   spokenPrompt += `${meters} ${unitType === 'gaj' ? 'गज' : 'मीटर'} `;
-    spokenPrompt += `${item || category || 'माल'}, `;
-    if (brand)    spokenPrompt += `ब्रांड: ${brand}, `;
-    if (designNumber) spokenPrompt += `डिजाइन नंबर: ${designNumber}, `;
-    spokenPrompt += `मूल्य: ${amount} रुपये। `;
-    spokenPrompt += `क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`;
+    const detailsParts = [];
+    if (quantity) detailsParts.push(`${quantity} पीस`);
+    if (meters)   detailsParts.push(`${meters} ${unitType === 'gaj' ? 'गज' : 'मीटर'}`);
+    if (brand)    detailsParts.push(brand);
+    detailsParts.push(item || category || 'माल');
+    if (designNumber) detailsParts.push(`डिजाइन ${designNumber}`);
+    const detailsStr = detailsParts.length > 0 ? detailsParts.join(' ') : 'माल';
+
+    // Exact requested readback format: "<Name>, <Item/Details>, <Amount> रुपये। क्या यह सही है?"
+    const spokenPrompt = `${customer.name}, ${detailsStr}, ${amount} रुपये। क्या यह सही है?`;
 
     speakHindi(spokenPrompt, () => {
       startVoiceConfirmListener();
@@ -3268,8 +3588,8 @@ function showVoiceConfirm(entryData) {
       const reply = normalizeDevanagariNumbers(event.results?.[0]?.[0]?.transcript || '').trim();
       const lcReply = reply.toLowerCase();
 
-      // 1. Check affirmative: "हाँ", "सही है", "ठीक है", "save", "कर दो"
-      if (/हाँ|हां|सही|ठीक|कर दो|सेव|yes|ha|haan|sahi|thik|save/i.test(lcReply)) {
+      // 1. Check affirmative: "हाँ", "सही है", "ठीक है", "save", "कर दो", "हाँ सही है"
+      if (/हाँ|हां|सही|ठीक|कर दो|सेव|हो गया|yes|ha|haan|sahi|thik|save|correct|done/i.test(lcReply)) {
         executeDirectSave();
         return;
       }
@@ -3280,7 +3600,35 @@ function showVoiceConfirm(entryData) {
         return;
       }
 
-      // 3. Mid-Sentence Field Correction: Brand correction
+      // 3. Mid-Sentence Field Correction: Price / Amount update
+      // Handles: "1200 नहीं 1500", "नहीं 1500", "1500 रुपये दाम", "रेट 1500"
+      let newAmt = null;
+      const correctionMatch = reply.match(/(\d+)\s*(?:नहीं|nahi)\s*(\d+)/i);
+      if (correctionMatch) {
+        newAmt = correctionMatch[2];
+      } else {
+        const nahiAmtMatch = reply.match(/(?:नहीं|nahi)\s*(?:दाम|रेट|मूल्य|रुपये?)?\s*(\d+)/i);
+        if (nahiAmtMatch) {
+          newAmt = nahiAmtMatch[1];
+        } else {
+          const numbers = reply.match(/\d+/g);
+          const isPriceContext = /दाम|मूल्य|रुपये|rupaye|रेट|rate|कीमत|keemat|टका|karo|करो/i.test(lcReply);
+          if (numbers && numbers.length > 0 && isPriceContext && !/मीटर|meter|पीस|piece|नग/i.test(lcReply)) {
+            newAmt = numbers[numbers.length - 1];
+          }
+        }
+      }
+
+      if (newAmt && String(newAmt) !== String(amount)) {
+        amount = newAmt;
+        renderCard();
+        speakHindi(`मूल्य बदलकर ${amount} रुपये कर दिया गया है। क्या यह सही है?`, () => {
+          startVoiceConfirmListener();
+        });
+        return;
+      }
+
+      // 4. Mid-Sentence Field Correction: Brand correction
       // e.g. "लक्ष्मीपति नहीं बॉम्बे डाइंग है", "ब्रांड विमल है", "रेमंड नहीं अरविंद"
       const knownBrands = [
         { key: /लक्ष्मीपति|laxmipati/i, val: 'लक्ष्मीपति' },
@@ -3318,13 +3666,13 @@ function showVoiceConfirm(entryData) {
       if (newBrand && newBrand !== brand) {
         brand = newBrand;
         renderCard();
-        speakHindi(`ब्रांड बदलकर ${brand} कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+        speakHindi(`ब्रांड बदलकर ${brand} कर दिया गया है। क्या यह सही है?`, () => {
           startVoiceConfirmListener();
         });
         return;
       }
 
-      // 4. Mid-Sentence Field Correction: Product / Item correction
+      // 5. Mid-Sentence Field Correction: Product / Item correction
       // e.g. "साड़ी नहीं पर्दा है", "चादर नहीं कम्बल", "item parda hai", "गड्डा है"
       const textProds = [
         { key: /साड़ी|साड़ी|साडी|saree|sari/i, cat: 'साड़ी', item: 'साड़ी' },
@@ -3355,18 +3703,18 @@ function showVoiceConfirm(entryData) {
         item = newItem;
         category = newCat || newItem;
         renderCard();
-        speakHindi(`सामान बदलकर ${item} कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+        speakHindi(`सामान बदलकर ${item} कर दिया गया है। क्या यह सही है?`, () => {
           startVoiceConfirmListener();
         });
         return;
       }
 
-      // 5. Mid-Sentence Field Correction: Meters or Quantity
+      // 6. Mid-Sentence Field Correction: Meters or Quantity
       const meterCheck = reply.match(/(\d+(\.\d+)?)\s*(?:मीटर|meter)/i);
       if (meterCheck) {
         meters = meterCheck[1];
         renderCard();
-        speakHindi(`मीटर बदलकर ${meters} मीटर कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+        speakHindi(`मीटर बदलकर ${meters} मीटर कर दिया गया है। क्या यह सही है?`, () => {
           startVoiceConfirmListener();
         });
         return;
@@ -3376,30 +3724,14 @@ function showVoiceConfirm(entryData) {
       if (qtyCheck) {
         quantity = qtyCheck[1];
         renderCard();
-        speakHindi(`पीस बदलकर ${quantity} कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
+        speakHindi(`पीस बदलकर ${quantity} कर दिया गया है। क्या यह सही है?`, () => {
           startVoiceConfirmListener();
         });
         return;
       }
 
-      // 6. Mid-Sentence Field Correction: Price / Amount update
-      // e.g. "1200 nahi 1500 daam hai", "1500 rupaye karo", "rate 1500"
-      const numbers = reply.match(/\d+/g);
-      const isPriceContext = /दाम|मूल्य|रुपये|rupaye|रेट|rate|कीमत|keemat|टका|nahi|नहीं|karo|करो/i.test(lcReply);
-      if (numbers && numbers.length > 0 && isPriceContext && !/मीटर|meter|पीस|piece|नग/i.test(lcReply)) {
-        const newAmt = numbers[numbers.length - 1];
-        if (newAmt !== amount) {
-          amount = newAmt;
-          renderCard();
-          speakHindi(`मूल्य बदलकर ${amount} रुपये कर दिया गया है। क्या यह सही है? बोलिए 'हाँ सही है' या 'बदलो'।`, () => {
-            startVoiceConfirmListener();
-          });
-          return;
-        }
-      }
-
       // 7. General "बदलो" without specific field: open Add Entry screen
-      if (/बदलो|बदल|नहीं|change|edit/i.test(lcReply)) {
+      if (/बदलो|बदल|change|edit/i.test(lcReply)) {
         closeVoiceOverlay();
         navigate('addEntry', {
           customerId:   customer._id,
@@ -3413,7 +3745,7 @@ function showVoiceConfirm(entryData) {
 
       // If not understood, gently re-prompt
       const statusEl = document.getElementById('vc-loop-status');
-      if (statusEl) statusEl.textContent = 'बोलिए: "हाँ" या "बदलो"…';
+      if (statusEl) statusEl.textContent = 'बोलिए: "हाँ सही है" या सुधार बताएं…';
       setTimeout(() => {
         try { rec.start(); } catch (_) {}
       }, 500);
@@ -3642,7 +3974,7 @@ async function renderAdminOcrQueueTab(container) {
         <!-- Split Screen: Photo (Left) | AI Form (Right) -->
         <div class="ocr-split-screen">
 
-          <!-- LEFT: Zoomable Handwritten Diary Photo -->
+          <!-- LEFT: Zoomable, Rotatable & Draggable Handwritten Diary Photo -->
           <div class="ocr-photo-pane" id="ocr-pane-${idx}">
             ${imageUrl
               ? `
@@ -3650,9 +3982,13 @@ async function renderAdminOcrQueueTab(container) {
                   <button class="ocr-zoom-btn" type="button" data-action="zoom-in" title="Zoom In">🔍+</button>
                   <button class="ocr-zoom-btn" type="button" data-action="zoom-out" title="Zoom Out">🔍-</button>
                   <button class="ocr-zoom-btn" type="button" data-action="zoom-reset" title="Reset">↺</button>
+                  <button class="ocr-zoom-btn" type="button" data-action="zoom-rotate" title="${A('rotateRight')}">⟳ ${A('rotateRight')}</button>
                   <button class="ocr-zoom-btn" type="button" data-action="zoom-full" title="Fullscreen">⛶</button>
                 </div>
-                <img id="ocr-img-${idx}" src="${esc(imageUrl)}" alt="${A('ocrPhotoLabel')}" class="ocr-zoom-img" style="cursor:zoom-in;" />
+                <div class="ocr-photo-container" id="ocr-container-${idx}">
+                  <img id="ocr-img-${idx}" src="${esc(imageUrl)}" alt="${A('ocrPhotoLabel')}" class="ocr-zoom-img draggable" />
+                  <div class="ocr-pan-hint">🖱️ ${A('dragHint')}</div>
+                </div>
               `
               : `<div class="ocr-photo-placeholder">
                    <span style="font-size:2.5rem">📷</span>
@@ -3670,7 +4006,7 @@ async function renderAdminOcrQueueTab(container) {
             <!-- Customer Name & Relation (Brackets) -->
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <div class="ocr-field-group">
-                <div class="ocr-field-label">${A('ocrCustomerName')}</div>
+                <div class="ocr-field-label">${A('ocrCustomerName')} *</div>
                 <input class="ocr-field-input" type="text" id="ocr-customer-${idx}"
                        value="${esc(entry.customer?.name || ocrData.customerName || '')}"
                        placeholder="${A('ocrCustomerName')}" />
@@ -3681,6 +4017,14 @@ async function renderAdminOcrQueueTab(container) {
                        value="${esc(entry.customer?.relationTag || ocrData.relationTag || '')}"
                        placeholder="जैसे: बहन / लड़का मोनू" />
               </div>
+            </div>
+
+            <!-- Village / Address -->
+            <div class="ocr-field-group">
+              <div class="ocr-field-label">${A('ocrVillage')}</div>
+              <input class="ocr-field-input" type="text" id="ocr-village-${idx}"
+                     value="${esc(entry.customer?.village || '')}"
+                     placeholder="जैसे: मनोहरपुर, कुंडा" />
             </div>
 
             <!-- Amount & Date -->
@@ -3742,7 +4086,7 @@ async function renderAdminOcrQueueTab(container) {
           </div>
         </div>
 
-        <!-- Action Row: Approve / Reject -->
+        <!-- Action Row: Approve & Post to Ledger / Reject -->
         <div class="ocr-action-row">
           <button class="ocr-approve-btn" data-idx="${idx}">${A('ocrApproveBtn')}</button>
           <button class="ocr-reject-btn"  data-idx="${idx}">${A('ocrRejectBtn')}</button>
@@ -3751,14 +4095,24 @@ async function renderAdminOcrQueueTab(container) {
 
       listEl.appendChild(cardEl);
 
-      // ── Zoom logic for handwritten diary photo ──────────────────
+      // ── High-Resolution Drag/Pan & Rotate Photo Viewer Logic ───
       let currentZoom = 1.0;
+      let currentRotation = 0;
+      let panX = 0;
+      let panY = 0;
+      let isDragging = false;
+      let dragStartX = 0;
+      let dragStartY = 0;
+
       const zoomImg = cardEl.querySelector(`#ocr-img-${idx}`);
-      const setZoom = (z) => {
-        currentZoom = Math.max(1.0, Math.min(3.5, z));
-        if (zoomImg) {
-          zoomImg.style.transform = `scale(${currentZoom})`;
-          zoomImg.style.cursor = currentZoom > 1.0 ? 'zoom-out' : 'zoom-in';
+
+      const updateTransform = () => {
+        if (!zoomImg) return;
+        zoomImg.style.transform = `translate(${panX}px, ${panY}px) scale(${currentZoom}) rotate(${currentRotation}deg)`;
+        if (currentZoom > 1.0 || currentRotation !== 0) {
+          zoomImg.classList.add('draggable');
+        } else {
+          zoomImg.classList.remove('draggable');
         }
       };
 
@@ -3766,20 +4120,82 @@ async function renderAdminOcrQueueTab(container) {
         btn.addEventListener('click', (ev) => {
           ev.stopPropagation();
           const action = btn.dataset.action;
-          if (action === 'zoom-in')    setZoom(currentZoom + 0.4);
-          if (action === 'zoom-out')   setZoom(currentZoom - 0.4);
-          if (action === 'zoom-reset') setZoom(1.0);
-          if (action === 'zoom-full' && imageUrl) openPhotoModal(imageUrl);
+          if (action === 'zoom-in') {
+            currentZoom = Math.min(4.0, currentZoom + 0.35);
+            updateTransform();
+          } else if (action === 'zoom-out') {
+            currentZoom = Math.max(1.0, currentZoom - 0.35);
+            if (currentZoom === 1.0) { panX = 0; panY = 0; }
+            updateTransform();
+          } else if (action === 'zoom-reset') {
+            currentZoom = 1.0;
+            currentRotation = 0;
+            panX = 0;
+            panY = 0;
+            updateTransform();
+          } else if (action === 'zoom-rotate') {
+            currentRotation = (currentRotation + 90) % 360;
+            updateTransform();
+          } else if (action === 'zoom-full' && imageUrl) {
+            openPhotoModal(imageUrl);
+          }
         });
       });
 
+      // Mouse drag handlers
       if (zoomImg) {
-        zoomImg.addEventListener('click', () => {
-          setZoom(currentZoom > 1.0 ? 1.0 : 2.0);
+        zoomImg.addEventListener('mousedown', (e) => {
+          isDragging = true;
+          dragStartX = e.clientX - panX;
+          dragStartY = e.clientY - panY;
+          zoomImg.classList.add('dragging');
+          e.preventDefault();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          panX = e.clientX - dragStartX;
+          panY = e.clientY - dragStartY;
+          updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+          if (isDragging) {
+            isDragging = false;
+            zoomImg.classList.remove('dragging');
+          }
+        });
+
+        // Touch pan handlers for tablets and touchscreens
+        zoomImg.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 1) {
+            isDragging = true;
+            dragStartX = e.touches[0].clientX - panX;
+            dragStartY = e.touches[0].clientY - panY;
+          }
+        }, { passive: true });
+
+        zoomImg.addEventListener('touchmove', (e) => {
+          if (!isDragging || e.touches.length !== 1) return;
+          panX = e.touches[0].clientX - dragStartX;
+          panY = e.touches[0].clientY - dragStartY;
+          updateTransform();
+        }, { passive: true });
+
+        zoomImg.addEventListener('touchend', () => {
+          isDragging = false;
+        });
+
+        zoomImg.addEventListener('click', (e) => {
+          // Double click or tap toggles 2x zoom if not dragged
+          if (Math.abs(panX) < 4 && Math.abs(panY) < 4 && currentZoom === 1.0) {
+            currentZoom = 2.0;
+            updateTransform();
+          }
         });
       }
 
-      // ── Approve button handler ──────────────────────────────────
+      // ── Approve & Post to Ledger handler ───────────────────────
       cardEl.querySelector('.ocr-approve-btn').addEventListener('click', async (e) => {
         const btn = e.currentTarget;
         const i   = btn.dataset.idx;
@@ -3788,6 +4204,7 @@ async function renderAdminOcrQueueTab(container) {
 
         const customerName = document.getElementById(`ocr-customer-${i}`)?.value.trim() || '';
         const relationTag  = document.getElementById(`ocr-relation-${i}`)?.value.trim() || '';
+        const village      = document.getElementById(`ocr-village-${i}`)?.value.trim() || '';
         const amount       = Number(document.getElementById(`ocr-amount-${i}`)?.value || 0);
         const item         = document.getElementById(`ocr-item-${i}`)?.value.trim() || '';
         const brand        = document.getElementById(`ocr-brand-${i}`)?.value.trim() || '';
@@ -3798,7 +4215,7 @@ async function renderAdminOcrQueueTab(container) {
         try {
           await api(`/api/ocr/approve/${entry._id}`, {
             method: 'POST',
-            body: { amount, item, brand, quantity, date, note, customerName, relationTag },
+            body: { amount, item, brand, quantity, date, note, customerName, relationTag, village },
           });
           showToast(A('ocrApproveSuccess'));
           // Remove the card smoothly

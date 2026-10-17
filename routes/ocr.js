@@ -299,8 +299,8 @@ router.post('/approve/:id', requireAuth, requireAdmin, async (req, res) => {
     if (req.body.quantity    !== undefined) entry.quantity    = req.body.quantity ? Number(req.body.quantity) : null;
     if (req.body.date)                     entry.date        = parseShortDate(req.body.date);
 
-    // Optionally update customer name & relationTag
-    if (entry.customer && (req.body.customerName || req.body.relationTag !== undefined)) {
+    // Optionally update customer name, relationTag & village
+    if (entry.customer && (req.body.customerName || req.body.relationTag !== undefined || req.body.village !== undefined)) {
       const updateData = {};
       if (req.body.customerName) {
         const rawName = String(req.body.customerName).trim();
@@ -317,6 +317,9 @@ router.post('/approve/:id', requireAuth, requireAdmin, async (req, res) => {
         }
       } else if (req.body.relationTag !== undefined) {
         updateData.relationTag = String(req.body.relationTag).trim();
+      }
+      if (req.body.village !== undefined) {
+        updateData.village = String(req.body.village).trim();
       }
       await Customer.findByIdAndUpdate(entry.customer, updateData);
     }
