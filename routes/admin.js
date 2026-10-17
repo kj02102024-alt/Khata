@@ -25,9 +25,9 @@ router.get('/overview', async (req, res) => {
   try {
     const totalCustomers = await Customer.countDocuments();
 
-    // Aggregation grouped by shop and type (active entries only)
+    // Aggregation grouped by shop and type (active approved entries only)
     const stats = await Entry.aggregate([
-      { $match: { deleted: false } },
+      { $match: { deleted: false, status: { $ne: 'pending_admin_approval' } } },
       {
         $group: {
           _id: { shop: '$shop', type: '$type' },
@@ -43,7 +43,8 @@ router.get('/overview', async (req, res) => {
       grand: { sales: 0, payments: 0, balance: 0 },
       totalCustomers,
       deletedEntriesCount: await Entry.countDocuments({ deleted: true }),
-      totalEntriesCount: await Entry.countDocuments(),
+      pendingOcrCount:     await Entry.countDocuments({ status: 'pending_admin_approval', deleted: false }),
+      totalEntriesCount:   await Entry.countDocuments(),
     };
 
     for (const s of stats) {

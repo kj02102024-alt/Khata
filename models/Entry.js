@@ -13,6 +13,7 @@
  *   customer + date  → fast per-customer timeline queries
  *   shop             → (future) per-shop reports
  *   date             → "today's entries" query
+ *   status + deleted → OCR verification queue queries
  */
 
 const mongoose = require('mongoose');
@@ -98,6 +99,31 @@ const entrySchema = new mongoose.Schema(
       type: String,
       default: '',        // base64 data URL of receipt/bill
     },
+
+    // ── OCR / Diary-photo upload fields ──────────────────────────
+    // imageUrl: path to the uploaded diary photo file on disk.
+    //   Set by the OCR upload route; empty string for manual entries.
+    imageUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    // ocrExtractedData: raw structured JSON returned by the OCR/AI
+    //   extraction step.  Stored as Mixed so we can evolve its shape
+    //   without a schema migration.  null for manual entries.
+    ocrExtractedData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    // status: 'approved' for normal entries; 'pending_admin_approval'
+    //   for OCR-based entries that need admin verification before they
+    //   affect the customer's displayed balance.
+    status: {
+      type: String,
+      enum: ['approved', 'pending_admin_approval'],
+      default: 'approved',
+    },
+
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
@@ -125,5 +151,8 @@ const entrySchema = new mongoose.Schema(
 
 // Compound index for the most common query: all live entries for a customer
 entrySchema.index({ customer: 1, deleted: 1, date: -1 });
+
+// Compound index for the OCR admin verification queue
+entrySchema.index({ status: 1, deleted: 1 });
 
 module.exports = mongoose.model('Entry', entrySchema);

@@ -178,6 +178,7 @@ router.get('/today', async (req, res) => {
 
     const entries = await Entry.find({
       deleted:   false,
+      status:    { $ne: 'pending_admin_approval' },
       createdAt: { $gte: istMidnight },
     })
       .sort({ createdAt: -1 })

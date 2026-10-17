@@ -34,8 +34,16 @@ const state = {
   searchFilter: 'all',   // 'all' | 'dues'
   numPadValue: '',       // accumulator for touch number pad
   activePhoto: null,     // base64 data URL for receipt photo
-  adminTab:   'overview', // 'overview' | 'audit' | 'export'
+  adminTab:   'overview', // 'overview' | 'ocr' | 'audit' | 'export'
+  adminLang:  localStorage.getItem('khata_admin_lang') || 'hi', // 'hi' | 'en'
+  theme:      localStorage.getItem('khata_theme') || 'dark',     // 'dark' | 'light'
 };
+
+/** Bilingual translation resolver for Pro Admin Portal */
+function A(key) {
+  const dict = state.adminLang === 'en' ? (window.ADMIN_EN || {}) : (window.ADMIN_HI || {});
+  return dict[key] || (window.ADMIN_HI && window.ADMIN_HI[key]) || S[key] || key;
+}
 
 // ── Voice Assistant globals ────────────────────────────────────────
 let fabMicEl = null;
@@ -48,6 +56,9 @@ let mainEl, headerTitleEl, headerSubEl, logoutBtn, adminNavBtn;
 
 // ── Init ──────────────────────────────────────────────────────────
 function init() {
+  if (state.theme === 'light') {
+    document.body.classList.add('light-theme');
+  }
   mainEl        = document.getElementById('main');
   headerTitleEl = document.getElementById('header-title');
   headerSubEl   = document.getElementById('header-sub');
@@ -156,6 +167,7 @@ function render() {
     case 'today':          return renderToday();
     case 'todayPayments':  return renderTodayPayments();
     case 'admin':          return renderAdmin();
+    case 'diaryUpload':    return renderDiaryUpload();
     default:               return renderHome();
   }
 }
@@ -243,11 +255,61 @@ function logout() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// SCREEN: Home (Shopkeeper Mode: Minimal, Big Buttons, High Contrast)
+// SCREEN: Home — Dual Mode
+//   Shopkeeper role → Ultra-Simple 3-Button Interface (90px+ targets)
+//   Admin role      → Full Pro Dashboard Grid
 // ═══════════════════════════════════════════════════════════════════
 function renderHome() {
   const isAdmin = state.user?.role === 'admin';
 
+  if (!isAdmin) {
+    // ── SHOPKEEPER MODE: 3 Giant Buttons (100% Devanagari, High Contrast) ──
+    mainEl.innerHTML = `
+      <div class="screen">
+        <div class="shopkeeper-grid">
+
+          <!-- Button 1: 🎤 बोलकर हिसाब लिखें (Voice-First Entry) -->
+          <button class="shopkeeper-btn shopkeeper-btn-voice" id="btn-sk-voice">
+            <span class="shopkeeper-btn-icon">🎤</span>
+            <span>${S.shopkeeperVoiceEntry}</span>
+          </button>
+
+          <!-- Button 2: 🔍 ग्राहक खोजें (Active Customer Directory) -->
+          <button class="shopkeeper-btn shopkeeper-btn-search" id="btn-sk-search">
+            <span class="shopkeeper-btn-icon">🔍</span>
+            <span>${S.shopkeeperFindCustomer}</span>
+          </button>
+
+          <!-- Button 3: 📷 पुरानी डायरी की फोटो भेजें (OCR Diary Upload) -->
+          <button class="shopkeeper-btn shopkeeper-btn-diary" id="btn-sk-diary">
+            <span class="shopkeeper-btn-icon">📷</span>
+            <span>${S.shopkeeperDiaryPhoto}</span>
+          </button>
+
+        </div>
+      </div>
+    `;
+
+    // Button 1: Trigger the global floating voice assistant (FAB)
+    document.getElementById('btn-sk-voice').addEventListener('click', () => {
+      if (fabMicEl) fabMicEl.click();
+    });
+
+    // Button 2: Open customer directory (shows pending-dues tab by default)
+    document.getElementById('btn-sk-search').addEventListener('click', () => {
+      state.searchTab = 'pending';
+      navigate('search', { mode: 'view' });
+    });
+
+    // Button 3: Open diary photo upload flow
+    document.getElementById('btn-sk-diary').addEventListener('click', () => {
+      navigate('diaryUpload');
+    });
+
+    return;
+  }
+
+  // ── ADMIN MODE: Full Pro Dashboard Grid ──────────────────────────
   mainEl.innerHTML = `
     <div class="screen">
       <div class="home-grid">
@@ -255,11 +317,9 @@ function renderHome() {
         <button class="home-btn home-btn-search" id="btn-search">🔍 ${S.findCustomer}</button>
         <button class="home-btn home-btn-today" id="btn-today">📋 ${S.todayEntries}</button>
         <button class="home-btn" id="btn-today-payments" style="background:#00796b;color:#fff;">💰 ${S.todayPayments}</button>
-
-        ${isAdmin ? `
         <button class="home-btn" id="btn-home-admin" style="background:#512da8;color:#fff;margin-top:8px;">
           ⚙️ ${S.adminPanel}
-        </button>` : ''}
+        </button>
       </div>
     </div>
   `;
@@ -268,11 +328,10 @@ function renderHome() {
   document.getElementById('btn-search').addEventListener('click',    () => navigate('search', { mode: 'view' }));
   document.getElementById('btn-today').addEventListener('click',     () => navigate('today'));
   document.getElementById('btn-today-payments').addEventListener('click', () => navigate('todayPayments'));
-
-  if (isAdmin) {
-    document.getElementById('btn-home-admin').addEventListener('click', () => navigate('admin'));
-  }
+  document.getElementById('btn-home-admin').addEventListener('click', () => navigate('admin'));
 }
+
+
 
 // ═══════════════════════════════════════════════════════════════════
 // SCREEN: Search Customers (With Voice Input & Dues Filter)
@@ -392,9 +451,9 @@ async function doSearch(q, container, mode, status = 'pending') {
     container.innerHTML = customers.map((c) => {
       let balanceBadge = '';
       if (c.balance > 0) {
-        balanceBadge = `<span class="badge badge-unpaid">${S.dues} ₹${c.balance.toLocaleString('hi-IN')}</span>`;
+        balanceBadge = `<span class="badge badge-unpaid" style="font-weight:900;font-size:1.05rem;background:#d32f2f;color:#fff;padding:4px 12px;border-radius:20px;">${S.dues}: ₹${c.balance.toLocaleString('hi-IN')}</span>`;
       } else if (c.balance < 0) {
-        balanceBadge = `<span class="badge badge-advance">${S.advance} ₹${Math.abs(c.balance).toLocaleString('hi-IN')}</span>`;
+        balanceBadge = `<span class="badge badge-advance">${S.advance}: ₹${Math.abs(c.balance).toLocaleString('hi-IN')}</span>`;
       } else {
         balanceBadge = `<span class="badge badge-paid">${S.balanceClear}</span>`;
       }
@@ -402,7 +461,9 @@ async function doSearch(q, container, mode, status = 'pending') {
       return `
         <div class="customer-row" data-id="${c._id}" data-mode="${mode}" style="min-height:84px;padding:16px">
           <div>
-            <div class="customer-name" style="font-size:1.3rem">${esc(c.name)}</div>
+            <div class="customer-name" style="font-size:1.35rem;font-weight:900;${c.balance > 0 ? 'color:#ff5252;' : ''}">
+              ${esc(c.name)}${c.relationTag ? ` <span style="font-weight:400;font-size:1.05rem;color:var(--text-muted)">(${esc(c.relationTag)})</span>` : ''}
+            </div>
             <div class="customer-village" style="font-size:1.05rem;margin-top:4px">
               ${c.village ? `📍 ${esc(c.village)}` : ''}
               ${c.phone ? ` · 📞 ${esc(c.phone)}` : ''}
@@ -447,7 +508,12 @@ function renderNewCustomer() {
 
       <div class="form-group">
         <label>${S.customerName}</label>
-        <input id="nc-name" type="text" placeholder="जैसे: रामलाल शर्मा"
+        <input id="nc-name" type="text" placeholder="जैसे: रमेश"
+               autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>संबंध / उपनाम (वैकल्पिक)</label>
+        <input id="nc-relation" type="text" placeholder="जैसे: लड़का मोनू, पंच, मास्टर जी"
                autocomplete="off" />
       </div>
       <div class="form-group">
@@ -490,11 +556,12 @@ function renderNewCustomer() {
 }
 
 async function doCreateCustomer() {
-  const name    = document.getElementById('nc-name').value.trim();
-  const village = document.getElementById('nc-village').value.trim();
-  const phone   = document.getElementById('nc-phone').value.trim();
-  const errEl   = document.getElementById('nc-error');
-  const btn     = document.getElementById('btn-create-customer');
+  const name        = document.getElementById('nc-name').value.trim();
+  const relationTag = document.getElementById('nc-relation')?.value.trim() || '';
+  const village     = document.getElementById('nc-village').value.trim();
+  const phone       = document.getElementById('nc-phone').value.trim();
+  const errEl       = document.getElementById('nc-error');
+  const btn         = document.getElementById('btn-create-customer');
 
   if (!name) {
     errEl.textContent   = S.nameRequired;
@@ -509,7 +576,7 @@ async function doCreateCustomer() {
   try {
     const customer = await api('/api/customers', {
       method: 'POST',
-      body:   { name, village, phone },
+      body:   { name, relationTag, village, phone },
     });
 
     showToast(S.customerCreated);
@@ -598,14 +665,14 @@ function showCustomerDetail(data) {
         <button class="btn btn-secondary btn-sm" id="btn-undo-last">${S.undoLast}</button>
       </div>
 
-      <!-- Active / Pending Sales (बकाया बिल) -->
+      <!-- Active / Pending Sales (बाकी बिल) -->
       <div class="page-title" style="font-size:1.25rem;margin-bottom:12px;color:#ffa726">
         ⏳ ${S.pendingSection} (${pendingSales.length})
       </div>
 
       ${pendingSales.length === 0
         ? `<div class="card text-center" style="color:#81c784;font-size:1.1rem;padding:20px">
-             ✓ कोई बकाया बिल नहीं है!
+             ✓ कोई बाकी बिल नहीं है!
            </div>`
         : pendingSales.map((e) => renderSaleItem(e, false)).join('')
       }
@@ -640,7 +707,7 @@ function showCustomerDetail(data) {
   const triggerBalanceSpeech = () => {
     let balanceText = '';
     if (balance > 0) {
-      balanceText = `${customer.name} का कुल बकाया ${balance.toLocaleString('hi-IN')} रुपये है।`;
+      balanceText = `${customer.name} का कुल बाकी ${balance.toLocaleString('hi-IN')} रुपये है।`;
     } else if (balance < 0) {
       balanceText = `${customer.name} के ${Math.abs(balance).toLocaleString('hi-IN')} रुपये अग्रिम जमा हैं।`;
     } else {
@@ -881,7 +948,7 @@ function renderSettlement() {
   // Option 1: Full settlement
   document.getElementById('opt-full-pay').addEventListener('click', () => {
     if (dues <= 0) {
-      showToast('बकाया पहले से शून्य है!');
+      showToast('बाकी हिसाब पहले से शून्य है!');
       return;
     }
     proceedToConfirmation(dues);
@@ -1205,7 +1272,7 @@ function renderAddEntry() {
                value="${prefill?.amount || ''}" />
       </div>
 
-      <div class="form-group">
+      <div class="form-group" ${state.user?.role !== 'admin' ? 'style="display:none"' : ''}>
         <label>${S.labelDate}</label>
         <input id="inp-date" type="date" />
       </div>
@@ -1771,7 +1838,7 @@ function renderTodayPayments() {
 // ═══════════════════════════════════════════════════════════════════
 async function renderAdmin() {
   if (state.user?.role !== 'admin') {
-    showToast('केवल एडमिन को अनुमति है');
+    showToast(state.adminLang === 'en' ? 'Admin access only' : 'केवल एडमिन को अनुमति है');
     return navigate('home');
   }
 
@@ -1779,22 +1846,38 @@ async function renderAdmin() {
 
   try {
     const overview = await api('/api/admin/overview');
+    const ocrPendingCount = overview.pendingOcrCount || 0;
 
     mainEl.innerHTML = `
       <div class="screen">
-        <button class="btn btn-secondary btn-sm mb-16" id="btn-admin-back">${S.back}</button>
-        <div class="page-title">${S.adminOverviewTitle}</div>
+        <!-- Top Toolbar with Back, Theme, and Language Switcher -->
+        <div class="admin-toolbar-row">
+          <button class="btn btn-secondary btn-sm" id="btn-admin-back">${A('back')}</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="admin-ctrl-btn" id="btn-admin-theme" title="Toggle Theme">
+              ${state.theme === 'light' ? A('themeDark') : A('themeLight')}
+            </button>
+            <button class="admin-ctrl-btn" id="btn-admin-lang" title="Toggle Language">
+              ${A('langSwitch')}
+            </button>
+          </div>
+        </div>
+
+        <div class="page-title">${A('adminOverviewTitle')}</div>
 
         <!-- Admin Tab Switcher -->
-        <div class="filter-pills" style="margin-bottom:20px">
+        <div class="filter-pills" style="margin-bottom:20px;display:flex;flex-wrap:wrap;gap:8px;">
           <button class="pill-btn ${state.adminTab === 'overview' ? 'active' : ''}" id="tab-overview">
-            📊 सारांश
+            ${A('adminTabOverview')}
+          </button>
+          <button class="pill-btn ${state.adminTab === 'ocr' ? 'active' : ''}" id="tab-ocr">
+            ${A('adminTabOcr')}${ocrPendingCount > 0 ? `<span class="admin-ocr-count-badge">${ocrPendingCount}</span>` : ''}
           </button>
           <button class="pill-btn ${state.adminTab === 'audit' ? 'active' : ''}" id="tab-audit">
-            📋 ऑडिट लॉग
+            ${A('adminTabAudit')}
           </button>
           <button class="pill-btn ${state.adminTab === 'export' ? 'active' : ''}" id="tab-export">
-            📥 बैकअप / एक्सपोर्ट
+            ${A('adminTabExport')}
           </button>
         </div>
 
@@ -1804,12 +1887,34 @@ async function renderAdmin() {
 
     document.getElementById('btn-admin-back').addEventListener('click', () => navigate('home'));
 
+    document.getElementById('btn-admin-lang').addEventListener('click', () => {
+      state.adminLang = state.adminLang === 'en' ? 'hi' : 'en';
+      localStorage.setItem('khata_admin_lang', state.adminLang);
+      renderAdmin();
+    });
+
+    document.getElementById('btn-admin-theme').addEventListener('click', () => {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+      localStorage.setItem('khata_theme', state.theme);
+      if (state.theme === 'light') {
+        document.body.classList.add('light-theme');
+      } else {
+        document.body.classList.remove('light-theme');
+      }
+      renderAdmin();
+    });
+
     const tabOverview = document.getElementById('tab-overview');
+    const tabOcr      = document.getElementById('tab-ocr');
     const tabAudit    = document.getElementById('tab-audit');
     const tabExport   = document.getElementById('tab-export');
 
     tabOverview.addEventListener('click', () => {
       state.adminTab = 'overview';
+      renderAdmin();
+    });
+    tabOcr.addEventListener('click', () => {
+      state.adminTab = 'ocr';
       renderAdmin();
     });
     tabAudit.addEventListener('click', () => {
@@ -1825,6 +1930,8 @@ async function renderAdmin() {
 
     if (state.adminTab === 'overview') {
       renderAdminOverviewTab(contentEl, overview);
+    } else if (state.adminTab === 'ocr') {
+      await renderAdminOcrQueueTab(contentEl);
     } else if (state.adminTab === 'audit') {
       await renderAdminAuditTab(contentEl);
     } else if (state.adminTab === 'export') {
@@ -1840,115 +1947,242 @@ function renderAdminOverviewTab(container, r) {
   container.innerHTML = `
     <!-- Grand Total Balance -->
     <div class="admin-header-card">
-      <div style="font-size:1rem;color:#ce93d8;text-transform:uppercase">${S.adminTotalDues}</div>
+      <div style="font-size:1rem;color:#ce93d8;text-transform:uppercase">${A('adminTotalDues')}</div>
       <div style="font-size:2.8rem;font-weight:900;color:#fff;margin-top:6px">
-        ${S.rupee}${r.grand.balance.toLocaleString('hi-IN')}
+        ₹${r.grand.balance.toLocaleString('hi-IN')}
       </div>
       <div style="font-size:0.95rem;color:#e1bee7;margin-top:6px">
-        कुल बिक्री: ₹${r.grand.sales.toLocaleString('hi-IN')} &nbsp;|&nbsp; कुल जमा: ₹${r.grand.payments.toLocaleString('hi-IN')}
+        ${A('grandSales')}: ₹${r.grand.sales.toLocaleString('hi-IN')} &nbsp;|&nbsp; ${A('grandPayments')}: ₹${r.grand.payments.toLocaleString('hi-IN')}
       </div>
     </div>
 
     <!-- Cross-Shop Comparison Grid -->
     <div class="admin-stats-grid">
       <div class="admin-stat-card" style="border-top:4px solid #1565c0">
-        <div class="admin-stat-title">${S.adminShop1Net}</div>
+        <div class="admin-stat-title">${A('shop1Net')}</div>
         <div class="admin-stat-num" style="color:#90caf9">₹${r.shop1.balance.toLocaleString('hi-IN')}</div>
         <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">
-          बिक्री: ₹${r.shop1.sales.toLocaleString('hi-IN')}<br>
-          जमा: ₹${r.shop1.payments.toLocaleString('hi-IN')}
+          ${A('grandSales')}: ₹${r.shop1.sales.toLocaleString('hi-IN')}<br>
+          ${A('grandPayments')}: ₹${r.shop1.payments.toLocaleString('hi-IN')}
         </div>
       </div>
 
       <div class="admin-stat-card" style="border-top:4px solid #6a1b9a">
-        <div class="admin-stat-title">${S.adminShop2Net}</div>
+        <div class="admin-stat-title">${A('shop2Net')}</div>
         <div class="admin-stat-num" style="color:#ce93d8">₹${r.shop2.balance.toLocaleString('hi-IN')}</div>
         <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">
-          बिक्री: ₹${r.shop2.sales.toLocaleString('hi-IN')}<br>
-          जमा: ₹${r.shop2.payments.toLocaleString('hi-IN')}
+          ${A('grandSales')}: ₹${r.shop2.sales.toLocaleString('hi-IN')}<br>
+          ${A('grandPayments')}: ₹${r.shop2.payments.toLocaleString('hi-IN')}
+        </div>
+      </div>
+
+      <div class="admin-stat-card" id="card-ocr-queue" style="border-top:4px solid #ff9800;cursor:pointer">
+        <div class="admin-stat-title">🤖 ${A('adminTabOcr')}</div>
+        <div class="admin-stat-num" style="color:#ffb74d">${r.pendingOcrCount || 0}</div>
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px">
+          ${state.adminLang === 'en' ? 'Photos awaiting verification' : 'सत्यापन हेतु लंबित फोटो'}
         </div>
       </div>
 
       <div class="admin-stat-card">
-        <div class="admin-stat-title">${S.adminTotalCustomers}</div>
+        <div class="admin-stat-title">${A('totalCustomers')}</div>
         <div class="admin-stat-num">${r.totalCustomers}</div>
       </div>
 
       <div class="admin-stat-card">
-        <div class="admin-stat-title">${S.adminDeletedCount}</div>
+        <div class="admin-stat-title">${A('deletedEntries')}</div>
         <div class="admin-stat-num" style="color:#ef5350">${r.deletedEntriesCount}</div>
       </div>
     </div>
   `;
+
+  const ocrCard = container.querySelector('#card-ocr-queue');
+  if (ocrCard) {
+    ocrCard.addEventListener('click', () => {
+      state.adminTab = 'ocr';
+      renderAdmin();
+    });
+  }
 }
 
 async function renderAdminAuditTab(container) {
   container.innerHTML = `<div class="spinner"></div>`;
 
   try {
-    const entries = await api('/api/admin/audit-log');
+    const allEntries = await api('/api/admin/audit-log');
 
     container.innerHTML = `
-      <div class="page-title" style="font-size:1.2rem;margin-bottom:12px">${S.adminAuditTitle}</div>
-      ${entries.length === 0
-        ? `<p class="empty-state">कोई ऑडिट रिकॉर्ड नहीं है</p>`
-        : entries.map((e) => `
-          <div class="audit-card ${e.deleted ? 'is-deleted' : ''}">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start">
-              <div>
-                <span class="badge badge-${e.type}">${e.type === 'sale' ? S.sale : S.payment}</span>
-                <span class="badge badge-${e.shop}">${e.shop === 'shop1' ? S.shop1 : S.shop2}</span>
-                ${e.deleted ? `<span class="badge" style="background:#b71c1c;color:#fff">रद्द (DELETED)</span>` : ''}
-              </div>
-              <div class="audit-amount" style="font-size:1.4rem;font-weight:900">
-                ${S.rupee}${Number(e.amount).toLocaleString('hi-IN')}
-              </div>
-            </div>
+      <div class="page-title" style="font-size:1.2rem;margin-bottom:14px">${A('auditTitle')}</div>
 
-            <div style="margin-top:8px;font-size:0.95rem">
-              <strong>${esc(e.customer?.name || '')}</strong>
-              ${e.customer?.village ? ` · 📍 ${esc(e.customer.village)}` : ''}
-            </div>
+      <!-- Search & Filters Bar -->
+      <div class="admin-search-bar">
+        <input type="text" class="admin-search-input" id="audit-search" placeholder="${A('searchPlaceholder')}" />
+        <select class="admin-filter-select" id="audit-filter-type">
+          <option value="all">${A('filterAll')}</option>
+          <option value="sale">${A('filterSales')}</option>
+          <option value="payment">${A('filterPayments')}</option>
+          <option value="deleted">${A('filterDeleted')}</option>
+        </select>
+        <select class="admin-filter-select" id="audit-filter-shop">
+          <option value="all">${A('filterAllShops')}</option>
+          <option value="shop1">${A('shop1')}</option>
+          <option value="shop2">${A('shop2')}</option>
+        </select>
+      </div>
 
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-top:6px">
-              बनाया: ${formatDate(e.createdAt)} (${esc(e.createdBy?.displayName || e.createdBy?.username || '')})
-              ${e.deleted ? `<br><span style="color:#ef5350">रद्द दिनांक: ${formatDate(e.deletedAt)} (${esc(e.deletedBy?.displayName || e.deletedBy?.username || '')})</span>` : ''}
-            </div>
-
-            ${e.deleted ? `
-              <button class="btn btn-secondary btn-sm mt-16 btn-restore" data-id="${e._id}" style="padding:8px 12px;font-size:0.9rem">
-                ${S.adminRestore}
-              </button>
-            ` : ''}
-
-            ${e.photo ? `
-              <div class="receipt-thumbnail-badge" data-photo="${esc(e.photo)}" style="margin-top:8px">
-                📷 ${S.viewPhoto}
-              </div>
-            ` : ''}
-          </div>
-        `).join('')
-      }
+      <!-- Structured Data Table Container -->
+      <div class="admin-table-container">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>${A('colDate')}</th>
+              <th>${A('colShop')}</th>
+              <th>${A('colType')}</th>
+              <th>${A('colCustomer')}</th>
+              <th>${A('colDetails')}</th>
+              <th style="text-align:right">${A('colAmount')}</th>
+              <th>${A('colUser')}</th>
+              <th style="text-align:center">${A('colActions')}</th>
+            </tr>
+          </thead>
+          <tbody id="audit-table-body"></tbody>
+        </table>
+      </div>
     `;
 
-    // Restore override button handlers
-    container.querySelectorAll('.btn-restore').forEach((btn) => {
-      btn.addEventListener('click', async () => {
-        const id = btn.dataset.id;
-        if (!confirm('क्या आप इस हिसाब को वापस चालू (Restore) करना चाहते हैं?')) return;
-        try {
-          btn.disabled = true;
-          await api(`/api/admin/restore-entry/${id}`, { method: 'POST' });
-          showToast(S.adminRestoreSuccess);
-          await renderAdminAuditTab(container);
-        } catch (err) {
-          showToast(err.message || S.error);
-          btn.disabled = false;
-        }
-      });
-    });
+    const searchInput = container.querySelector('#audit-search');
+    const filterType  = container.querySelector('#audit-filter-type');
+    const filterShop  = container.querySelector('#audit-filter-shop');
+    const tableBody   = container.querySelector('#audit-table-body');
 
-    attachPhotoClickEvents();
+    const renderRows = () => {
+      const q = searchInput.value.trim().toLowerCase();
+      const fType = filterType.value;
+      const fShop = filterShop.value;
+
+      const filtered = allEntries.filter(e => {
+        // Shop filter
+        if (fShop !== 'all' && e.shop !== fShop) return false;
+
+        // Type filter
+        if (fType === 'deleted' && !e.deleted) return false;
+        if (fType === 'sale' && (e.type !== 'sale' || e.deleted)) return false;
+        if (fType === 'payment' && (e.type !== 'payment' || e.deleted)) return false;
+
+        // Search query
+        if (q) {
+          const custName = (e.customer?.name || '').toLowerCase();
+          const custVillage = (e.customer?.village || '').toLowerCase();
+          const custRel = (e.customer?.relationTag || '').toLowerCase();
+          const itemText = (e.item || '').toLowerCase();
+          const brandText = (e.brand || '').toLowerCase();
+          const noteText = (e.note || '').toLowerCase();
+          const amtText = String(e.amount);
+
+          if (!custName.includes(q) &&
+              !custVillage.includes(q) &&
+              !custRel.includes(q) &&
+              !itemText.includes(q) &&
+              !brandText.includes(q) &&
+              !noteText.includes(q) &&
+              !amtText.includes(q)) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="8" style="text-align:center;padding:32px;color:var(--text-muted);font-size:1.05rem">
+              ${A('noAuditRecords')}
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tableBody.innerHTML = filtered.map(e => {
+        const detailsParts = [];
+        if (e.item) detailsParts.push(esc(e.item));
+        else if (e.category) detailsParts.push(esc(e.category));
+        if (e.brand) detailsParts.push(`<span style="color:#90caf9">🏷️ ${esc(e.brand)}</span>`);
+        if (e.quantity) detailsParts.push(`${e.quantity} ${e.unitType || 'piece'}`);
+        if (e.meters) detailsParts.push(`${e.meters} m`);
+        if (e.rate) detailsParts.push(`@₹${e.rate}`);
+        if (e.note) detailsParts.push(`<span style="color:var(--text-muted);font-style:italic">"${esc(e.note)}"</span>`);
+
+        const detailsHtml = detailsParts.length > 0 ? detailsParts.join(' · ') : '—';
+        const isDeleted = e.deleted;
+
+        return `
+          <tr class="${isDeleted ? 'row-deleted' : ''}">
+            <td style="font-size:0.85rem;white-space:nowrap">
+              ${formatDate(e.createdAt)}
+              ${isDeleted ? `<br><small style="color:#ef5350">${formatDate(e.deletedAt)}</small>` : ''}
+            </td>
+            <td>
+              <span class="badge badge-${e.shop}">${e.shop === 'shop1' ? A('shop1') : A('shop2')}</span>
+            </td>
+            <td>
+              <span class="badge badge-${e.type}">${e.type === 'sale' ? A('sale') : A('payment')}</span>
+              ${isDeleted ? `<span class="badge" style="background:#b71c1c;color:#fff;margin-left:4px">${A('statusDeleted')}</span>` : ''}
+            </td>
+            <td>
+              <strong>${esc(e.customer?.name || '—')}</strong>
+              ${e.customer?.relationTag ? `<span style="font-size:0.85rem;color:var(--text-muted)"> (${esc(e.customer.relationTag)})</span>` : ''}
+              ${e.customer?.village ? `<br><small style="color:var(--text-muted)">📍 ${esc(e.customer.village)}</small>` : ''}
+            </td>
+            <td style="font-size:0.9rem">${detailsHtml}</td>
+            <td style="text-align:right;font-weight:900;font-size:1.1rem;${e.type === 'sale' ? 'color:#ffb74d;' : 'color:#81c784;'}">
+              ₹${Number(e.amount).toLocaleString('hi-IN')}
+            </td>
+            <td style="font-size:0.85rem;color:var(--text-muted)">
+              ${esc(e.createdBy?.displayName || e.createdBy?.username || '—')}
+            </td>
+            <td style="text-align:center;white-space:nowrap">
+              ${isDeleted ? `
+                <button class="btn btn-secondary btn-sm btn-restore" data-id="${e._id}" style="padding:4px 10px;font-size:0.8rem">
+                  ${A('restoreBtn')}
+                </button>
+              ` : ''}
+              ${e.photo ? `
+                <button class="btn btn-secondary btn-sm receipt-thumbnail-badge" data-photo="${esc(e.photo)}" style="padding:4px 8px;font-size:0.8rem;margin-left:4px">
+                  📷 ${A('viewReceipt')}
+                </button>
+              ` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      // Wire restore buttons
+      tableBody.querySelectorAll('.btn-restore').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          if (!confirm(A('restoreConfirm'))) return;
+          try {
+            btn.disabled = true;
+            await api(`/api/admin/restore-entry/${id}`, { method: 'POST' });
+            showToast(A('restoreSuccess'));
+            await renderAdminAuditTab(container);
+          } catch (err) {
+            showToast(err.message || S.error);
+            btn.disabled = false;
+          }
+        });
+      });
+
+      attachPhotoClickEvents();
+    };
+
+    searchInput.addEventListener('input', renderRows);
+    filterType.addEventListener('change', renderRows);
+    filterShop.addEventListener('change', renderRows);
+
+    renderRows();
+
   } catch (err) {
     container.innerHTML = `<p class="empty-state">${err.message}</p>`;
   }
@@ -1957,17 +2191,17 @@ async function renderAdminAuditTab(container) {
 function renderAdminExportTab(container) {
   container.innerHTML = `
     <div class="card mb-16" style="padding:24px">
-      <div style="font-size:1.3rem;font-weight:900;margin-bottom:8px">📥 डेटा बैकअप और डाउनलोड</div>
+      <div style="font-size:1.3rem;font-weight:900;margin-bottom:8px">📥 ${A('exportTitle')}</div>
       <p style="color:var(--text-muted);margin-bottom:20px;font-size:0.95rem">
-        यहाँ से आप अपनी दोनों दुकानों का पूरा हिसाब और ग्राहकों का डेटा कंप्यूटर पर सुरक्षित रख सकते हैं।
+        ${A('exportDesc')}
       </p>
 
       <div class="gap-12">
         <a href="/api/admin/export?format=csv" class="btn btn-primary" download style="text-decoration:none;display:flex;align-items:center;justify-content:center;">
-          ${S.adminExportCsv}
+          ${A('btnExportCsv')}
         </a>
         <a href="/api/admin/export?format=json" class="btn btn-secondary" download style="text-decoration:none;display:flex;align-items:center;justify-content:center;">
-          ${S.adminExportJson}
+          ${A('btnExportJson')}
         </a>
       </div>
     </div>
@@ -2752,7 +2986,7 @@ function renderHomonymPicker({ title, prompt, candidates, spokenName, onSelect }
           const num = idx + 1;
           let balHtml = '';
           if (c.balance > 0) {
-            balHtml = `<span style="color:#ffb74d;font-weight:700"> · बकाया ₹${c.balance.toLocaleString('hi-IN')}</span>`;
+            balHtml = `<span style="color:#ffb74d;font-weight:700"> · बाकी ₹${c.balance.toLocaleString('hi-IN')}</span>`;
           } else if (c.balance < 0) {
             balHtml = `<span style="color:#81c784;font-weight:700"> · अग्रिम ₹${Math.abs(c.balance).toLocaleString('hi-IN')}</span>`;
           } else {
@@ -3200,10 +3434,341 @@ function showVoiceConfirm(entryData) {
   askVoiceConfirmation();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// SCREEN: Diary Photo Upload (Shopkeeper Mode — Button 3)
+// Simple 1-tap capture → sends to AI OCR pipeline → admin verifies
+// ═══════════════════════════════════════════════════════════════════
+function renderDiaryUpload() {
+  mainEl.innerHTML = `
+    <div class="screen">
+      <button class="btn btn-secondary btn-sm mb-16" id="btn-diary-back">${S.back}</button>
+      <div class="page-title">${S.diaryUploadTitle}</div>
+
+      <p style="font-size:1.05rem;color:var(--text-muted);margin-bottom:20px;line-height:1.6">
+        ${S.diaryUploadHint}
+      </p>
+
+      <!-- Optional Customer Name Tag -->
+      <div class="form-group">
+        <label for="diary-customer-name">${S.diaryCustomerTag}</label>
+        <input id="diary-customer-name" type="text"
+               placeholder="जैसे: रमेश मनोहरपुर"
+               autocomplete="off"
+               style="font-size:1.3rem;min-height:60px;" />
+      </div>
+
+      <!-- Photo Preview Area -->
+      <div class="diary-preview-area" id="diary-preview-area">
+        <div class="ocr-photo-placeholder" id="diary-preview-placeholder">
+          <span style="font-size:3rem">📷</span>
+          <span>यहाँ फोटो दिखेगी</span>
+        </div>
+        <img id="diary-preview-img" src="" alt="डायरी फोटो" style="display:none" />
+      </div>
+
+      <!-- Hidden File Input (camera capture) -->
+      <input type="file" id="diary-photo-input" accept="image/*" capture="environment" style="display:none" />
+
+      <!-- Big Camera Capture Button -->
+      <button class="diary-capture-btn" id="btn-diary-capture" style="margin-top:20px;">
+        <span class="diary-capture-icon">📷</span>
+        <span>${S.diaryCaptureBtn}</span>
+      </button>
+
+      <div id="diary-error" style="color:#ef5350;font-size:1rem;margin-top:12px;display:none"></div>
+
+      <!-- Upload Button (shown after photo selected) -->
+      <button class="btn btn-primary" id="btn-diary-send"
+              style="margin-top:16px;min-height:72px;font-size:1.4rem;display:none">
+        📤 फोटो भेजें — एडमिन जाँचेगा
+      </button>
+    </div>
+  `;
+
+  document.getElementById('btn-diary-back').addEventListener('click', () => navigate('home'));
+
+  const photoInput  = document.getElementById('diary-photo-input');
+  const captureBtn  = document.getElementById('btn-diary-capture');
+  const previewArea = document.getElementById('diary-preview-area');
+  const previewImg  = document.getElementById('diary-preview-img');
+  const placeholder = document.getElementById('diary-preview-placeholder');
+  const sendBtn     = document.getElementById('btn-diary-send');
+  const errEl       = document.getElementById('diary-error');
+
+  let selectedFile = null;
+
+  // Tap the big camera button → triggers file/camera input
+  captureBtn.addEventListener('click', () => photoInput.click());
+
+  photoInput.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    selectedFile = file;
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      previewImg.src = ev.target.result;
+      previewImg.style.display = 'block';
+      placeholder.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+
+    // Show send button
+    sendBtn.style.display = 'block';
+    captureBtn.textContent = '📷 दूसरी फोटो लें';
+    errEl.style.display = 'none';
+  });
+
+  sendBtn.addEventListener('click', async () => {
+    if (!selectedFile) {
+      errEl.textContent = 'पहले फोटो लें';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = S.diaryUploading;
+    errEl.style.display = 'none';
+
+    try {
+      // Build multipart/form-data payload
+      const formData = new FormData();
+      formData.append('diaryPhoto', selectedFile, selectedFile.name);
+
+      const customerName = document.getElementById('diary-customer-name').value.trim();
+      if (customerName) {
+        formData.append('customerName', customerName);
+      }
+
+      // Upload to OCR pipeline (no JSON body — use fetch directly for multipart)
+      const res = await fetch('/api/ocr/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${state.token}`,
+          // Note: do NOT set Content-Type for FormData — browser sets boundary automatically
+        },
+        body: formData,
+      });
+
+      if (res.status === 401) {
+        logout();
+        throw new Error(S.loginError);
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || S.diaryUploadError);
+      }
+
+      showToast(S.diaryUploadSuccess);
+      playSuccessChime();
+      navigate('home');
+
+    } catch (err) {
+      errEl.textContent = err.message || S.diaryUploadError;
+      errEl.style.display = 'block';
+      sendBtn.disabled = false;
+      sendBtn.textContent = '📤 फोटो भेजें — एडमिन जाँचेगा';
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ADMIN: AI OCR Verification Queue Tab
+// Split-Screen: Handwritten photo (left) | AI-extracted form (right)
+// One-click Approve / Reject with inline field editing
+// ═══════════════════════════════════════════════════════════════════
+async function renderAdminOcrQueueTab(container) {
+  container.innerHTML = `<div class="spinner"></div>`;
+
+  try {
+    const queueRes = await api('/api/ocr/queue');
+    const entries  = Array.isArray(queueRes) ? queueRes : (queueRes.entries || []);
+
+    if (entries.length === 0) {
+      container.innerHTML = `
+        <div class="card text-center" style="padding:40px;font-size:1.2rem;color:#81c784">
+          ${A('ocrQueueEmpty')}
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="page-title" style="font-size:1.2rem;margin-bottom:16px">
+        ${A('ocrQueueTitle')}
+        <span class="admin-ocr-count-badge">${entries.length}</span>
+      </div>
+      <div id="ocr-queue-list"></div>
+    `;
+
+    const listEl = container.querySelector('#ocr-queue-list');
+
+    entries.forEach((entry, idx) => {
+      const ocrData  = entry.ocrExtractedData || {};
+      const imageUrl = entry.imageUrl ? `/${entry.imageUrl.replace(/\\/g, '/')}` : null;
+
+      const cardEl = document.createElement('div');
+      cardEl.className = 'ocr-queue-item pending';
+      cardEl.dataset.id = entry._id;
+
+      cardEl.innerHTML = `
+        <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+          <div>
+            <span class="pending-badge">${state.adminLang === 'en' ? '⏳ Pending Verification' : S.ocrPendingBadge}</span>
+            <span style="font-size:1.05rem;font-weight:700;margin-left:8px">
+              ${esc(entry.customer?.name || '—')}
+            </span>
+            ${entry.customer?.village ? `<span style="font-size:0.9rem;color:var(--text-muted);margin-left:6px">📍 ${esc(entry.customer.village)}</span>` : ''}
+          </div>
+          <span style="font-size:0.85rem;color:var(--text-muted)">${formatDate(entry.createdAt)}</span>
+        </div>
+
+        <!-- Split Screen: Photo | AI Data -->
+        <div class="ocr-split-screen">
+
+          <!-- LEFT: Handwritten Diary Photo -->
+          <div class="ocr-photo-pane">
+            ${imageUrl
+              ? `<img src="${esc(imageUrl)}" alt="${A('ocrPhotoLabel')}" />`
+              : `<div class="ocr-photo-placeholder">
+                   <span style="font-size:2.5rem">📷</span>
+                   <span>${state.adminLang === 'en' ? 'Photo not available' : 'फोटो उपलब्ध नहीं'}</span>
+                 </div>`
+            }
+          </div>
+
+          <!-- RIGHT: AI-Extracted Form Fields (Editable) -->
+          <div class="ocr-data-pane">
+            <div style="font-size:0.85rem;color:#ffb74d;font-weight:700;margin-bottom:8px">
+              ${A('ocrExtractedLabel')} — ${A('ocrEditNote')}
+            </div>
+
+            <!-- Customer Name -->
+            <div class="ocr-field-group">
+              <div class="ocr-field-label">${A('ocrCustomerName')}</div>
+              <input class="ocr-field-input" type="text" id="ocr-customer-${idx}"
+                     value="${esc(entry.customer?.name || ocrData.customerName || '')}"
+                     placeholder="${A('ocrCustomerName')}" />
+            </div>
+
+            <!-- Item / Description -->
+            <div class="ocr-field-group">
+              <div class="ocr-field-label">${A('ocrItem')}</div>
+              <input class="ocr-field-input" type="text" id="ocr-item-${idx}"
+                     value="${esc(entry.item || ocrData.item || '')}"
+                     placeholder="${A('ocrItem')}" />
+            </div>
+
+            <!-- Amount -->
+            <div class="ocr-field-group">
+              <div class="ocr-field-label">${A('ocrAmount')}</div>
+              <input class="ocr-field-input" type="number" id="ocr-amount-${idx}"
+                     value="${entry.amount || ocrData.amount || ''}"
+                     placeholder="${A('ocrAmount')}" inputmode="numeric" min="1" />
+            </div>
+
+            <!-- OCR Confidence -->
+            ${ocrData.confidence !== undefined ? `
+            <div class="ocr-field-group">
+              <div class="ocr-field-label">${A('ocrConfidence')}: ${Math.round((ocrData.confidence || 0) * 100)}%</div>
+              <div class="ocr-confidence-bar">
+                <div class="ocr-confidence-fill" style="width:${Math.round((ocrData.confidence || 0) * 100)}%"></div>
+              </div>
+            </div>` : ''}
+
+            <!-- Note -->
+            <div class="ocr-field-group">
+              <div class="ocr-field-label">${A('ocrNote')}</div>
+              <input class="ocr-field-input" type="text" id="ocr-note-${idx}"
+                     value="${esc(entry.note || ocrData.note || (state.adminLang === 'en' ? 'Transferred from Diary' : 'डायरी से स्थानांतरित'))}"
+                     placeholder="${A('ocrNote')}" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Row: Approve / Reject -->
+        <div class="ocr-action-row">
+          <button class="ocr-approve-btn" data-idx="${idx}">${A('ocrApproveBtn')}</button>
+          <button class="ocr-reject-btn"  data-idx="${idx}">${A('ocrRejectBtn')}</button>
+        </div>
+      `;
+
+      listEl.appendChild(cardEl);
+
+      // ── Approve button handler ──────────────────────────────────
+      cardEl.querySelector('.ocr-approve-btn').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const i   = btn.dataset.idx;
+        btn.disabled = true;
+        btn.textContent = A('loading');
+
+        const customerName = document.getElementById(`ocr-customer-${i}`)?.value.trim() || '';
+        const amount       = Number(document.getElementById(`ocr-amount-${i}`)?.value || 0);
+        const item         = document.getElementById(`ocr-item-${i}`)?.value.trim() || '';
+        const note         = document.getElementById(`ocr-note-${i}`)?.value.trim() || '';
+
+        try {
+          await api(`/api/ocr/approve/${entry._id}`, {
+            method: 'POST',
+            body: { amount, item, note, customerName },
+          });
+          showToast(A('ocrApproveSuccess'));
+          // Remove the card smoothly
+          cardEl.style.opacity = '0.4';
+          cardEl.style.pointerEvents = 'none';
+          setTimeout(() => {
+            cardEl.remove();
+            // If no more items, show empty state
+            if (!listEl.querySelector('.ocr-queue-item')) {
+              listEl.innerHTML = `<div class="card text-center" style="padding:40px;color:#81c784">${A('ocrQueueEmpty')}</div>`;
+            }
+          }, 600);
+        } catch (err) {
+          showToast(err.message || S.error);
+          btn.disabled = false;
+          btn.textContent = A('ocrApproveBtn');
+        }
+      });
+
+      // ── Reject button handler ───────────────────────────────────
+      cardEl.querySelector('.ocr-reject-btn').addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const confirmMsg = state.adminLang === 'en' ? 'Discard this diary entry photo?' : 'क्या आप यह फोटो हटाना चाहते हैं?';
+        if (!confirm(confirmMsg)) return;
+        btn.disabled = true;
+        btn.textContent = A('loading');
+
+        try {
+          await api(`/api/ocr/reject/${entry._id}`, { method: 'POST' });
+          showToast(A('ocrRejectSuccess'));
+          cardEl.style.opacity = '0.4';
+          cardEl.style.pointerEvents = 'none';
+          setTimeout(() => {
+            cardEl.remove();
+            if (!listEl.querySelector('.ocr-queue-item')) {
+              listEl.innerHTML = `<div class="card text-center" style="padding:40px;color:#81c784">${A('ocrQueueEmpty')}</div>`;
+            }
+          }, 600);
+        } catch (err) {
+          showToast(err.message || S.error);
+          btn.disabled = false;
+          btn.textContent = S.ocrRejectBtn;
+        }
+      });
+    });
+
+  } catch (err) {
+    container.innerHTML = `<p class="empty-state">${err.message}</p>`;
+  }
+}
+
 /**
  * Speak a Hindi string aloud using the Web Speech Synthesis API.
  * Calls onEnd callback when speech finishes speaking.
  */
+
 function speakHindi(text, onEnd) {
   if (!window.speechSynthesis) {
     if (onEnd) onEnd();

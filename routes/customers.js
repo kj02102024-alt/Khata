@@ -80,7 +80,7 @@ router.get(
       if (customers.length > 0) {
         const customerIds = customers.map(c => c._id);
         const balances = await Entry.aggregate([
-          { $match: { customer: { $in: customerIds }, deleted: false } },
+          { $match: { customer: { $in: customerIds }, deleted: false, status: { $ne: 'pending_admin_approval' } } },
           {
             $group: {
               _id: '$customer',
@@ -145,10 +145,11 @@ router.get(
         return res.status(404).json({ error: 'ग्राहक नहीं मिला' });
       }
 
-      // All non-deleted entries, newest first
+      // All non-deleted approved entries, newest first
       const entries = await Entry.find({
         customer: req.params.id,
         deleted: false,
+        status: { $ne: 'pending_admin_approval' },
       })
         .sort({ date: -1, createdAt: -1 })
         .lean();
@@ -345,7 +346,7 @@ router.post('/resolve', async (req, res) => {
     if (candidates.length > 1) {
       const candidateIds = candidates.map(c => c._id);
       const balances = await Entry.aggregate([
-        { $match: { customer: { $in: candidateIds }, deleted: false } },
+        { $match: { customer: { $in: candidateIds }, deleted: false, status: { $ne: 'pending_admin_approval' } } },
         {
           $group: {
             _id: '$customer',
@@ -466,11 +467,17 @@ router.post(
       return res.status(400).json({ error: errors.array()[0].msg });
     }
 
-    const { name, village = '', phone = '', alias = [] } = req.body;
+    const { name, village = '', phone = '', alias = [], relationTag = '' } = req.body;
     const aliases = Array.isArray(alias) ? alias : (alias ? [String(alias)] : []);
 
     try {
-      const customer = await Customer.create({ name, village, phone, alias: aliases });
+      const customer = await Customer.create({
+        name,
+        village,
+        phone,
+        alias: aliases,
+        relationTag: relationTag ? String(relationTag).trim() : '',
+      });
       res.status(201).json(customer);
     } catch (err) {
       console.error('Create customer error:', err);

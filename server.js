@@ -8,9 +8,10 @@
  *   2. helmet          – set security headers on every response
  *   3. rate limiter    – only on /api/auth/login
  *   4. express.json()  – parse JSON request bodies
- *   5. API routes      – /api/auth, /api/customers, /api/entries
+ *   5. API routes      – /api/auth, /api/customers, /api/entries, /api/ocr
  *   6. Static files    – serve /public (the frontend)
- *   7. Catch-all       – return index.html for any unknown GET
+ *   7. Uploads static  – serve /uploads (diary photo files)
+ *   8. Catch-all       – return index.html for any unknown GET
  *                         so the SPA can handle client-side "routing"
  *
  * connectDB() is awaited before app.listen() so the first request
@@ -21,6 +22,7 @@ require('dotenv').config();
 
 const express      = require('express');
 const path         = require('path');
+const fs           = require('fs');
 const helmet       = require('helmet');
 const rateLimit    = require('express-rate-limit');
 
@@ -29,6 +31,7 @@ const authRoutes     = require('./routes/auth');
 const customerRoutes = require('./routes/customers');
 const entryRoutes    = require('./routes/entries');
 const adminRoutes    = require('./routes/admin');
+const ocrRoutes      = require('./routes/ocr');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -45,6 +48,7 @@ app.use(
         styleSrc:   ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc:    ["'self'", 'https://fonts.gstatic.com'],
         imgSrc:     ["'self'", 'data:', 'blob:'],
+        mediaSrc:   ["'self'"],                     // allow <audio>/<video> for local uploads
         connectSrc: ["'self'"],
       },
     },
@@ -74,10 +78,16 @@ app.use('/api/auth',      loginLimiter, authRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/entries',   entryRoutes);
 app.use('/api/admin',     adminRoutes);
+app.use('/api/ocr',       ocrRoutes);
 
 // ── Static frontend ───────────────────────────────────────────────
 const PUBLIC = path.join(__dirname, 'public');
 app.use(express.static(PUBLIC));
+
+// ── Uploaded diary photos (served at /uploads/<filename>) ─────────
+// Must come BEFORE the catch-all so /uploads/* hits the file,
+// not index.html.
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Catch-all: any route the browser navigates to (like /customer/123)
 // should return index.html so the SPA JS can parse the URL.
@@ -89,6 +99,11 @@ app.get('*', (_req, res) => {
 (async () => {
   try {
     await connectDB();
+
+    // Ensure the uploads directory exists (multer writes diary photos here)
+    const uploadsDir = path.join(__dirname, 'uploads');
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
     app.listen(PORT, () => {
       console.log(`🚀  Khata running at http://localhost:${PORT}`);
     });

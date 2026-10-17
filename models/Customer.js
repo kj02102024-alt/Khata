@@ -8,6 +8,10 @@
  * a full collection scan.  Text indexes let us do $text searches;
  * the collation on the index makes search case-insensitive (useful
  * even for Devanagari variants).
+ *
+ * relationTag: optional human-readable relationship label such as
+ *   "लड़का मोनू", used to build compound display names like
+ *   "रमेश (लड़का मोनू)" for disambiguation between same-name customers.
  */
 
 const mongoose = require('mongoose');
@@ -32,7 +36,12 @@ const customerSchema = new mongoose.Schema(
     alias: {
       type: [String],
       default: [],
-      index: true,
+    },
+    // e.g. "लड़का मोनू" → displayed as "रमेश (लड़का मोनू)"
+    relationTag: {
+      type: String,
+      trim: true,
+      default: '',
     },
   },
   { timestamps: true }
@@ -45,5 +54,12 @@ customerSchema.index({ name: 'text', village: 'text', alias: 'text' });
 customerSchema.index({ name: 1 });
 customerSchema.index({ village: 1 });
 customerSchema.index({ alias: 1 });
+
+// Compound index for disambiguating customers with the same name across
+// villages or aliases (not unique — same name can exist in two villages)
+customerSchema.index(
+  { name: 1, village: 1, alias: 1 },
+  { name: 'name_village_alias_compound' }
+);
 
 module.exports = mongoose.model('Customer', customerSchema);
