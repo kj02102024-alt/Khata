@@ -2241,259 +2241,312 @@
       // ── Submodal helper for In-Modal Udaar & Jama in Admin ──
       const submodalContainer = document.getElementById('cq-submodal-container');
 
-      // Wire Quick Udaar
+      // Wire Quick Udaar — Structured Multi-Item Form
       document.getElementById('cq-open-udaar').onclick = () => {
-        const quickItems = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'चादर', 'तौलिया', 'किराना', 'कंबल'];
-        let selectedItems = ['साड़ी'];
-        let dueDateDays = null;
+        const ADMIN_ITEM_CHIPS = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'रुई/कपास', 'कंबल', 'पैंट-शर्ट', 'चादर', 'तौलिया', 'अन्य'];
+        const ADMIN_UNIT_CHIPS = ['पीस', 'मीटर', 'जोड़ी', 'सेट'];
+        let adminItems = [{ name: '', brand: '', qty: 1, unit: 'पीस', rate: '', amount: '' }];
+        let adminDueDateDays = null;
+        let adminDueDateCustom = '';
+
+        // ── Render one item block HTML ──
+        const renderAdminItemBlock = (it, idx) => `
+          <div class="item-block cq-item-block" data-idx="${idx}" style="background:#fff5f5;border:1.5px solid #fecaca;border-radius:12px;padding:12px;margin-bottom:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-weight:800;color:#991b1b;font-size:.95rem">सामान ${adminItems.length > 1 ? idx + 1 : ''}</span>
+              ${adminItems.length > 1 ? `<button type="button" class="cq-item-del" data-del="${idx}" style="background:none;border:none;color:#dc2626;font-size:1rem;cursor:pointer">🗑 हटाएँ</button>` : ''}
+            </div>
+            <!-- Item Name Chips -->
+            <div class="chip-row cq-item-chips" data-idx="${idx}" style="margin-bottom:6px">
+              ${ADMIN_ITEM_CHIPS.map((chip) => `<button class="chip ${it.name === chip ? 'chip--on' : ''}" type="button" data-item="${escapeHtml(chip)}">${escapeHtml(chip)}</button>`).join('')}
+            </div>
+            <!-- Item Name Input -->
+            <div class="entry-field-row">
+              <label style="font-weight:700;font-size:.82rem;color:#374151;display:block;margin-bottom:3px">सामान का नाम</label>
+              <div class="entry-input-wrap">
+                <input class="entry-input cq-item-name" data-idx="${idx}" type="text" lang="hi" autocomplete="off"
+                       value="${escapeHtml(it.name)}" placeholder="जैसे साड़ी, गद्दा" />
+                <button class="field-mic cq-field-mic" type="button" data-cqfield="name-${idx}">🎤</button>
+              </div>
+            </div>
+            <!-- Brand -->
+            <div class="entry-field-row">
+              <label style="font-weight:700;font-size:.82rem;color:#374151;display:block;margin-bottom:3px">ब्रांड / कंपनी</label>
+              <div class="entry-input-wrap">
+                <input class="entry-input cq-item-brand" data-idx="${idx}" type="text" lang="hi" autocomplete="off"
+                       value="${escapeHtml(it.brand)}" placeholder="जैसे Raymond, Siyaram" />
+                <button class="field-mic cq-field-mic" type="button" data-cqfield="brand-${idx}">🎤</button>
+              </div>
+            </div>
+            <!-- Qty + Unit -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+              <div>
+                <label style="font-weight:700;font-size:.82rem;color:#374151;display:block;margin-bottom:3px">मात्रा</label>
+                <div class="qty-stepper">
+                  <button class="qty-btn cq-qty-btn" type="button" data-step="-0.5" data-idx="${idx}">−</button>
+                  <input class="entry-input cq-item-qty" data-idx="${idx}" type="number" inputmode="decimal"
+                         value="${it.qty}" min="0.5" step="0.5" style="width:60px;text-align:center" />
+                  <button class="qty-btn cq-qty-btn" type="button" data-step="0.5" data-idx="${idx}">+</button>
+                </div>
+                <div class="chip-row cq-unit-chips" data-idx="${idx}" style="margin-top:5px">
+                  ${ADMIN_UNIT_CHIPS.map((u) => `<button class="chip ${it.unit === u ? 'chip--on' : ''}" type="button" data-unit="${u}">${u}</button>`).join('')}
+                </div>
+              </div>
+              <div>
+                <label style="font-weight:700;font-size:.82rem;color:#374151;display:block;margin-bottom:3px">रेट (प्रति इकाई) ₹</label>
+                <div class="entry-input-wrap">
+                  <input class="entry-input cq-item-rate" data-idx="${idx}" type="number" inputmode="numeric"
+                         value="${it.rate || ''}" placeholder="₹" />
+                  <button class="field-mic cq-field-mic" type="button" data-cqfield="rate-${idx}">🎤</button>
+                </div>
+              </div>
+            </div>
+            <!-- Amount -->
+            <div class="entry-field-row" style="margin-top:4px">
+              <label style="font-weight:700;font-size:.82rem;color:#374151;display:block;margin-bottom:3px">
+                रकम ₹ <span style="color:#dc2626">*</span>
+                <span style="font-size:.72rem;color:#64748b">(qty × rate से auto)</span>
+              </label>
+              <div class="entry-input-wrap">
+                <input class="entry-input cq-item-amount" data-idx="${idx}" type="number" inputmode="numeric"
+                       value="${it.amount || ''}" placeholder="₹" />
+                <button class="field-mic cq-field-mic" type="button" data-cqfield="amount-${idx}">🎤</button>
+              </div>
+            </div>
+          </div>`;
+
+        // ── Grand total ──
+        const updateAdminGrandTotal = () => {
+          const total = adminItems.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+          const el = document.getElementById('cq-grand-total');
+          if (el) el.textContent = total > 0 ? `कुल उधार बिल: ₹${total.toLocaleString('hi-IN')}` : 'कुल उधार बिल: ₹—';
+          const saveBtn = document.getElementById('cq-sub-save');
+          if (saveBtn) saveBtn.textContent = `✓ ${isHi ? 'उधार जोड़ें' : 'Save Debit'}${total > 0 ? ' (₹' + total.toLocaleString('hi-IN') + ')' : ''}`;
+        };
+
+        // ── Auto compute amount ──
+        const autoAdminAmount = (idx) => {
+          const it = adminItems[idx];
+          const r = Number(it.rate) || 0;
+          const q = Number(it.qty) || 1;
+          if (r > 0) {
+            it.amount = Math.round(q * r);
+            const inp = submodalContainer.querySelector(`.cq-item-amount[data-idx="${idx}"]`);
+            if (inp) inp.value = it.amount;
+          }
+          updateAdminGrandTotal();
+        };
+
+        // ── Mic tracker ──
+        let _cqActiveMic = null;
+        const stopCQMic = () => { if (_cqActiveMic) { try { _cqActiveMic.cancel(); } catch {} _cqActiveMic = null; } };
+
+        const startAdminItemMic = (cqfield, btnEl) => {
+          stopCQMic();
+          if (!window.VoiceEngine) { toast('आवाज़ उपलब्ध नहीं'); return; }
+          const engine = new window.VoiceEngine({ silenceMs: 2000 });
+          _cqActiveMic = engine;
+          btnEl.textContent = '⏹'; btnEl.classList.add('mic-active');
+          const m = cqfield.match(/^(\w+)-(\d+)$/);
+          if (!m) return;
+          const [, sub, idxStr] = m;
+          const idx = Number(idxStr);
+          const inp = submodalContainer.querySelector(`.cq-item-${sub}[data-idx="${idx}"]`);
+          engine.onPartial = (p) => { if (inp && p) { inp.value = p; inp.classList.add('mic-live-transcribing'); } };
+          engine.onComplete = (text) => {
+            if (inp) inp.classList.remove('mic-live-transcribing');
+            btnEl.textContent = '🎤'; btnEl.classList.remove('mic-active');
+            let val = text.trim();
+            if (sub === 'rate' || sub === 'amount') val = val.replace(/[^\d.]/g, '');
+            if (inp) inp.value = val;
+            adminItems[idx][sub] = (sub === 'qty' || sub === 'rate' || sub === 'amount') ? (Number(val) || 0) : val;
+            if (sub === 'qty' || sub === 'rate') autoAdminAmount(idx);
+            else updateAdminGrandTotal();
+            stopCQMic();
+          };
+          engine.onError = () => { btnEl.textContent = '🎤'; btnEl.classList.remove('mic-active'); stopCQMic(); };
+          btnEl.onclick = () => { engine.done(); btnEl.textContent = '🎤'; btnEl.classList.remove('mic-active'); btnEl.onclick = () => startAdminItemMic(cqfield, btnEl); };
+          if (engine.supported) engine.start();
+          else toast('आवाज़ उपलब्ध नहीं');
+        };
+
+        // ── Wire item events ──
+        const wireAdminItemEvents = () => {
+          const sc = submodalContainer;
+          sc.querySelectorAll('.cq-item-chips .chip').forEach((btn) => {
+            const idx = Number(btn.closest('[data-idx]').dataset.idx);
+            btn.onclick = () => {
+              sc.querySelectorAll(`.cq-item-chips[data-idx="${idx}"] .chip`).forEach((b) => b.classList.remove('chip--on'));
+              btn.classList.add('chip--on');
+              const nameInp = sc.querySelector(`.cq-item-name[data-idx="${idx}"]`);
+              if (btn.dataset.item === 'अन्य') {
+                adminItems[idx].name = '';
+                if (nameInp) { nameInp.value = ''; nameInp.placeholder = 'सामान का नाम लिखें…'; nameInp.style.borderColor = '#d97706'; nameInp.style.background = '#fffbeb'; nameInp.focus(); }
+              } else {
+                adminItems[idx].name = btn.dataset.item;
+                if (nameInp) { nameInp.value = btn.dataset.item; nameInp.placeholder = 'जैसे साड़ी, गद्दा'; nameInp.style.borderColor = ''; nameInp.style.background = ''; }
+              }
+              updateAdminGrandTotal();
+            };
+          });
+          sc.querySelectorAll('.cq-unit-chips .chip').forEach((btn) => {
+            const idx = Number(btn.closest('[data-idx]').dataset.idx);
+            btn.onclick = () => {
+              adminItems[idx].unit = btn.dataset.unit;
+              sc.querySelectorAll(`.cq-unit-chips[data-idx="${idx}"] .chip`).forEach((b) => b.classList.remove('chip--on'));
+              btn.classList.add('chip--on');
+            };
+          });
+          sc.querySelectorAll('.cq-item-name').forEach((inp) => {
+            const idx = Number(inp.dataset.idx);
+            inp.oninput = () => { adminItems[idx].name = inp.value; if (inp.value.trim()) { inp.style.borderColor = ''; inp.style.background = ''; } updateAdminGrandTotal(); };
+          });
+          sc.querySelectorAll('.cq-item-brand').forEach((inp) => {
+            const idx = Number(inp.dataset.idx); inp.oninput = () => { adminItems[idx].brand = inp.value; };
+          });
+          sc.querySelectorAll('.cq-qty-btn').forEach((btn) => {
+            const idx = Number(btn.dataset.idx);
+            btn.onclick = () => {
+              adminItems[idx].qty = Math.max(0.5, (Number(adminItems[idx].qty) || 1) + Number(btn.dataset.step));
+              const inp = sc.querySelector(`.cq-item-qty[data-idx="${idx}"]`);
+              if (inp) inp.value = adminItems[idx].qty;
+              autoAdminAmount(idx);
+            };
+          });
+          sc.querySelectorAll('.cq-item-qty').forEach((inp) => {
+            const idx = Number(inp.dataset.idx); inp.oninput = () => { adminItems[idx].qty = Number(inp.value) || 1; autoAdminAmount(idx); };
+          });
+          sc.querySelectorAll('.cq-item-rate').forEach((inp) => {
+            const idx = Number(inp.dataset.idx); inp.oninput = () => { adminItems[idx].rate = Number(inp.value) || 0; autoAdminAmount(idx); };
+          });
+          sc.querySelectorAll('.cq-item-amount').forEach((inp) => {
+            const idx = Number(inp.dataset.idx); inp.oninput = () => { adminItems[idx].amount = Number(inp.value) || 0; updateAdminGrandTotal(); };
+          });
+          sc.querySelectorAll('.cq-item-del').forEach((btn) => {
+            const idx = Number(btn.dataset.del);
+            btn.onclick = () => { if (adminItems.length > 1) { adminItems.splice(idx, 1); renderAllAdminItems(); } };
+          });
+          sc.querySelectorAll('.cq-field-mic').forEach((btn) => {
+            btn.onclick = () => startAdminItemMic(btn.dataset.cqfield, btn);
+          });
+        };
+
+        const renderAllAdminItems = () => {
+          const container = submodalContainer.querySelector('#cq-items-container');
+          if (!container) return;
+          container.innerHTML = adminItems.map((it, idx) => renderAdminItemBlock(it, idx)).join('');
+          wireAdminItemEvents();
+          updateAdminGrandTotal();
+        };
 
         submodalContainer.innerHTML = `
           <div class="a-modal-backdrop" id="cq-sub-backdrop" style="z-index:1100">
-            <div class="a-modal-card" style="max-width:520px">
-              <div class="a-modal-header" style="background:#fee2e2;border-bottom:1px solid #fecaca">
-                <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#991b1b">🔴 नया उधार जोड़ें (Debit)</h3>
+            <div class="a-modal-card" style="max-width:520px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+              <div class="a-modal-header" style="background:#fee2e2;border-bottom:1.5px solid #fecaca;flex-shrink:0">
+                <div>
+                  <h3 style="margin:0;font-size:1.1rem;font-weight:800;color:#991b1b">🔴 ${isHi ? 'नया उधार दर्ज करें' : 'New Debit Entry'}</h3>
+                  <div style="font-size:.8rem;color:#7f1d1d;margin-top:1px">${escapeHtml(c.name)} · ${escapeHtml(c.village || '')}</div>
+                </div>
                 <button class="a-page-btn" id="cq-sub-close">✕</button>
               </div>
-              <div class="a-modal-body" style="padding:16px 20px">
-                <!-- Voice Mic -->
-                <div class="pb-quick-voice-wrap">
-                  <button type="button" class="pb-quick-mic-btn" id="cq-sub-mic">
-                    <span class="pb-qmic-icon">🎤</span>
-                    <span id="cq-sub-mic-label">${isHi ? 'बोलकर भरें (जैसे: साड़ी और धोती 1200)' : 'Voice Input (e.g. 1200 saree)'}</span>
-                  </button>
-                  <div id="cq-sub-transcript" class="pb-mic-transcript hidden"></div>
-                </div>
 
-                <div style="margin-top:14px">
-                  <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
-                    ${isHi ? 'कुल उधार रकम (Total Amount)' : 'Total Amount'} <span style="color:#dc2626">*</span>
-                  </label>
-                  <div class="pb-amt-input-wrap">
-                    <span class="pb-rupee-sign">₹</span>
-                    <input type="number" id="cq-sub-amt" class="pb-amt-input" placeholder="0" autofocus />
-                  </div>
-                </div>
+              <!-- Grand Total Banner -->
+              <div id="cq-grand-total" style="background:#fef2f2;border-bottom:2px solid #fecaca;padding:10px 16px;text-align:center;font-size:1.05rem;font-weight:900;color:#991b1b;flex-shrink:0">
+                कुल उधार बिल: ₹—
+              </div>
 
-                <!-- Multiple Items Selection -->
-                <div style="margin-top:14px">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-                    <label style="font-weight:700;font-size:.88rem;color:#0f172a">
-                      ${isHi ? 'सामान चुनें (Multiple Items Select करें)' : 'Select Items (Multi-select)'} <span style="color:#dc2626">*</span>
-                    </label>
-                    <button type="button" id="cq-sub-custom-toggle" class="chip chip--add" style="padding:2px 8px;font-size:.78rem;font-weight:700">
-                      + ${isHi ? 'अन्य सामान' : 'Custom Item'}
-                    </button>
-                  </div>
-
-                  <!-- Selected Items Tags -->
-                  <div id="cq-sub-tag-list" style="display:inline-flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
-
-                  <!-- Quick Chips -->
-                  <div class="chip-row" id="cq-sub-item-chips">
-                    ${quickItems.map((it) => `<button type="button" class="chip ${selectedItems.includes(it) ? 'chip--on' : ''}" data-val="${it}">${selectedItems.includes(it) ? '✓ ' : ''}${it}</button>`).join('')}
-                  </div>
-
-                  <div id="cq-sub-custom-item-wrap" style="margin-top:8px;display:none">
-                    <div style="display:flex;gap:6px">
-                      <input type="text" id="cq-sub-custom-item" class="entry-input" placeholder="${isHi ? 'सामान का नाम...' : 'Item name...'}" style="flex:1" />
-                      <button type="button" id="cq-sub-custom-add-btn" class="a-page-btn" style="background:#092c20;color:#ffffff;font-weight:700;padding:0 14px">
-                        + ${isHi ? 'जोड़ें' : 'Add'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div style="margin-top:14px">
-                  <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
-                    ⏰ ${isHi ? 'कब तक देंगे? (Due Date)' : 'Due Date'}
-                  </label>
+              <!-- Scrollable body -->
+              <div class="a-modal-body" id="cq-sub-body" style="padding:12px 16px;overflow-y:auto;flex:1">
+                <!-- Items Container -->
+                <div id="cq-items-container"></div>
+                <!-- Add Another Item -->
+                <button type="button" id="cq-add-item-btn" class="btn-add-item" style="margin-bottom:14px">
+                  ➕ एक और सामान जोड़ें
+                </button>
+                <!-- Due Date -->
+                <div style="margin-bottom:12px">
+                  <label style="font-weight:700;font-size:.85rem;color:#0f172a;display:block;margin-bottom:5px">⏰ ${isHi ? 'कब तक देंगे? (Due Date)' : 'Due Date'}</label>
                   <div class="chip-row" id="cq-sub-due-chips">
                     <button type="button" class="chip chip--on" data-days="none">${isHi ? 'तय नहीं' : 'None'}</button>
                     <button type="button" class="chip" data-days="7">7 ${isHi ? 'दिन' : 'days'}</button>
                     <button type="button" class="chip" data-days="15">15 ${isHi ? 'दिन' : 'days'}</button>
                     <button type="button" class="chip" data-days="30">1 ${isHi ? 'महीना' : 'month'}</button>
+                    <button type="button" class="chip" data-days="custom">${isHi ? 'तारीख चुनें' : 'Pick Date'}</button>
+                  </div>
+                  <div id="cq-due-date-wrap" style="margin-top:6px;display:none">
+                    <input type="date" id="cq-due-date-input" class="entry-input" />
                   </div>
                 </div>
-
-                <div style="margin-top:14px">
-                  <label style="font-weight:700;font-size:.85rem;color:#64748b;display:block;margin-bottom:4px">
-                    ${isHi ? 'नोट / विवरण' : 'Notes'}
-                  </label>
-                  <input type="text" id="cq-sub-note" class="entry-input" placeholder="Optional notes..." />
+                <!-- Notes -->
+                <div style="margin-bottom:12px">
+                  <label style="font-weight:700;font-size:.82rem;color:#64748b;display:block;margin-bottom:4px">${isHi ? 'नोट / विवरण' : 'Notes'}</label>
+                  <input type="text" id="cq-sub-note" class="entry-input" placeholder="${isHi ? 'वैकल्पिक विवरण...' : 'Optional notes...'}" />
                 </div>
+              </div>
 
-                <div style="margin-top:20px;display:flex;gap:10px">
-                  <button type="button" id="cq-sub-cancel" class="a-page-btn" style="flex:1;padding:12px;background:#f1f5f9;color:#475569">
-                    ${isHi ? 'रद्द करें' : 'Cancel'}
-                  </button>
-                  <button type="button" id="cq-sub-save" class="a-page-btn" style="flex:2;padding:12px;background:#dc2626;color:#ffffff;font-weight:800">
-                    ✓ ${isHi ? 'उधार जोड़ें' : 'Save Debit'}
-                  </button>
-                </div>
+              <!-- Footer Buttons -->
+              <div style="padding:10px 14px;border-top:1.5px solid #fecaca;display:flex;gap:10px;flex-shrink:0;background:#fff">
+                <button type="button" id="cq-sub-cancel" class="a-page-btn" style="flex:1;padding:11px;background:#f1f5f9;color:#475569">
+                  ${isHi ? 'रद्द करें' : 'Cancel'}
+                </button>
+                <button type="button" id="cq-sub-save" class="a-page-btn" style="flex:2;padding:11px;background:#dc2626;color:#ffffff;font-weight:800">
+                  ✓ ${isHi ? 'उधार जोड़ें' : 'Save Debit'}
+                </button>
               </div>
             </div>
           </div>`;
 
-        const closeSub = () => { submodalContainer.innerHTML = ''; };
+        // Initial render
+        renderAllAdminItems();
+
+        const closeSub = () => { stopCQMic(); submodalContainer.innerHTML = ''; };
         document.getElementById('cq-sub-close').onclick = closeSub;
         document.getElementById('cq-sub-cancel').onclick = closeSub;
         document.getElementById('cq-sub-backdrop').onclick = (e) => { if (e.target.id === 'cq-sub-backdrop') closeSub(); };
 
-        const renderAdminTags = () => {
-          const list = document.getElementById('cq-sub-tag-list');
-          if (!list) return;
-          list.innerHTML = selectedItems.map((n) => `
-            <span style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-size:.85rem;font-weight:700">
-              ${escapeHtml(n)}
-              <button type="button" class="cq-tag-del" data-name="${escapeHtml(n)}" style="background:none;border:none;cursor:pointer;color:#991b1b;font-weight:800" title="Remove">✕</button>
-            </span>
-          `).join('');
-
-          list.querySelectorAll('.cq-tag-del').forEach((btn) => {
-            btn.onclick = () => {
-              const name = btn.dataset.name;
-              selectedItems = selectedItems.filter((x) => x !== name);
-              renderAdminTags();
-              updateAdminChips();
-            };
-          });
+        // Add Another Item
+        document.getElementById('cq-add-item-btn').onclick = () => {
+          adminItems.push({ name: '', brand: '', qty: 1, unit: 'पीस', rate: '', amount: '' });
+          renderAllAdminItems();
+          const body = document.getElementById('cq-sub-body');
+          if (body) setTimeout(() => { body.scrollTop = body.scrollHeight; }, 50);
         };
 
-        const updateAdminChips = () => {
-          document.querySelectorAll('#cq-sub-item-chips button').forEach((btn) => {
-            const val = btn.dataset.val;
-            const isOn = selectedItems.includes(val);
-            btn.classList.toggle('chip--on', isOn);
-            btn.textContent = (isOn ? '✓ ' : '') + val;
-          });
-        };
-
-        renderAdminTags();
-
-        // Item chips
-        document.querySelectorAll('#cq-sub-item-chips button').forEach((btn) => {
-          btn.onclick = () => {
-            const val = btn.dataset.val;
-            if (selectedItems.includes(val)) {
-              selectedItems = selectedItems.filter((x) => x !== val);
-            } else {
-              selectedItems.push(val);
-            }
-            renderAdminTags();
-            updateAdminChips();
-          };
-        });
-
-        // Custom item toggle & add
-        const customWrap = document.getElementById('cq-sub-custom-item-wrap');
-        const customInput = document.getElementById('cq-sub-custom-item');
-        const customToggle = document.getElementById('cq-sub-custom-toggle');
-        const customAddBtn = document.getElementById('cq-sub-custom-add-btn');
-
-        if (customToggle) {
-          customToggle.onclick = () => {
-            const isShown = customWrap.style.display !== 'none';
-            customWrap.style.display = isShown ? 'none' : 'block';
-            if (!isShown && customInput) customInput.focus();
-          };
-        }
-
-        const addAdminCustomItem = () => {
-          const val = (customInput?.value || '').trim();
-          if (val && !selectedItems.includes(val)) {
-            selectedItems.push(val);
-            customInput.value = '';
-            renderAdminTags();
-            updateAdminChips();
-          }
-        };
-
-        if (customAddBtn) customAddBtn.onclick = addAdminCustomItem;
-        if (customInput) {
-          customInput.onkeydown = (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); addAdminCustomItem(); }
-          };
-        }
-
-        // Due chips
+        // Due Date Chips
+        const dueDateWrap = document.getElementById('cq-due-date-wrap');
+        const dueDateInput = document.getElementById('cq-due-date-input');
         document.querySelectorAll('#cq-sub-due-chips button').forEach((btn) => {
           btn.onclick = () => {
             document.querySelectorAll('#cq-sub-due-chips button').forEach((b) => b.classList.remove('chip--on'));
             btn.classList.add('chip--on');
             const dVal = btn.dataset.days;
-            dueDateDays = dVal === 'none' ? null : Number(dVal);
+            if (dVal === 'none') { adminDueDateDays = null; adminDueDateCustom = ''; dueDateWrap.style.display = 'none'; }
+            else if (dVal === 'custom') { adminDueDateDays = null; dueDateWrap.style.display = 'block'; dueDateInput.focus(); }
+            else { adminDueDateDays = Number(dVal); adminDueDateCustom = ''; dueDateWrap.style.display = 'none'; }
           };
         });
 
-        // Mic
-        const subMic = document.getElementById('cq-sub-mic');
-        const subTranscript = document.getElementById('cq-sub-transcript');
-        if (subMic) {
-          subMic.onclick = async () => {
-            if (!window.VoiceEngine) return;
-            subMic.classList.add('mic-pulsing');
-            subTranscript.classList.remove('hidden');
-            subTranscript.textContent = isHi ? 'सुन रहे हैं...' : 'Listening...';
-            const eng = new window.VoiceEngine({ silenceMs: 2500 });
-            eng.onPartial = (p) => { if (p) subTranscript.textContent = p; };
-            try {
-              const spoken = await eng.listenOnce(6000);
-              if (spoken) {
-                subTranscript.textContent = `"${spoken}"`;
-                const KNOWN_KEYWORDS = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'पैंट', 'शर्ट', 'चादर', 'तौलिया', 'किराना', 'कंबल', 'कुर्ता', 'दुपट्टा', 'गमछा', 'ब्लाउज', 'रुई'];
-                KNOWN_KEYWORDS.forEach((kw) => {
-                  if (spoken.includes(kw) && !selectedItems.includes(kw)) {
-                    selectedItems.push(kw);
-                  }
-                });
-
-                try {
-                  const { parsed } = await api('/entries/parse-speech', { method: 'POST', body: { text: spoken } });
-                  if (parsed) {
-                    if (parsed.amount) document.getElementById('cq-sub-amt').value = parsed.amount;
-                    if (parsed.items && Array.isArray(parsed.items)) {
-                      parsed.items.forEach((it) => {
-                        if (it.name && !selectedItems.includes(it.name)) selectedItems.push(it.name);
-                      });
-                    }
-                  }
-                } catch {}
-
-                renderAdminTags();
-                updateAdminChips();
-              }
-            } catch {}
-            subMic.classList.remove('mic-pulsing');
-          };
-        }
-
         // Save
         document.getElementById('cq-sub-save').onclick = async () => {
-          const amt = Number(document.getElementById('cq-sub-amt').value);
-          if (!amt || amt <= 0) {
-            toast(isHi ? 'कृपया सही उधार रकम डालें' : 'Please enter valid amount');
+          const validItems = adminItems.filter((it) => (it.name || '').trim() && Number(it.amount) > 0);
+          if (!validItems.length) {
+            toast(isHi ? 'कृपया कम से कम एक सामान का नाम और रकम भरें' : 'Please fill item name and amount');
             return;
           }
-          if (!selectedItems.length) {
-            toast(isHi ? 'कृपया कम से कम एक सामान चुनें' : 'Please select at least one item');
-            return;
+          const totalAmt = validItems.reduce((s, it) => s + (Number(it.amount) || 0), 0);
+          if (totalAmt <= 0) { toast(isHi ? 'कृपया सही उधार रकम डालें' : 'Enter valid amount'); return; }
+
+          const finalItemStr = validItems.map((it) => `${it.name}${Number(it.qty) > 1 ? ` (${it.qty} ${it.unit})` : ''}`).join(', ');
+
+          let dueDate = null; let dueDateNote = '';
+          if (dueDateWrap.style.display !== 'none' && dueDateInput.value) {
+            dueDate = dueDateInput.value; dueDateNote = isHi ? 'तारीख तय' : 'Date set';
+          } else if (adminDueDateDays) {
+            dueDate = new Date(Date.now() + adminDueDateDays * 86400000).toISOString().slice(0, 10);
+            dueDateNote = `${adminDueDateDays} ${isHi ? 'दिन में' : 'days'}`;
           }
 
-          const itName = selectedItems.join(', ');
-          const itemsArray = selectedItems.map((name) => ({
-            name,
-            qty: 1,
-            amount: Math.round(amt / selectedItems.length),
-          }));
-
-          let dueDate = null;
-          let dueDateNote = '';
-          if (dueDateDays) {
-            dueDate = new Date(Date.now() + dueDateDays * 86400000).toISOString().slice(0, 10);
-            dueDateNote = `${dueDateDays} दिन में`;
-          }
-          const note = document.getElementById('cq-sub-note').value.trim();
-
+          const note = (document.getElementById('cq-sub-note')?.value || '').trim();
           const saveBtn = document.getElementById('cq-sub-save');
           saveBtn.disabled = true;
           try {
@@ -2503,23 +2556,27 @@
                 customerId: c._id,
                 shopId: c.shopId,
                 type: 'sale',
-                amount: amt,
-                item: itName,
-                items: itemsArray,
+                amount: totalAmt,
+                item: finalItemStr,
+                items: validItems.map((it) => ({
+                  name: it.name, brand: it.brand || '',
+                  qty: Number(it.qty) || 1, unit: it.unit || 'पीस',
+                  rate: Number(it.rate) || 0, amount: Number(it.amount) || 0,
+                })),
                 dueDate: dueDate || undefined,
                 dueDateNote: dueDateNote || undefined,
-                note,
-                notes: note,
-                enteredVia: 'admin-passbook-quick',
+                note, notes: note,
+                enteredVia: 'admin-passbook-multi-item',
               },
             });
             playChime();
-            toast(isHi ? `उधार ${inr(amt)} (${itName}) दर्ज हुआ!` : `Credit sale of ${inr(amt)} (${itName}) recorded!`);
+            toast(isHi ? `✅ उधार ₹${totalAmt.toLocaleString('hi-IN')} (${finalItemStr}) दर्ज हुआ!` : `✅ Debit ₹${totalAmt.toLocaleString('en-IN')} recorded!`);
             closeSub();
             openCustomerLedgerModal(customerId);
           } catch (err) {
             toast(err.message);
             saveBtn.disabled = false;
+            updateAdminGrandTotal();
           }
         };
       };
