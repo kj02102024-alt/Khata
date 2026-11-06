@@ -19,7 +19,7 @@ function checkRateLimit(ip) {
   return entry.count <= 20; // max 20 attempts per 15 min per IP
 }
 
-// Admin username/password login
+// Normal login: handles admin, shop1, shop2 with password or PIN
 router.post('/login', async (req, res) => {
   const ip = req.ip || 'unknown';
   if (!checkRateLimit(ip)) {
@@ -28,11 +28,18 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body || {};
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required', errorHi: 'नाम और पासवर्ड दें' });
+      return res.status(400).json({ error: 'Username and password required', errorHi: 'नाम और पासवर्ड/पिन दर्ज करें' });
     }
-    const user = await User.findOne({ username: String(username).toLowerCase().trim() });
+    const cleanUser = String(username).toLowerCase().trim();
+    const cleanPass = String(password).trim();
+
+    let user = await User.findOne({ username: cleanUser });
+    if (!user && (cleanUser === 'shop1' || cleanUser === 'shop2')) {
+      user = await User.findOne({ shopId: cleanUser, role: 'shopkeeper' });
+    }
+
     if (!user) {
-      return res.status(401).json({ error: 'Invalid login', errorHi: 'गलत नाम या पासवर्ड' });
+      return res.status(401).json({ error: 'Invalid login', errorHi: 'गलत नाम या पासवर्ड/पिन' });
     }
     if (user.isLocked()) {
       const mins = Math.ceil((user.lockedUntil - Date.now()) / 60000);
@@ -42,13 +49,20 @@ router.post('/login', async (req, res) => {
         lockedUntil: user.lockedUntil,
       });
     }
-    if (!(await user.comparePassword(password))) {
+
+    // Check password or PIN (for shopkeeper)
+    let ok = await user.comparePassword(cleanPass);
+    if (!ok && user.pin) {
+      ok = await user.comparePin(cleanPass);
+    }
+
+    if (!ok) {
       await user.recordFailedAttempt();
-      return res.status(401).json({ error: 'Invalid login', errorHi: 'पिन/पासवर्ड ग़लत है, फिर से कोशिश कीजिए' });
+      return res.status(401).json({ error: 'Invalid login', errorHi: 'गलत पासवर्ड या पिन, फिर से कोशिश कीजिए' });
     }
     await user.recordSuccess();
     req.session.user = user.toSafeJSON();
-    // 30-day session for shopkeepers; shorter for admin
+    // 30-day session for shopkeepers; 7 days for admin
     req.session.cookie.maxAge = user.role === 'shopkeeper' ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
     res.json({ user: req.session.user });
   } catch (err) {

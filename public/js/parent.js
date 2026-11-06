@@ -153,7 +153,11 @@
       document.getElementById('logout').onclick = () => {
         g.KhataAPI.clearSession();
         localStorage.removeItem('khata_remembered_shop');
-        g.KhataApp.renderLogin();
+        if (g.KhataApp && g.KhataApp.logout) {
+          g.KhataApp.logout();
+        } else {
+          location.reload();
+        }
       };
     },
 

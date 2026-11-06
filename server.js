@@ -6,6 +6,7 @@ const session = require('express-session');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const { connectDB } = require('./lib/db');
+const { autoSeed } = require('./lib/autoSeed');
 
 const authRoutes = require('./routes/auth');
 const customerRoutes = require('./routes/customers');
@@ -63,24 +64,12 @@ async function start() {
     process.exit(1);
   }
 
-  const User = require('./models/User');
-  if ((await User.countDocuments()) === 0) {
-    // No users → auto-seed from env variables
-    if (!process.env.SEED_SHOP1_PIN || !process.env.SEED_ADMIN_PASSWORD) {
-      console.warn('⚠️  No users found and SEED_SHOP1_PIN / SEED_ADMIN_PASSWORD not set.');
-      console.warn('   Set these in .env, then run: npm run reset-data');
-    } else {
-      console.log('No users found — seeding from environment variables…');
-      try {
-        const { seedClean } = require('./scripts/seed');
-        const { users } = await seedClean({ purge: false });
-        console.log('Seeded users:');
-        users.forEach((u) => console.log(`  - ${u.username} (${u.role})`));
-        console.log('⚠️  Each account must change its PIN/password on first login.');
-      } catch (err) {
-        console.error('Auto-seed failed:', err.message);
-      }
-    }
+  // ── Auto-seed: runs on EVERY startup, idempotent (skips existing records) ──
+  try {
+    await autoSeed();
+  } catch (err) {
+    // Non-fatal: log the error but let the server continue
+    console.error('[autoSeed] Error during auto-seed:', err.message);
   }
 
   app.listen(PORT, () => {

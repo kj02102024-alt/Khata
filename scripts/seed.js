@@ -62,16 +62,16 @@ async function seedClean(options = {}) {
       role: 'admin',
       shopId: null,
       displayName: 'मालिक (Admin)',
-      mustChangeSecret: true,
+      mustChangeSecret: false,
     },
     {
       username: 'shop1',
-      password: shop1Pin, // password field used for initial boot; PIN set separately on first login
+      password: shop1Pin,
       pin: shop1Pin,
       role: 'shopkeeper',
       shopId: 'shop1',
       displayName: 'दुकान 1',
-      mustChangeSecret: true,
+      mustChangeSecret: false,
     },
     {
       username: 'shop2',
@@ -80,7 +80,7 @@ async function seedClean(options = {}) {
       role: 'shopkeeper',
       shopId: 'shop2',
       displayName: 'दुकान 2',
-      mustChangeSecret: true,
+      mustChangeSecret: false,
     },
   ]);
 

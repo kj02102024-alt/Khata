@@ -77,338 +77,134 @@
   }
 
   // ─── LOGIN ────────────────────────────────────────────────────────────────────
+  // ─── LOGIN ────────────────────────────────────────────────────────────────────
   function renderLogin() {
     const app = document.getElementById('app');
+    const remembered = localStorage.getItem('khata_remembered_user') || '';
+
     app.innerHTML = `
       <div class="login-shell">
         <div class="login-bg-pattern"></div>
-        <div class="login-center" id="login-center"></div>
-      </div>`;
-    // Check for remembered shop
-    const remembered = localStorage.getItem('khata_remembered_shop');
-    if (remembered) {
-      try {
-        const { shopId, shopLabel } = JSON.parse(remembered);
-        renderPinScreen(shopId, shopLabel);
-      } catch {
-        renderRolePicker();
-      }
-    } else {
-      renderRolePicker();
-    }
-  }
-
-  function renderRolePicker() {
-    const center = document.getElementById('login-center');
-    center.innerHTML = `
-      <div class="login-brand">
-        <svg class="brand-ledger" viewBox="0 0 48 48" fill="none" aria-hidden="true">
-          <rect x="6" y="4" width="28" height="40" rx="4" fill="#0f3d2e" opacity=".9"/>
-          <rect x="10" y="4" width="28" height="40" rx="4" fill="#1a5c45" opacity=".8"/>
-          <rect x="14" y="4" width="28" height="40" rx="4" fill="#2d7a5c"/>
-          <line x1="20" y1="16" x2="36" y2="16" stroke="#f4efe4" stroke-width="2" stroke-linecap="round"/>
-          <line x1="20" y1="22" x2="36" y2="22" stroke="#f4efe4" stroke-width="2" stroke-linecap="round"/>
-          <line x1="20" y1="28" x2="30" y2="28" stroke="#f4efe4" stroke-width="2" stroke-linecap="round" opacity=".6"/>
-        </svg>
-        <h1 class="login-wordmark">खाता</h1>
-        <p class="login-tagline">आपका हिसाब, आपकी आवाज़ में</p>
-      </div>
-      <div class="login-role-cards" role="group" aria-label="भूमिका चुनें">
-        <button class="login-role-card" id="role-shop" type="button" aria-label="दुकान का हिसाब">
-          <span class="role-icon">🧵</span>
-          <span class="role-label">दुकान का हिसाब</span>
-          <span class="role-sub">PIN से लॉगिन</span>
-        </button>
-        <button class="login-role-card login-role-card--admin" id="role-admin" type="button" aria-label="मालिक Admin">
-          <span class="role-icon">📊</span>
-          <span class="role-label">मालिक (Admin)</span>
-          <span class="role-sub">Password से</span>
-        </button>
-      </div>`;
-
-    document.getElementById('role-shop').onclick = renderShopPicker;
-    document.getElementById('role-admin').onclick = renderAdminLogin;
-  }
-
-  function renderShopPicker() {
-    const center = document.getElementById('login-center');
-    center.innerHTML = `
-      <div class="login-brand login-brand--small">
-        <h1 class="login-wordmark">खाता</h1>
-        <p class="login-tagline">दुकान चुनें</p>
-      </div>
-      <div class="shop-cards" id="shop-cards"><div class="login-loading">लोड हो रहा है…</div></div>
-      <button class="login-back" id="back-roles" type="button">← वापस</button>`;
-
-    document.getElementById('back-roles').onclick = renderRolePicker;
-
-    api('/auth/shops')
-      .then(({ shops }) => renderShopCards(shops))
-      .catch(() => renderShopCards([
-        { shopId: 'shop1', nameHi: 'दुकान 1' },
-        { shopId: 'shop2', nameHi: 'दुकान 2' },
-      ]));
-  }
-
-  function renderShopCards(shops) {
-    const box = document.getElementById('shop-cards');
-    if (!box) return;
-    box.innerHTML = shops.map((s) => `
-      <button class="shop-pick-card" type="button" data-shopid="${escapeHtml(s.shopId)}" data-label="${escapeHtml(s.nameHi)}">
-        <span class="shop-pick-icon">🏪</span>
-        <span>${escapeHtml(s.nameHi)}</span>
-      </button>`).join('');
-    box.querySelectorAll('.shop-pick-card').forEach((btn) => {
-      btn.onclick = () => renderPinScreen(btn.dataset.shopid, btn.dataset.label);
-    });
-  }
-
-  function renderPinScreen(shopId, label) {
-    const center = document.getElementById('login-center');
-    if (!center) {
-      // Page might not have login-center, rebuild shell
-      const app = document.getElementById('app');
-      app.innerHTML = `<div class="login-shell"><div class="login-bg-pattern"></div><div class="login-center" id="login-center"></div></div>`;
-      return renderPinScreen(shopId, label);
-    }
-
-    let pin = '';
-    let failCount = parseInt(localStorage.getItem(`khata_fails_${shopId}`) || '0', 10);
-    const lockKey = `khata_lock_${shopId}`;
-    const lockedUntil = parseInt(localStorage.getItem(lockKey) || '0', 10);
-
-    center.innerHTML = `
-      <div class="login-brand login-brand--small">
-        <h1 class="login-wordmark">${escapeHtml(label)}</h1>
-        <p class="login-tagline">पिन डालें</p>
-      </div>
-      <div class="pin-dots" id="pin-dots" aria-live="polite" aria-label="PIN dots">
-        <span class="dot" data-idx="0"></span>
-        <span class="dot" data-idx="1"></span>
-        <span class="dot" data-idx="2"></span>
-        <span class="dot" data-idx="3"></span>
-      </div>
-      <div id="pin-err" class="pin-err" role="alert"></div>
-      <div class="pin-pad" id="pin-pad" role="group" aria-label="Number pad"></div>
-      <div class="pin-footer">
-        <label class="remember-label">
-          <input type="checkbox" id="remember-me" checked /> इस फ़ोन पर याद रखें
-        </label>
-        <button class="pin-forgot" type="button" id="pin-forgot">पिन भूल गए?</button>
-      </div>
-      <button class="login-back" id="back-shops" type="button">← दूसरी दुकान</button>`;
-
-    // Build keypad
-    const pad = document.getElementById('pin-pad');
-    const keys = ['1','2','3','4','5','6','7','8','9','⌫','0','✓'];
-    keys.forEach((k) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'pin-key' + (k === '✓' ? ' pin-key--ok' : k === '⌫' ? ' pin-key--del' : '');
-      btn.textContent = k;
-      btn.setAttribute('aria-label', k === '⌫' ? 'हटाएँ' : k === '✓' ? 'ठीक है' : k);
-      btn.onclick = () => {
-        // Haptic
-        if (navigator.vibrate) navigator.vibrate(10);
-        if (k === '⌫') { pin = pin.slice(0, -1); }
-        else if (k === '✓') { submitPin(); return; }
-        else if (pin.length < 4) { pin += k; }
-        updateDots();
-        if (pin.length === 4) submitPin();
-      };
-      pad.appendChild(btn);
-    });
-
-    // Check lockout
-    if (Date.now() < lockedUntil) {
-      showLockout();
-    }
-
-    document.getElementById('back-shops').onclick = renderShopPicker;
-    document.getElementById('pin-forgot').onclick = () => showForgotPin(shopId);
-
-    function updateDots() {
-      document.querySelectorAll('.dot').forEach((d, i) => {
-        d.classList.toggle('filled', i < pin.length);
-      });
-    }
-
-    async function submitPin() {
-      const errEl = document.getElementById('pin-err');
-      const now = Date.now();
-      const lu = parseInt(localStorage.getItem(lockKey) || '0', 10);
-      if (now < lu) { showLockout(); return; }
-
-      errEl.textContent = '';
-      pad.querySelectorAll('.pin-key').forEach((b) => (b.disabled = true));
-      errEl.textContent = 'जाँच हो रहा है…';
-      try {
-        const { user } = await api('/auth/pin-login', { method: 'POST', body: { shopId, pin } });
-        localStorage.removeItem(`khata_fails_${shopId}`);
-        localStorage.removeItem(lockKey);
-        if (document.getElementById('remember-me')?.checked) {
-          localStorage.setItem('khata_remembered_shop', JSON.stringify({ shopId, shopLabel: label }));
-        } else {
-          localStorage.removeItem('khata_remembered_shop');
-        }
-        state.user = user;
-        if (user.mustChangeSecret) {
-          renderChangePinScreen(shopId, label);
-        } else {
-          route();
-        }
-      } catch (e) {
-        pin = '';
-        updateDots();
-        failCount++;
-        localStorage.setItem(`khata_fails_${shopId}`, String(failCount));
-        if (failCount >= 5 || e.status === 423) {
-          const until = Date.now() + 5 * 60 * 1000;
-          localStorage.setItem(lockKey, String(until));
-          showLockout();
-        } else {
-          pad.querySelectorAll('.pin-key').forEach((b) => (b.disabled = false));
-          errEl.textContent = e.message || 'पिन ग़लत है, फिर से कोशिश कीजिए';
-          // Shake animation
-          const dots = document.getElementById('pin-dots');
-          if (dots) { dots.classList.add('shake'); setTimeout(() => dots.classList.remove('shake'), 500); }
-        }
-      }
-    }
-
-    function showLockout() {
-      const lu = parseInt(localStorage.getItem(lockKey) || '0', 10);
-      const mins = Math.max(1, Math.ceil((lu - Date.now()) / 60000));
-      document.getElementById('pin-err').textContent = `पिन बंद है — ${mins} मिनट बाद फिर कोशिश करें`;
-      pad.querySelectorAll('.pin-key').forEach((b) => (b.disabled = true));
-      setTimeout(() => {
-        if (Date.now() >= lu) {
-          localStorage.removeItem(lockKey);
-          localStorage.removeItem(`khata_fails_${shopId}`);
-          pad.querySelectorAll('.pin-key').forEach((b) => (b.disabled = false));
-          document.getElementById('pin-err').textContent = '';
-          failCount = 0;
-        }
-      }, (lu - Date.now()) + 1000);
-    }
-  }
-
-  function showForgotPin(shopId) {
-    // Try to get admin phone from localStorage if cached
-    const adminPhone = localStorage.getItem('khata_admin_phone') || '';
-    const msg = adminPhone
-      ? `मालिक को फ़ोन करें: ${adminPhone}`
-      : 'मालिक से संपर्क करें — वे Admin Portal में पिन बदल सकते हैं।';
-    toast(msg, { ms: 8000 });
-  }
-
-  function renderChangePinScreen(shopId, label) {
-    const center = document.getElementById('login-center');
-    if (!center) return route();
-    center.innerHTML = `
-      <div class="login-brand login-brand--small">
-        <h1 class="login-wordmark">नया पिन बनाएँ</h1>
-        <p class="login-tagline">पहली बार में पिन बदलना ज़रूरी है</p>
-      </div>
-      <div class="change-pin-form">
-        <div class="field">
-          <label for="old-pin">पुराना पिन</label>
-          <input id="old-pin" type="password" inputmode="numeric" maxlength="6" placeholder="····" autocomplete="current-password" />
-        </div>
-        <div class="field">
-          <label for="new-pin">नया पिन (4 अंक)</label>
-          <input id="new-pin" type="password" inputmode="numeric" maxlength="4" placeholder="····" autocomplete="new-password" />
-        </div>
-        <div class="field">
-          <label for="confirm-pin">नया पिन फिर से</label>
-          <input id="confirm-pin" type="password" inputmode="numeric" maxlength="4" placeholder="····" autocomplete="new-password" />
-        </div>
-        <div id="cp-err" class="pin-err" role="alert"></div>
-        <button class="btn-save" type="button" id="save-pin">✅ पिन बदलें</button>
-      </div>`;
-
-    document.getElementById('save-pin').onclick = async () => {
-      const old = document.getElementById('old-pin').value;
-      const nw = document.getElementById('new-pin').value;
-      const conf = document.getElementById('confirm-pin').value;
-      const errEl = document.getElementById('cp-err');
-      errEl.textContent = '';
-      if (nw.length !== 4 || !/^\d{4}$/.test(nw)) {
-        errEl.textContent = 'नया पिन 4 अंक का होना चाहिए'; return;
-      }
-      if (nw !== conf) {
-        errEl.textContent = 'दोनों पिन एक जैसे नहीं हैं'; return;
-      }
-      try {
-        await api('/auth/change-secret', { method: 'POST', body: { currentSecret: old, newSecret: nw } });
-        state.user = { ...state.user, mustChangeSecret: false };
-        toast('पिन बदल गया ✓');
-        route();
-      } catch (e) {
-        errEl.textContent = e.message || 'बदलाव नहीं हुआ';
-      }
-    };
-  }
-
-  function renderAdminLogin() {
-    const center = document.getElementById('login-center');
-    center.innerHTML = `
-      <div class="admin-login-wrap">
-        <div class="admin-login-brand">
-          <h1>Khata</h1>
-          <p>Pro Admin Portal</p>
-        </div>
-        <form class="admin-login-form" id="admin-form" novalidate>
-          <div class="field">
-            <label for="adm-user">Username</label>
-            <input id="adm-user" name="username" autocomplete="username" inputmode="text"
-                   required placeholder="admin" aria-required="true" />
+        <div class="login-card">
+          <div class="login-brand">
+            <svg class="brand-ledger" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+              <rect x="6" y="4" width="28" height="40" rx="4" fill="#0f3d2e" opacity=".9"/>
+              <rect x="10" y="4" width="28" height="40" rx="4" fill="#1a5c45" opacity=".8"/>
+              <rect x="14" y="4" width="28" height="40" rx="4" fill="#2d7a5c"/>
+              <line x1="20" y1="16" x2="36" y2="16" stroke="#f4efe4" stroke-width="2" stroke-linecap="round"/>
+              <line x1="20" y1="22" x2="36" y2="22" stroke="#f4efe4" stroke-width="2" stroke-linecap="round"/>
+              <line x1="20" y1="28" x2="30" y2="28" stroke="#f4efe4" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+            </svg>
+            <h1 class="login-wordmark">खाता (Khata)</h1>
+            <p class="login-tagline">दुकान का आसान और आधुनिक हिसाब</p>
           </div>
-          <div class="field">
-            <label for="adm-pass">Password</label>
-            <div class="pass-wrap">
-              <input id="adm-pass" name="password" type="password" autocomplete="current-password"
-                     required placeholder="••••••••" aria-required="true" />
-              <button type="button" class="eye-btn" id="eye-toggle" aria-label="पासवर्ड दिखाएँ">👁</button>
+
+          <form class="normal-login-form" id="login-form" novalidate>
+            <div id="login-err" class="login-err" role="alert"></div>
+
+            <div class="quick-pick-row">
+              <span class="quick-pick-label">जल्दी चुनें:</span>
+              <button type="button" class="quick-pick-btn" data-user="shop1">दुकान 1</button>
+              <button type="button" class="quick-pick-btn" data-user="shop2">दुकान 2</button>
+              <button type="button" class="quick-pick-btn" data-user="admin">एडमिन</button>
             </div>
-          </div>
-          <label class="remember-label" style="margin-bottom:16px">
-            <input type="checkbox" id="adm-remember" /> Remember me
-          </label>
-          <div id="adm-err" class="login-err" role="alert"></div>
-          <button class="btn-admin-login" type="submit" id="adm-submit">
-            <span id="adm-btn-text">Sign in →</span>
-          </button>
-        </form>
-        <button class="login-back" id="back-roles-adm" type="button">← वापस</button>
+
+            <div class="field">
+              <label for="login-username">उपयोगकर्ता नाम / दुकान (Username)</label>
+              <input id="login-username" name="username" type="text" autocomplete="username"
+                     required placeholder="उदा. shop1, shop2 या admin" value="${escapeHtml(remembered)}" />
+            </div>
+
+            <div class="field">
+              <label for="login-password">पासवर्ड या पिन (Password / PIN)</label>
+              <div class="pass-wrap">
+                <input id="login-password" name="password" type="password" autocomplete="current-password"
+                       required placeholder="अपना पासवर्ड या पिन डालें" />
+                <button type="button" class="eye-btn" id="login-eye-toggle" aria-label="पासवर्ड दिखाएँ" title="पासवर्ड देखें">👁</button>
+              </div>
+            </div>
+
+            <div class="login-options">
+              <label class="remember-label">
+                <input type="checkbox" id="login-remember" ${remembered ? 'checked' : ''} />
+                <span>मुझे याद रखें (Remember me)</span>
+              </label>
+            </div>
+
+            <button class="btn-login-submit" type="submit" id="login-btn">
+              <span id="login-btn-text">लॉगिन करें (Sign In) →</span>
+            </button>
+
+            <p class="login-footer-hint">दुकानदार अपने 4-अंकों के पिन से भी लॉगिन कर सकते हैं।</p>
+          </form>
+        </div>
       </div>`;
 
-    document.getElementById('back-roles-adm').onclick = renderRolePicker;
-    document.getElementById('eye-toggle').onclick = () => {
-      const inp = document.getElementById('adm-pass');
-      inp.type = inp.type === 'password' ? 'text' : 'password';
-    };
+    // Quick select buttons
+    document.querySelectorAll('.quick-pick-btn').forEach((btn) => {
+      btn.onclick = () => {
+        const u = btn.dataset.user;
+        const uInput = document.getElementById('login-username');
+        const pInput = document.getElementById('login-password');
+        if (uInput) {
+          uInput.value = u;
+          if (pInput) pInput.focus();
+        }
+      };
+    });
 
-    document.getElementById('admin-form').onsubmit = async (e) => {
-      e.preventDefault();
-      const username = document.getElementById('adm-user').value.trim();
-      const password = document.getElementById('adm-pass').value;
-      const errEl = document.getElementById('adm-err');
-      const btn = document.getElementById('adm-submit');
-      errEl.textContent = '';
-      if (!username || !password) { errEl.textContent = 'Username and password required'; return; }
-      btn.disabled = true;
-      document.getElementById('adm-btn-text').textContent = 'Signing in…';
-      try {
-        const { user } = await api('/auth/login', { method: 'POST', body: { username, password } });
-        state.user = user;
-        route();
-      } catch (err) {
-        errEl.textContent = err.message || 'Login failed';
-        btn.disabled = false;
-        document.getElementById('adm-btn-text').textContent = 'Sign in →';
-      }
-    };
+    // Eye toggle
+    const eyeBtn = document.getElementById('login-eye-toggle');
+    if (eyeBtn) {
+      eyeBtn.onclick = () => {
+        const pInput = document.getElementById('login-password');
+        if (pInput) {
+          pInput.type = pInput.type === 'password' ? 'text' : 'password';
+        }
+      };
+    }
+
+    // Submit handler
+    const form = document.getElementById('login-form');
+    if (form) {
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('login-username').value.trim();
+        const password = document.getElementById('login-password').value;
+        const errEl = document.getElementById('login-err');
+        const btn = document.getElementById('login-btn');
+        const btnText = document.getElementById('login-btn-text');
+
+        errEl.textContent = '';
+        if (!username || !password) {
+          errEl.textContent = 'कृपया नाम और पासवर्ड/पिन दोनों दर्ज करें';
+          return;
+        }
+
+        btn.disabled = true;
+        btnText.textContent = 'जाँच हो रही है…';
+
+        try {
+          const { user } = await api('/auth/login', {
+            method: 'POST',
+            body: { username, password },
+          });
+
+          if (document.getElementById('login-remember')?.checked) {
+            localStorage.setItem('khata_remembered_user', username);
+          } else {
+            localStorage.removeItem('khata_remembered_user');
+          }
+
+          state.user = user;
+          route();
+        } catch (err) {
+          errEl.textContent = err.data?.errorHi || err.message || 'लॉगिन असफल रहा';
+          btn.disabled = false;
+          btnText.textContent = 'लॉगिन करें (Sign In) →';
+        }
+      };
+    }
   }
 
   async function logout() {
