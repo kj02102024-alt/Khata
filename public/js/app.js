@@ -35,6 +35,7 @@
       rotate: 'Rotate 90°', contrast: 'Contrast', brightness: 'Brightness',
       recycleBin: 'Recycle Bin', allShops: 'All Shops', allTypes: 'All Types',
       allStatuses: 'All Statuses', drilldown: 'View Ledger', recalcBalance: 'Recalculate Balance',
+      labour: 'Labour & Payroll',
       searchPlaceholder: 'Search name, village, mobile, item, amount...',
       page: 'Page', of: 'of', entries: 'entries',
     },
@@ -58,6 +59,7 @@
       rotate: 'घुमाएँ 90°', contrast: 'कंट्रास्ट', brightness: 'रोशनी',
       recycleBin: 'कचरापेटी (Recycle Bin)', allShops: 'सभी दुकानें', allTypes: 'सभी प्रकार',
       allStatuses: 'सभी स्थितियाँ', drilldown: 'खाता देखें', recalcBalance: 'बैलेंस पुनः जांचें',
+      labour: 'मज़दूर व वेतन (Labour)',
       searchPlaceholder: 'नाम, गाँव, मोबाइल, डायरी नं. या सामान से खोजें...',
       page: 'पेज', of: 'का', entries: 'रिकॉर्ड्स',
     },
@@ -328,6 +330,10 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
               <span>${t('customers')}</span>
             </button>
+            <button class="a-nav-item ${state.adminView === 'labour' ? 'active' : ''}" data-view="labour">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>${t('labour')}</span>
+            </button>
             <button class="a-nav-item ${state.adminView === 'audit' ? 'active' : ''}" data-view="audit">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               <span>${t('audit')}</span>
@@ -427,6 +433,10 @@
       customers: {
         title: t('customers'),
         sub: isHi ? 'ग्राहक बहीखाता व व्यक्तिगत हिसाब' : 'Searchable Customer Directory & Ledger Drill-down',
+      },
+      labour: {
+        title: isHi ? 'मज़दूर प्रबंधन व वेतन खाता' : 'Labour & Payroll Management',
+        sub: isHi ? 'कारीगरों व स्टाफ की हाज़िरी, एडवांस व वेतन भुगतान का केंद्रीकृत खाता' : 'Centralized Labour Profiles, Advance Tracking & Payroll Ledger',
       },
       audit: {
         title: t('audit'),
@@ -532,6 +542,7 @@
     else if (state.adminView === 'review') loadReviewQueue();
     else if (state.adminView === 'ledger') loadLedger();
     else if (state.adminView === 'customers') loadCustomers();
+    else if (state.adminView === 'labour') loadLabour();
     else if (state.adminView === 'audit') loadAudit();
   }
 
@@ -2742,6 +2753,719 @@
     } catch (err) {
       document.getElementById('cq-mod-body').innerHTML = `<div style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
     }
+  }
+
+  // ─── ADMIN: LABOUR & PAYROLL MANAGEMENT ─────────────────────────────────────
+  async function loadLabour() {
+    const el = document.getElementById('a-content');
+    const isHi = state.lang === 'hi';
+
+    el.innerHTML = `
+      <!-- KPI Metric Summary Cards -->
+      <div class="a-labour-kpi-grid" id="al-kpi-row">
+        <div class="a-labour-kpi-card" style="border-left:4px solid #3b82f6">
+          <div class="muted" style="font-size:.8rem;font-weight:700">${isHi ? '👷 सक्रिय मज़दूर / स्टाफ' : 'Active Labours / Staff'}</div>
+          <div class="a-labour-kpi-val" id="al-active-count" style="color:#1d4ed8">—</div>
+          <div style="font-size:.75rem;color:#64748b" id="al-total-sub">लोड हो रहा है…</div>
+        </div>
+        <div class="a-labour-kpi-card" style="border-left:4px solid #10b981">
+          <div class="muted" style="font-size:.8rem;font-weight:700">${isHi ? '💸 इस महीने दिया गया भुगतान' : 'Total Paid This Month'}</div>
+          <div class="a-labour-kpi-val" id="al-paid-month" style="color:#059669">—</div>
+          <div style="font-size:.75rem;color:#64748b">${isHi ? 'सैलरी व एडवांस भुगतान' : 'Salary + Advance payouts'}</div>
+        </div>
+        <div class="a-labour-kpi-card" style="border-left:4px solid #f59e0b">
+          <div class="muted" style="font-size:.8rem;font-weight:700">${isHi ? '⏳ कुल देय बाकी वेतन' : 'Net Wages Pending'}</div>
+          <div class="a-labour-kpi-val" id="al-pending-wage" style="color:#b45309">—</div>
+          <div style="font-size:.75rem;color:#64748b">${isHi ? 'मज़दूरों को भुगतान करना बाकी' : 'Owed to labours'}</div>
+        </div>
+        <div class="a-labour-kpi-card" style="border-left:4px solid #06b6d4">
+          <div class="muted" style="font-size:.8rem;font-weight:700">${isHi ? '💼 कुल बकाया एडवांस' : 'Advance Outstanding'}</div>
+          <div class="a-labour-kpi-val" id="al-advance-out" style="color:#0891b2">—</div>
+          <div style="font-size:.75rem;color:#64748b">${isHi ? 'स्टाफ के पास जमा एडवांस' : 'Advance with staff'}</div>
+        </div>
+      </div>
+
+      <!-- Filter Controls Toolbar -->
+      <div class="a-filter-bar">
+        <div class="a-search-box">
+          <svg class="a-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="al-search-input" placeholder="${isHi ? 'मज़दूर का नाम, काम, फोन से खोजें...' : 'Search by name, role, phone...'}" />
+        </div>
+
+        <select class="a-select" id="al-shop-select">
+          <option value="all">${t('allShops')}</option>
+          <option value="shop1">${isHi ? 'दुकान 1 (Shop 1)' : 'Shop 1'}</option>
+          <option value="shop2">${isHi ? 'दुकान 2 (Shop 2)' : 'Shop 2'}</option>
+        </select>
+
+        <select class="a-select" id="al-status-select">
+          <option value="active">${isHi ? 'काम पर हैं (Active)' : 'Active Labours'}</option>
+          <option value="inactive">${isHi ? 'पुराने (Inactive)' : 'Inactive Labours'}</option>
+          <option value="all">${isHi ? 'सभी मज़दूर (All)' : 'All Labours'}</option>
+        </select>
+
+        <button type="button" class="a-page-btn" id="al-btn-add" style="background:#1d4ed8;color:#ffffff;font-weight:700;display:inline-flex;align-items:center;gap:6px;padding:8px 16px;white-space:nowrap">
+          <span>➕</span>
+          <span>${isHi ? 'नया मज़दूर जोड़ें' : 'Add Labour'}</span>
+        </button>
+      </div>
+
+      <!-- Labour Data Table Container -->
+      <div class="a-table-container">
+        <div class="a-table-scroll">
+          <div id="al-table-wrap">
+            <p class="muted" style="text-align:center;padding:48px">${isHi ? 'मज़दूर सूची लोड हो रही है…' : 'Loading labour directory…'}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modals Root -->
+      <div id="al-modal-container"></div>`;
+
+    // Load Metrics
+    const loadMetrics = async () => {
+      try {
+        const shopId = document.getElementById('al-shop-select')?.value || 'all';
+        const res = await api(`/labour/metrics?shopId=${shopId}`);
+        document.getElementById('al-active-count').textContent = res.activeCount || '0';
+        document.getElementById('al-total-sub').textContent = `${isHi ? 'कुल दर्ज' : 'Total registered'}: ${res.totalCount || 0} (Shop 1: ${res.shop1Count || 0}, Shop 2: ${res.shop2Count || 0})`;
+        document.getElementById('al-paid-month').textContent = inr(res.totalPaidThisMonth || 0);
+        document.getElementById('al-pending-wage').textContent = inr(res.totalPendingWage || 0);
+        document.getElementById('al-advance-out').textContent = inr(res.totalAdvanceWithLabour || 0);
+      } catch (e) {
+        console.warn('Metrics failed:', e);
+      }
+    };
+
+    // Load Labours
+    const fetchLabours = async () => {
+      const q = (document.getElementById('al-search-input')?.value || '').trim();
+      const shopId = document.getElementById('al-shop-select')?.value || 'all';
+      const status = document.getElementById('al-status-select')?.value || 'active';
+
+      const wrap = document.getElementById('al-table-wrap');
+      if (!wrap) return;
+
+      try {
+        const params = new URLSearchParams();
+        if (q) params.set('q', q);
+        if (shopId !== 'all') params.set('shopId', shopId);
+        if (status !== 'all') params.set('status', status);
+
+        const { labours } = await api(`/labour?${params}`);
+        if (!labours || !labours.length) {
+          wrap.innerHTML = `
+            <div style="text-align:center;padding:48px;color:#64748b">
+              <p style="font-size:1.1rem;font-weight:700;margin:0 0 6px">${isHi ? 'कोई मज़दूर रिकॉर्ड नहीं मिला' : 'No labour records found'}</p>
+              <p style="font-size:.85rem;margin:0">${isHi ? "ऊपर '➕ नया मज़दूर जोड़ें' बटन से नया स्टाफ दर्ज करें।" : "Click 'Add Labour' button above to register staff."}</p>
+            </div>`;
+          return;
+        }
+
+        wrap.innerHTML = `
+          <table class="a-table">
+            <thead>
+              <tr>
+                <th>${isHi ? 'मज़दूर (Labour)' : 'Labour Profile'}</th>
+                <th>${isHi ? 'दुकान (Shop)' : 'Shop'}</th>
+                <th>${isHi ? 'संपर्क (Contact)' : 'Phone'}</th>
+                <th>${isHi ? 'तय वेतन दर' : 'Wage Rate'}</th>
+                <th>${isHi ? 'कुल बना / कुल दिया' : 'Earned / Paid'}</th>
+                <th>${isHi ? 'शुद्ध बाकी स्थिति' : 'Net Balance'}</th>
+                <th style="text-align:right">${isHi ? 'कार्य (Actions)' : 'Actions'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${labours.map((l) => {
+                const isOwed = l.balance > 0;
+                const isAdvance = l.balance < 0;
+                const balClass = isOwed ? 'color:#b45309;background:#fef3c7;border:1px solid #fde68a' :
+                                 isAdvance ? 'color:#0369a1;background:#e0f2fe;border:1px solid #bae6fd' :
+                                 'color:#15803d;background:#dcfce7;border:1px solid #bbf7d0';
+                const balText = isOwed ? `${isHi ? 'देना बाकी' : 'Owed'}: ${inr(l.balance)}` :
+                                isAdvance ? `${isHi ? 'एडवांस जमा' : 'Advance'}: ${inr(Math.abs(l.balance))}` :
+                                `${isHi ? 'चुकता ✓' : 'Settled ✓'}`;
+
+                const wageStr = l.wageAmount ? `₹${l.wageAmount.toLocaleString(isHi ? 'hi-IN' : 'en-IN')} / ${l.wageType === 'daily' ? (isHi ? 'दिन' : 'day') : (isHi ? 'माह' : 'mo')}` : '—';
+
+                return `
+                  <tr>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <div style="width:36px;height:36px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:900;display:grid;place-items:center;font-size:1.05rem">
+                          ${escapeHtml((l.name || 'L')[0].toUpperCase())}
+                        </div>
+                        <div>
+                          <div style="font-weight:800;color:#0f172a">${escapeHtml(l.name)}</div>
+                          <div style="font-size:.76rem;color:#1d4ed8;font-weight:700">${escapeHtml(l.roleTitle || 'कारीगर')}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="a-badge-pill shop">${escapeHtml(l.shopId)}</span>
+                    </td>
+                    <td>
+                      ${l.phone ? `<a href="tel:${escapeHtml(l.phone)}" style="color:#0369a1;font-weight:600;text-decoration:none">📞 ${escapeHtml(l.phone)}</a>` : '<span class="muted">—</span>'}
+                    </td>
+                    <td>
+                      <strong style="color:#0f172a">${wageStr}</strong>
+                    </td>
+                    <td>
+                      <div style="font-size:.82rem">
+                        <span style="color:#059669;font-weight:700">+${inr(l.totalEarned || 0)}</span>
+                        <span style="color:#64748b"> / </span>
+                        <span style="color:#dc2626;font-weight:700">−${inr(l.totalPaid || 0)}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span style="display:inline-block;padding:4px 10px;border-radius:10px;font-size:.82rem;font-weight:800;${balClass}">
+                        ${balText}
+                      </span>
+                    </td>
+                    <td style="text-align:right">
+                      <div style="display:inline-flex;gap:6px">
+                        <button type="button" class="a-page-btn al-btn-ledger" data-id="${l._id}" style="padding:6px 10px;font-size:.82rem;font-weight:700;background:#092c20;color:#ffffff">
+                          📖 ${isHi ? 'बहीखाता' : 'Ledger'}
+                        </button>
+                        <button type="button" class="a-page-btn al-btn-pay" data-id="${l._id}" data-name="${escapeHtml(l.name)}" style="padding:6px 10px;font-size:.82rem;font-weight:700;background:#dc2626;color:#ffffff">
+                          💸 ${isHi ? 'भुगतान' : 'Pay'}
+                        </button>
+                        <button type="button" class="a-action-btn edit al-btn-edit" data-id="${l._id}" title="Edit Profile">
+                          ✏️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+
+        // Wire Ledger Drilldown
+        wrap.querySelectorAll('.al-btn-ledger').forEach((b) => {
+          b.onclick = () => openLabourPassbookModal(b.dataset.id);
+        });
+
+        // Wire Quick Pay
+        wrap.querySelectorAll('.al-btn-pay').forEach((b) => {
+          b.onclick = () => {
+            const targetLabour = labours.find((x) => x._id === b.dataset.id);
+            if (targetLabour) openAdminLabourPayModal(targetLabour, () => { loadMetrics(); fetchLabours(); });
+          };
+        });
+
+        // Wire Edit Profile
+        wrap.querySelectorAll('.al-btn-edit').forEach((b) => {
+          b.onclick = () => {
+            const targetLabour = labours.find((x) => x._id === b.dataset.id);
+            if (targetLabour) openLabourProfileModal(targetLabour, () => { loadMetrics(); fetchLabours(); });
+          };
+        });
+
+      } catch (err) {
+        wrap.innerHTML = `<div style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
+      }
+    };
+
+    // Wire Filters
+    let timer = null;
+    document.getElementById('al-search-input').oninput = () => {
+      clearTimeout(timer);
+      timer = setTimeout(fetchLabours, 180);
+    };
+    document.getElementById('al-shop-select').onchange = () => { loadMetrics(); fetchLabours(); };
+    document.getElementById('al-status-select').onchange = fetchLabours;
+
+    // Wire Add Labour Button
+    document.getElementById('al-btn-add').onclick = () => {
+      openLabourProfileModal(null, () => { loadMetrics(); fetchLabours(); });
+    };
+
+    loadMetrics();
+    fetchLabours();
+  }
+
+  // ─── ADMIN: LABOUR PROFILE CREATE / EDIT MODAL ──────────────────────────────
+  function openLabourProfileModal(existingLabour, onSaved) {
+    const isEdit = !!existingLabour;
+    const isHi = state.lang === 'hi';
+    const container = document.getElementById('al-modal-container') || document.body;
+
+    const modal = document.createElement('div');
+    modal.className = 'a-modal-backdrop';
+    modal.style.zIndex = '1050';
+
+    modal.innerHTML = `
+      <div class="a-modal-card" style="max-width:520px;border-radius:18px;overflow:hidden">
+        <div class="a-modal-header" style="background:#eff6ff;border-bottom:1.5px solid #bfdbfe">
+          <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#1e40af">
+            ${isEdit ? (isHi ? '✏️ मज़दूर विवरण बदलें' : 'Edit Labour Profile') : (isHi ? '➕ नया मज़दूर जोड़ें' : 'Add New Labour Profile')}
+          </h3>
+          <button class="a-page-btn" id="lpm-close">✕</button>
+        </div>
+        <div class="a-modal-body" style="padding:16px 20px;max-height:80vh;overflow-y:auto">
+          <!-- Name -->
+          <div class="entry-field-row" style="margin-bottom:12px">
+            <label style="font-weight:700;font-size:.85rem;display:block;margin-bottom:4px">${isHi ? 'मज़दूर का पूरा नाम' : 'Full Name'} <span style="color:#dc2626">*</span></label>
+            <input class="entry-input" id="lpm-name" value="${escapeHtml(existingLabour?.name || '')}" placeholder="जैसे: रमेश कुमार" autofocus />
+          </div>
+
+          <!-- Shop & Role -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-weight:700;font-size:.85rem;display:block;margin-bottom:4px">${isHi ? 'दुकान (Shop)' : 'Shop'}</label>
+              <select class="a-select" id="lpm-shop" style="width:100%">
+                <option value="shop1" ${(existingLabour?.shopId || '') === 'shop1' ? 'selected' : ''}>Shop 1 (दुकान 1)</option>
+                <option value="shop2" ${(existingLabour?.shopId || '') === 'shop2' ? 'selected' : ''}>Shop 2 (दुकान 2)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-weight:700;font-size:.85rem;display:block;margin-bottom:4px">${isHi ? 'पद / काम (Role)' : 'Role'}</label>
+              <input class="entry-input" id="lpm-role" value="${escapeHtml(existingLabour?.roleTitle || 'कारीगर')}" placeholder="कारीगर, हेल्पर, दर्जी..." />
+            </div>
+          </div>
+
+          <!-- Phone & Status -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-weight:700;font-size:.85rem;display:block;margin-bottom:4px">${isHi ? 'मोबाइल नंबर' : 'Phone'}</label>
+              <input class="entry-input" type="tel" id="lpm-phone" value="${escapeHtml(existingLabour?.phone || '')}" placeholder="10-digit mobile" />
+            </div>
+            <div>
+              <label style="font-weight:700;font-size:.85rem;display:block;margin-bottom:4px">${isHi ? 'स्थिति (Status)' : 'Status'}</label>
+              <select class="a-select" id="lpm-status" style="width:100%">
+                <option value="active" ${(existingLabour?.status || 'active') === 'active' ? 'selected' : ''}>Active (काम पर हैं)</option>
+                <option value="inactive" ${(existingLabour?.status || '') === 'inactive' ? 'selected' : ''}>Inactive (पुराने)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Wage Type & Amount -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+            <div>
+              <label style="font-weight:700;font-size:.85rem;display:block;margin-bottom:4px">${isHi ? 'वेतन प्रकार' : 'Wage Type'}</label>
+              <select class="a-select" id="lpm-wage-type" style="width:100%">
+                <option value="monthly" ${(existingLabour?.wageType || 'monthly') === 'monthly' ? 'selected' : ''}>मासिक वेतन (Monthly)</option>
+                <option value="daily" ${(existingLabour?.wageType || '') === 'daily' ? 'selected' : ''}>दैनिक दिहाड़ी (Daily)</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-weight:700;font-size:.85rem;display:block;margin-bottom:4px">${isHi ? 'तय वेतन रकम ₹' : 'Wage Rate ₹'}</label>
+              <input class="entry-input" type="number" id="lpm-wage-amt" value="${existingLabour?.wageAmount || ''}" placeholder="0" />
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div style="margin-bottom:14px">
+            <label style="font-weight:700;font-size:.85rem;display:block;margin-bottom:4px">${isHi ? 'टिप्पणी / विवरण' : 'Notes'}</label>
+            <input class="entry-input" id="lpm-notes" value="${escapeHtml(existingLabour?.notes || '')}" placeholder="${isHi ? 'अतिरिक्त विवरण...' : 'Optional notes...'}" />
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button type="button" id="lpm-cancel" class="a-page-btn" style="flex:1;padding:12px;background:#f1f5f9;color:#475569">
+              ${isHi ? 'रद्द करें' : 'Cancel'}
+            </button>
+            <button type="button" id="lpm-save" class="a-page-btn" style="flex:2;padding:12px;background:#1d4ed8;color:#ffffff;font-weight:800">
+              ${isEdit ? (isHi ? '✓ बदलाव सहेजें' : 'Save Changes') : (isHi ? '✓ मज़दूर जोड़ें' : 'Register Labour')}
+            </button>
+          </div>
+        </div>
+      </div>`;
+
+    container.appendChild(modal);
+
+    const closeModal = () => { modal.remove(); };
+    modal.querySelector('#lpm-close').onclick = closeModal;
+    modal.querySelector('#lpm-cancel').onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+    modal.querySelector('#lpm-save').onclick = async () => {
+      const name = modal.querySelector('#lpm-name').value.trim();
+      if (!name) { toast(isHi ? 'कृपया मज़दूर का नाम लिखें' : 'Name is required'); return; }
+
+      const shopId = modal.querySelector('#lpm-shop').value;
+      const roleTitle = modal.querySelector('#lpm-role').value.trim();
+      const phone = modal.querySelector('#lpm-phone').value.trim();
+      const status = modal.querySelector('#lpm-status').value;
+      const wageType = modal.querySelector('#lpm-wage-type').value;
+      const wageAmount = Number(modal.querySelector('#lpm-wage-amt').value) || 0;
+      const notes = modal.querySelector('#lpm-notes').value.trim();
+
+      const saveBtn = modal.querySelector('#lpm-save');
+      saveBtn.disabled = true;
+
+      try {
+        if (isEdit) {
+          await api(`/labour/${existingLabour._id}`, {
+            method: 'PUT',
+            body: { name, shopId, roleTitle, phone, status, wageType, wageAmount, notes },
+          });
+          toast(isHi ? '✅ विवरण अपडेट हो गया' : 'Labour profile updated');
+        } else {
+          await api('/labour', {
+            method: 'POST',
+            body: { name, shopId, roleTitle, phone, status, wageType, wageAmount, notes },
+          });
+          toast(isHi ? `✅ मज़दूर "${name}" दर्ज हुए` : 'Labour registered');
+        }
+        playChime();
+        closeModal();
+        if (onSaved) onSaved();
+      } catch (err) {
+        toast(err.message || 'Error saving labour');
+        saveBtn.disabled = false;
+      }
+    };
+  }
+
+  // ─── ADMIN: QUICK PAY (ADVANCE / SALARY) MODAL ───────────────────────────────
+  function openAdminLabourPayModal(labour, onSaved) {
+    const isHi = state.lang === 'hi';
+    const container = document.getElementById('al-modal-container') || document.body;
+
+    const modal = document.createElement('div');
+    modal.className = 'a-modal-backdrop';
+    modal.style.zIndex = '1060';
+
+    let selectedMode = 'cash';
+    let selectedCat = 'advance';
+
+    modal.innerHTML = `
+      <div class="a-modal-card" style="max-width:480px;border-radius:18px;overflow:hidden">
+        <div class="a-modal-header" style="background:#fee2e2;border-bottom:1.5px solid #fecaca">
+          <div>
+            <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#991b1b">
+              💸 ${isHi ? 'मज़दूर को भुगतान दर्ज करें' : 'Record Labour Payment'}
+            </h3>
+            <div style="font-size:.82rem;color:#7f1d1d;margin-top:2px">
+              ${escapeHtml(labour.name)} (${escapeHtml(labour.roleTitle || 'कारीगर')}) · ${escapeHtml(labour.shopId)}
+            </div>
+          </div>
+          <button class="a-page-btn" id="lpay-close">✕</button>
+        </div>
+        <div class="a-modal-body" style="padding:16px 20px">
+          <!-- Quick Presets -->
+          <div style="margin-bottom:10px">
+            <label style="font-weight:700;font-size:.82rem;color:#0f172a;display:block;margin-bottom:4px">
+              ${isHi ? 'त्वरित रकम चुनें' : 'Presets'}:
+            </label>
+            <div class="chip-row" id="lpay-presets">
+              <button type="button" class="chip" data-amt="500">₹500</button>
+              <button type="button" class="chip" data-amt="1000">₹1,000</button>
+              <button type="button" class="chip" data-amt="2000">₹2,000</button>
+              <button type="button" class="chip" data-amt="5000">₹5,000</button>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:4px">
+              ${isHi ? 'भुगतान रकम' : 'Payment Amount'} <span style="color:#dc2626">*</span>
+            </label>
+            <div class="pb-amt-input-wrap">
+              <span class="pb-rupee-sign" style="color:#dc2626">₹</span>
+              <input type="number" id="lpay-amt" class="pb-amt-input" placeholder="0" autofocus />
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label style="font-weight:700;font-size:.85rem;color:#0f172a;display:block;margin-bottom:4px">
+              ${isHi ? 'भुगतान प्रकार' : 'Category'}:
+            </label>
+            <div class="chip-row" id="lpay-cat-chips">
+              <button type="button" class="chip chip--on" data-cat="advance">${isHi ? 'एडवांस (Advance)' : 'Advance'}</button>
+              <button type="button" class="chip" data-cat="salary">${isHi ? 'सैलरी भुगतान' : 'Salary Payout'}</button>
+              <button type="button" class="chip" data-cat="kharcha">${isHi ? 'खर्चा' : 'Expense'}</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label style="font-weight:700;font-size:.85rem;color:#0f172a;display:block;margin-bottom:4px">
+              ${isHi ? 'माध्यम' : 'Payment Mode'}:
+            </label>
+            <div class="chip-row" id="lpay-mode-chips">
+              <button type="button" class="chip chip--on" data-mode="cash">💵 ${isHi ? 'नकद' : 'Cash'}</button>
+              <button type="button" class="chip" data-mode="upi">📱 UPI / PhonePe</button>
+              <button type="button" class="chip" data-mode="bank">🏦 Bank</button>
+            </div>
+          </div>
+
+          <div style="margin-top:12px">
+            <label style="font-weight:700;font-size:.85rem;color:#64748b;display:block;margin-bottom:4px">
+              ${isHi ? 'टिप्पणी / विवरण' : 'Description'}
+            </label>
+            <input type="text" id="lpay-desc" class="entry-input" placeholder="${isHi ? 'जैसे: घर खर्च, दवा के लिए' : 'Optional description...'}" />
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:18px">
+            <button type="button" id="lpay-cancel" class="a-page-btn" style="flex:1;padding:12px;background:#f1f5f9;color:#475569">
+              ${isHi ? 'रद्द करें' : 'Cancel'}
+            </button>
+            <button type="button" id="lpay-save" class="a-page-btn" style="flex:2;padding:12px;background:#dc2626;color:#ffffff;font-weight:800">
+              ✓ ${isHi ? 'भुगतान दर्ज करें' : 'Save Payment'}
+            </button>
+          </div>
+        </div>
+      </div>`;
+
+    container.appendChild(modal);
+
+    const closeModal = () => { modal.remove(); };
+    modal.querySelector('#lpay-close').onclick = closeModal;
+    modal.querySelector('#lpay-cancel').onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+    modal.querySelectorAll('#lpay-presets button').forEach((b) => {
+      b.onclick = () => {
+        modal.querySelectorAll('#lpay-presets button').forEach((x) => x.classList.remove('chip--on'));
+        b.classList.add('chip--on');
+        modal.querySelector('#lpay-amt').value = b.dataset.amt;
+      };
+    });
+
+    modal.querySelectorAll('#lpay-cat-chips button').forEach((b) => {
+      b.onclick = () => {
+        modal.querySelectorAll('#lpay-cat-chips button').forEach((x) => x.classList.remove('chip--on'));
+        b.classList.add('chip--on');
+        selectedCat = b.dataset.cat;
+      };
+    });
+
+    modal.querySelectorAll('#lpay-mode-chips button').forEach((b) => {
+      b.onclick = () => {
+        modal.querySelectorAll('#lpay-mode-chips button').forEach((x) => x.classList.remove('chip--on'));
+        b.classList.add('chip--on');
+        selectedMode = b.dataset.mode;
+      };
+    });
+
+    modal.querySelector('#lpay-save').onclick = async () => {
+      const amt = Number(modal.querySelector('#lpay-amt').value);
+      if (!amt || amt <= 0) { toast(isHi ? 'कृपया सही रकम डालें' : 'Valid amount required'); return; }
+
+      const desc = modal.querySelector('#lpay-desc').value.trim();
+      const saveBtn = modal.querySelector('#lpay-save');
+      saveBtn.disabled = true;
+
+      try {
+        await api(`/labour/${labour._id}/entries`, {
+          method: 'POST',
+          body: {
+            type: 'payment',
+            amount: amt,
+            category: selectedCat,
+            paymentMode: selectedMode,
+            description: desc,
+          },
+        });
+        playChime();
+        toast(isHi ? `✅ भुगतान ${inr(amt)} दर्ज हुआ` : 'Payment recorded');
+        closeModal();
+        if (onSaved) onSaved();
+      } catch (err) {
+        toast(err.message || 'Payment failed');
+        saveBtn.disabled = false;
+      }
+    };
+  }
+
+  // ─── ADMIN: LABOUR PASSBOOK / LEDGER DRILL-DOWN MODAL ────────────────────────
+  async function openLabourPassbookModal(labourId) {
+    const isHi = state.lang === 'hi';
+    const container = document.getElementById('al-modal-container') || document.body;
+
+    const modal = document.createElement('div');
+    modal.className = 'a-modal-backdrop';
+    modal.style.zIndex = '1050';
+
+    modal.innerHTML = `
+      <div class="a-modal-card" style="max-width:820px;width:95%;max-height:92vh;display:flex;flex-direction:column;border-radius:20px;overflow:hidden">
+        <div class="a-modal-header" style="background:linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);color:#ffffff;flex-shrink:0">
+          <div>
+            <h3 id="lpb-title" style="margin:0;font-size:1.25rem;font-weight:900">📖 मज़दूर बहीखाता (Labour Ledger)</h3>
+            <div id="lpb-sub" style="font-size:.85rem;color:#bfdbfe;margin-top:2px">लोड हो रहा है…</div>
+          </div>
+          <button class="a-page-btn" id="lpb-close" style="background:rgba(255,255,255,.2);color:#ffffff;border:none">✕</button>
+        </div>
+
+        <div style="overflow-y:auto;flex:1;padding:16px 20px" id="lpb-body">
+          <p class="muted" style="text-align:center;padding:32px">लोड हो रहा है…</p>
+        </div>
+
+        <div style="padding:12px 18px;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;flex-shrink:0">
+          <div style="display:flex;gap:8px">
+            <button type="button" class="a-page-btn" id="lpb-add-pay" style="background:#dc2626;color:#ffffff;font-weight:800;padding:8px 14px">
+              🔴 💸 ${isHi ? 'पैसा दिया (Payment)' : 'Record Payment'}
+            </button>
+            <button type="button" class="a-page-btn" id="lpb-add-wage" style="background:#059669;color:#ffffff;font-weight:800;padding:8px 14px">
+              🟢 🗓️ ${isHi ? 'वेतन जोड़ा (Credit Wage)' : 'Credit Wage'}
+            </button>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="a-page-btn" id="lpb-wa" style="background:#25D366;color:#ffffff;font-weight:800;padding:8px 12px;border:none">
+              📲 WhatsApp
+            </button>
+            <button type="button" class="a-page-btn" onclick="window.print()" style="padding:8px 12px;background:#ffffff;border:1px solid #cbd5e1">
+              🖨️ ${isHi ? 'प्रिंट' : 'Print'}
+            </button>
+          </div>
+        </div>
+      </div>`;
+
+    container.appendChild(modal);
+
+    const closeModal = () => { modal.remove(); };
+    modal.querySelector('#lpb-close').onclick = closeModal;
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+    const refreshPassbook = async () => {
+      try {
+        const { labour, entries } = await api(`/labour/${labourId}/entries`);
+        modal.querySelector('#lpb-title').textContent = `📖 ${labour.name} — बहीखाता Passbook`;
+        modal.querySelector('#lpb-sub').textContent = `${escapeHtml(labour.roleTitle || 'कारीगर')} · ${escapeHtml(labour.shopId)} · तय दर: ₹${(labour.wageAmount || 0).toLocaleString('hi-IN')} / ${labour.wageType === 'daily' ? 'दिन' : 'माह'}`;
+
+        const isOwed = labour.balance > 0;
+        const isAdvance = labour.balance < 0;
+        const balLabel = isOwed ? (isHi ? 'बाकी वेतन देना है (Owed)' : 'Wages Owed to Labour') :
+                         isAdvance ? (isHi ? 'एडवांस जमा है (Advance with Labour)' : 'Advance with Staff') :
+                         (isHi ? 'खाता चुकता है ✓' : 'Account Settled ✓');
+        const balColor = isOwed ? '#b45309' : isAdvance ? '#0369a1' : '#15803d';
+
+        const body = modal.querySelector('#lpb-body');
+        body.innerHTML = `
+          <!-- Summary Banner -->
+          <div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:16px;padding:16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="font-size:.85rem;color:#64748b;font-weight:700">${balLabel}</div>
+              <div style="font-size:2rem;font-weight:900;color:${balColor};margin-top:2px">
+                ${inr(Math.abs(labour.balance || 0))}
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:.85rem;color:#64748b">
+                कुल बना: <strong style="color:#059669">${inr(labour.totalEarned || 0)}</strong>
+              </div>
+              <div style="font-size:.85rem;color:#64748b;margin-top:2px">
+                कुल भुगतान: <strong style="color:#dc2626">${inr(labour.totalPaid || 0)}</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Entries Table -->
+          <table class="a-table">
+            <thead>
+              <tr>
+                <th>${isHi ? 'तारीख' : 'Date'}</th>
+                <th>${isHi ? 'प्रकार' : 'Type'}</th>
+                <th>${isHi ? 'माध्यम' : 'Mode'}</th>
+                <th>${isHi ? 'विवरण' : 'Description'}</th>
+                <th>${isHi ? 'रकम' : 'Amount'}</th>
+                <th>${isHi ? 'बाकी' : 'Running Bal'}</th>
+                <th style="text-align:right">✕</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${!entries.length ? `<tr><td colspan="7" style="text-align:center;padding:32px;color:#64748b">${isHi ? 'कोई लेन-देन नहीं है' : 'No transactions recorded'}</td></tr>` : entries.map((e) => {
+                const isPay = e.type === 'payment';
+                const dStr = new Date(e.date || e.createdAt).toLocaleDateString(isHi ? 'hi-IN' : 'en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                return `
+                  <tr>
+                    <td><strong>${dStr}</strong></td>
+                    <td>
+                      <span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:.78rem;font-weight:800;background:${isPay ? '#fee2e2;color:#991b1b' : '#dcfce7;color:#166534'}">
+                        ${isPay ? (isHi ? '🔴 भुगतान' : 'Payment') : (isHi ? '🟢 वेतन जुड़ा' : 'Credit')} (${escapeHtml(e.category || '')})
+                      </span>
+                    </td>
+                    <td>${e.paymentMode ? `<span class="pb-mode-pill">${escapeHtml(e.paymentMode.toUpperCase())}</span>` : '—'}</td>
+                    <td>${escapeHtml(e.description || '—')}</td>
+                    <td>
+                      <strong style="color:${isPay ? '#dc2626' : '#059669'}">${isPay ? '−' : '+'}${inr(e.amount)}</strong>
+                    </td>
+                    <td>
+                      <strong style="color:#0f172a">${inr(Math.abs(e.runningBalance || 0))}</strong>
+                    </td>
+                    <td style="text-align:right">
+                      <button type="button" class="lpb-del-btn" data-eid="${e._id}" style="background:none;border:none;color:#dc2626;cursor:pointer;font-weight:800;font-size:1rem" title="Delete">🗑</button>
+                    </td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+
+        // Wire delete entry
+        body.querySelectorAll('.lpb-del-btn').forEach((btn) => {
+          btn.onclick = async () => {
+            if (!confirm(isHi ? 'क्या आप इस एंट्री को हटाना चाहते हैं?' : 'Delete this entry?')) return;
+            try {
+              await api(`/labour/${labourId}/entries/${btn.dataset.eid}`, { method: 'DELETE' });
+              toast(isHi ? 'एंट्री हटा दी गई' : 'Entry deleted');
+              refreshPassbook();
+            } catch (err) {
+              toast(err.message);
+            }
+          };
+        });
+
+        // WhatsApp Share
+        modal.querySelector('#lpb-wa').onclick = () => {
+          const shopTitle = labour.shopId === 'shop2' ? 'दुकान 2' : 'दुकान 1';
+          let msg = `*${shopTitle} — मज़दूर वेतन व हिसाब विवरण*\n`;
+          msg += `मज़दूर: *${labour.name}* (${labour.roleTitle || 'कारीगर'})\n`;
+          if (labour.wageAmount) {
+            msg += `तय दर: ₹${(labour.wageAmount || 0).toLocaleString('hi-IN')} / ${labour.wageType === 'daily' ? 'दिन' : 'माह'}\n`;
+          }
+          msg += `--------------------------------\n`;
+          msg += `कुल अर्जित वेतन: ₹${(labour.totalEarned || 0).toLocaleString('hi-IN')}\n`;
+          msg += `कुल भुगतान (एडवांस+वेतन): ₹${(labour.totalPaid || 0).toLocaleString('hi-IN')}\n`;
+          msg += `*वर्तमान स्थिति: ${balLabel} — ${inr(Math.abs(labour.balance || 0))}*\n`;
+          msg += `--------------------------------\n`;
+          msg += `हालिया लेन-देन:\n`;
+          entries.slice(0, 5).forEach((e) => {
+            const d = new Date(e.date || e.createdAt).toLocaleDateString('hi-IN', { day: '2-digit', month: 'short' });
+            msg += `• ${d}: ${e.type === 'salary_credit' ? '+ वेतन' : '- भुगतान'} ₹${(e.amount || 0).toLocaleString('hi-IN')}${e.description ? ` (${e.description})` : ''}\n`;
+          });
+          msg += `\n_धन्यवाद!_\n*${shopTitle}*`;
+
+          const phone = (labour.phone || '').replace(/\D/g, '');
+          const url = `https://wa.me/${phone.length === 10 ? '91' + phone : phone}?text=${encodeURIComponent(msg)}`;
+          window.open(url, '_blank');
+        };
+
+        // Modal Action: Add Payment
+        modal.querySelector('#lpb-add-pay').onclick = () => {
+          openAdminLabourPayModal(labour, () => refreshPassbook());
+        };
+
+        // Modal Action: Add Wage Credit
+        modal.querySelector('#lpb-add-wage').onclick = async () => {
+          const amtStr = prompt(isHi ? 'जोड़ने वाली वेतन रकम दर्ज करें (₹):' : 'Enter wage amount to credit (₹):', labour.wageAmount || '');
+          if (!amtStr) return;
+          const amt = Number(amtStr);
+          if (!amt || amt <= 0) { toast('Invalid amount'); return; }
+          const desc = prompt(isHi ? 'विवरण (जैसे: मई महीने का वेतन):' : 'Description (e.g. Monthly Salary):', labour.wageType === 'daily' ? 'हाज़िरी / दिहाड़ी' : 'महीने का वेतन') || '';
+
+          try {
+            await api(`/labour/${labourId}/entries`, {
+              method: 'POST',
+              body: {
+                type: 'salary_credit',
+                amount: amt,
+                category: labour.wageType === 'daily' ? 'daily_wage' : 'salary',
+                description: desc,
+              },
+            });
+            playChime();
+            toast(isHi ? '✅ वेतन जोड़ा गया' : 'Wage credited');
+            refreshPassbook();
+          } catch (err) {
+            toast(err.message);
+          }
+        };
+
+      } catch (err) {
+        modal.querySelector('#lpb-body').innerHTML = `<div style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
+      }
+    };
+
+    refreshPassbook();
   }
 
   // ─── ADMIN: AUDIT LOG & RECYCLE BIN ──────────────────────────────────────────

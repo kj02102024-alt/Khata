@@ -103,6 +103,8 @@
         diary: () => this.viewDiary(),
         pickVillage: () => this.viewPickVillage(),
         saved: () => this.viewSaved(),
+        labour: () => this.viewLabour(),
+        labourDetail: () => this.viewLabourDetail(),
       };
       await (map[this.screen] || map.home).call(this);
       this.root.querySelectorAll('[data-act="back"]').forEach((b) => (b.onclick = () => this.back()));
@@ -141,6 +143,11 @@
               <span class="p-card-label">ग्राहक खोजें</span>
               <span class="p-card-hint">बचा कितना है देखें</span>
             </button>
+            <button class="p-card p-card--labour" type="button" id="go-labour">
+              <span class="ico">👷</span>
+              <span class="p-card-label">मज़दूर हिसाब</span>
+              <span class="p-card-hint">हाज़िरी, एडवांस व वेतन खाता</span>
+            </button>
             <button class="p-card p-card--photo" type="button" id="go-diary">
               <span class="ico">📷</span>
               <span class="p-card-label">पुरानी डायरी की फोटो</span>
@@ -152,6 +159,7 @@
 
       document.getElementById('go-entry').onclick = () => { this.form = emptyForm(); this.go('entry'); };
       document.getElementById('go-search').onclick = () => this.go('search');
+      document.getElementById('go-labour').onclick = () => this.go('labour');
       document.getElementById('go-diary').onclick = () => this.go('diary');
       document.getElementById('logout').onclick = () => {
         g.KhataAPI.clearSession();
@@ -2203,6 +2211,718 @@
           toast(e.message || 'फोटो नहीं गई');
         }
       };
+    },
+
+    // ─── LABOUR MANAGEMENT: DIRECTORY & QUICK ENTRY ──────────────────────────
+    async viewLabour() {
+      this.root.innerHTML = `
+        <div class="p-shell p-screen">
+          ${this.nav()}
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <div>
+              <h1 style="margin:0;font-size:1.6rem;font-weight:900;color:var(--forest,#092c20)">👷 मज़दूर हिसाब</h1>
+              <p style="margin:2px 0 0;font-size:.9rem;color:var(--ink-soft,#64748b)">हाज़िरी, दैनिक मजदूरी, एडवांस व वेतन खाता</p>
+            </div>
+            <button type="button" id="btn-add-labour" class="a-page-btn" style="background:#1d4ed8;color:#ffffff;font-weight:800;font-size:.95rem;padding:10px 16px;border-radius:12px">
+              ➕ नया मज़दूर जोड़ें
+            </button>
+          </div>
+
+          <!-- Quick Search -->
+          <div class="search-box">
+            <input id="labour-search" placeholder="मज़दूर का नाम या काम खोजें..." lang="hi" />
+            <button class="mic-mini" type="button" id="labour-mic" aria-label="बोलकर खोजें">🎤</button>
+          </div>
+
+          <!-- Status filter tabs -->
+          <div class="tabs" role="tablist" id="labour-status-tabs" style="margin-bottom:14px">
+            <button role="tab" type="button" class="on" data-status="active">काम पर हैं (Active)</button>
+            <button role="tab" type="button" data-status="inactive">पुराने (Inactive)</button>
+            <button role="tab" type="button" data-status="all">सब मज़दूर</button>
+          </div>
+
+          <!-- Labour list container -->
+          <div id="labour-list-box"><p class="empty">लोड हो रहा है…</p></div>
+
+          <!-- Modal Container -->
+          <div id="labour-modal-root"></div>
+        </div>`;
+
+      let currentStatus = 'active';
+      const searchInp = document.getElementById('labour-search');
+
+      const loadLabours = async () => {
+        const q = (searchInp?.value || '').trim();
+        const box = document.getElementById('labour-list-box');
+        if (!box) return;
+
+        try {
+          const params = new URLSearchParams();
+          if (q) params.set('q', q);
+          if (currentStatus !== 'all') params.set('status', currentStatus);
+
+          const { labours } = await api(`/labour?${params}`);
+          if (!labours || !labours.length) {
+            box.innerHTML = `<div class="a-card" style="text-align:center;padding:32px;color:#64748b">
+              <p style="font-size:1.1rem;font-weight:700;margin:0 0 6px">कोई मज़दूर नहीं मिला</p>
+              <p style="font-size:.85rem;margin:0">ऊपर '➕ नया मज़दूर जोड़ें' बटन से नया नाम दर्ज करें।</p>
+            </div>`;
+            return;
+          }
+
+          box.innerHTML = labours.map((l) => {
+            const isOwed = l.balance > 0;
+            const isAdvance = l.balance < 0;
+            const balClass = isOwed ? 'labour-bal-pending' : isAdvance ? 'labour-bal-advance' : 'labour-bal-settled';
+            const balLabel = isOwed ? `बचा वेतन: ${inr(l.balance)} देना है` : isAdvance ? `एडवांस जमा: ${inr(Math.abs(l.balance))}` : 'हिसाब चुकता ✓';
+            const wageText = l.wageAmount ? `₹${l.wageAmount.toLocaleString('hi-IN')} / ${l.wageType === 'daily' ? 'दिन' : 'माह'}` : 'वेतन तय नहीं';
+
+            return `
+              <div class="labour-card" data-id="${l._id}">
+                <div class="labour-header-row">
+                  <div>
+                    <span class="labour-name-title">${escapeHtml(l.name)}</span>
+                    <span class="labour-role-tag">${escapeHtml(l.roleTitle || 'कारीगर')}</span>
+                  </div>
+                  <div class="labour-bal-badge ${balClass}">
+                    ${balLabel}
+                  </div>
+                </div>
+                <div class="labour-meta-grid">
+                  <span>💰 तय वेतन: <strong>${wageText}</strong></span>
+                  ${l.phone ? `<span>📞 <a href="tel:${escapeHtml(l.phone)}" style="color:#0369a1;text-decoration:none" onclick="event.stopPropagation()">${escapeHtml(l.phone)}</a></span>` : ''}
+                  <span>📅 जुड़ा: ${new Date(l.joiningDate || l.createdAt).toLocaleDateString('hi-IN', { month: 'short', year: 'numeric' })}</span>
+                </div>
+              </div>`;
+          }).join('');
+
+          box.querySelectorAll('.labour-card').forEach((card) => {
+            card.onclick = () => {
+              const id = card.dataset.id;
+              if (id) this.go('labourDetail', { id });
+            };
+          });
+        } catch (err) {
+          if (box) box.innerHTML = `<p class="empty" style="color:#dc2626">लोड करने में समस्या आई: ${escapeHtml(err.message)}</p>`;
+        }
+      };
+
+      // Search debounce
+      let timer = null;
+      if (searchInp) {
+        searchInp.oninput = () => {
+          clearTimeout(timer);
+          timer = setTimeout(loadLabours, 200);
+        };
+      }
+
+      // Voice Mic on Search
+      const micBtn = document.getElementById('labour-mic');
+      if (micBtn) {
+        micBtn.onclick = async () => {
+          stopActiveMic();
+          if (!g.VoiceEngine) { toast('आवाज़ उपलब्ध नहीं है'); return; }
+          micBtn.classList.add('mic-pulsing');
+          const eng = new g.VoiceEngine({ silenceMs: 2500 });
+          _activeMicEngine = eng;
+          try {
+            const spoken = await eng.listenOnce(5000);
+            if (spoken && searchInp) {
+              searchInp.value = spoken;
+              loadLabours();
+            }
+          } catch {}
+          micBtn.classList.remove('mic-pulsing');
+        };
+      }
+
+      // Filter tabs
+      this.root.querySelectorAll('#labour-status-tabs button').forEach((b) => {
+        b.onclick = () => {
+          this.root.querySelectorAll('#labour-status-tabs button').forEach((x) => x.classList.remove('on'));
+          b.classList.add('on');
+          currentStatus = b.dataset.status;
+          loadLabours();
+        };
+      });
+
+      // Wire Add Labour Modal
+      document.getElementById('btn-add-labour').onclick = () => {
+        this._showAddLabourModal(() => loadLabours());
+      };
+
+      loadLabours();
+    },
+
+    // ─── ADD LABOUR MODAL ────────────────────────────────────────────────────
+    _showAddLabourModal(onSaved) {
+      stopActiveMic();
+      const modalRoot = document.getElementById('labour-modal-root');
+      if (!modalRoot) return;
+
+      const roles = ['कारीगर / मास्टर', 'हेल्पर', 'दर्जी', 'पल्लेदार', 'सिलाई ऑपरेटर', 'दुकान सहायक'];
+      let selectedRole = 'कारीगर / मास्टर';
+      let selectedWageType = 'monthly';
+
+      modalRoot.innerHTML = `
+        <div class="a-modal-backdrop" id="add-labour-backdrop">
+          <div class="a-modal-card pb-modal-card" style="max-width:500px">
+            <div class="a-modal-header" style="background:#eff6ff;border-bottom:1.5px solid #bfdbfe">
+              <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#1e40af">➕ नया मज़दूर जोड़ें</h3>
+              <button class="a-page-btn" id="add-labour-close" style="padding:4px 10px;font-size:1.1rem">✕</button>
+            </div>
+            <div class="a-modal-body" style="padding:16px 20px;max-height:80vh;overflow-y:auto">
+              <!-- Name -->
+              <div class="entry-field-row">
+                <label class="entry-label">मज़दूर का नाम <span style="color:#dc2626">*</span></label>
+                <input class="entry-input" id="nl-name" placeholder="जैसे: रमेश कुमार" lang="hi" autofocus />
+              </div>
+
+              <!-- Phone -->
+              <div class="entry-field-row" style="margin-top:10px">
+                <label class="entry-label">मोबाइल नंबर (वैकल्पिक)</label>
+                <input class="entry-input" type="tel" inputmode="numeric" id="nl-phone" placeholder="10 अंक का फोन नंबर" />
+              </div>
+
+              <!-- Role Chips -->
+              <div class="entry-field-row" style="margin-top:10px">
+                <label class="entry-label">काम / पद (Role)</label>
+                <div class="chip-row" id="nl-role-chips">
+                  ${roles.map((r) => `<button type="button" class="chip ${r === selectedRole ? 'chip--on' : ''}" data-role="${escapeHtml(r)}">${escapeHtml(r)}</button>`).join('')}
+                </div>
+                <input class="entry-input" id="nl-role-custom" placeholder="या अन्य काम लिखें..." style="margin-top:6px;display:none" />
+              </div>
+
+              <!-- Wage Type & Amount -->
+              <div class="entry-field-row" style="margin-top:10px">
+                <label class="entry-label">वेतन का प्रकार व तय रकम</label>
+                <div class="chip-row" id="nl-wage-type-chips" style="margin-bottom:8px">
+                  <button type="button" class="chip chip--on" data-wtype="monthly">🗓 मासिक वेतन (Monthly)</button>
+                  <button type="button" class="chip" data-wtype="daily">⏰ दैनिक दिहाड़ी (Daily Wage)</button>
+                </div>
+                <div class="pb-amt-input-wrap">
+                  <span class="pb-rupee-sign" style="color:#1d4ed8">₹</span>
+                  <input type="number" id="nl-wage-amt" class="pb-amt-input" placeholder="0" />
+                </div>
+              </div>
+
+              <!-- Opening Balance (Optional) -->
+              <div style="margin-top:14px;background:#f8fafc;padding:12px;border-radius:12px;border:1px dashed #cbd5e1">
+                <label style="font-weight:700;font-size:.85rem;color:#475569;display:block;margin-bottom:6px">
+                  पिछला पुराना हिसाब (वैकल्पिक):
+                </label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <div>
+                    <label style="font-size:.78rem;color:#64748b;display:block;margin-bottom:2px">पुराना एडवांस दिया ₹</label>
+                    <input type="number" id="nl-init-adv" class="entry-input" placeholder="₹0" />
+                  </div>
+                  <div>
+                    <label style="font-size:.78rem;color:#64748b;display:block;margin-bottom:2px">पुराना वेतन बाकी ₹</label>
+                    <input type="number" id="nl-init-wage" class="entry-input" placeholder="₹0" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Save / Cancel Buttons -->
+              <div style="margin-top:20px;display:flex;gap:10px">
+                <button type="button" id="nl-cancel" class="a-page-btn" style="flex:1;padding:12px;background:#f1f5f9;color:#475569">रद्द करें</button>
+                <button type="button" id="nl-save" class="a-page-btn" style="flex:2;padding:12px;background:#1d4ed8;color:#ffffff;font-weight:800">✓ मज़दूर जोड़ें</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const close = () => { modalRoot.innerHTML = ''; };
+      document.getElementById('add-labour-close').onclick = close;
+      document.getElementById('nl-cancel').onclick = close;
+      document.getElementById('add-labour-backdrop').onclick = (e) => { if (e.target.id === 'add-labour-backdrop') close(); };
+
+      // Role chips
+      document.querySelectorAll('#nl-role-chips button').forEach((btn) => {
+        btn.onclick = () => {
+          document.querySelectorAll('#nl-role-chips button').forEach((b) => b.classList.remove('chip--on'));
+          btn.classList.add('chip--on');
+          selectedRole = btn.dataset.role;
+        };
+      });
+
+      // Wage type chips
+      document.querySelectorAll('#nl-wage-type-chips button').forEach((btn) => {
+        btn.onclick = () => {
+          document.querySelectorAll('#nl-wage-type-chips button').forEach((b) => b.classList.remove('chip--on'));
+          btn.classList.add('chip--on');
+          selectedWageType = btn.dataset.wtype;
+        };
+      });
+
+      // Save
+      document.getElementById('nl-save').onclick = async () => {
+        const name = (document.getElementById('nl-name')?.value || '').trim();
+        if (!name) { toast('कृपया मज़दूर का नाम लिखें'); return; }
+
+        const phone = (document.getElementById('nl-phone')?.value || '').trim();
+        const wageAmt = Number(document.getElementById('nl-wage-amt')?.value) || 0;
+        const initAdv = Number(document.getElementById('nl-init-adv')?.value) || 0;
+        const initWage = Number(document.getElementById('nl-init-wage')?.value) || 0;
+
+        const saveBtn = document.getElementById('nl-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'जोड़ रहे हैं...';
+
+        try {
+          await api('/labour', {
+            method: 'POST',
+            body: {
+              name,
+              phone,
+              roleTitle: selectedRole,
+              wageType: selectedWageType,
+              wageAmount: wageAmt,
+              initialAdvance: initAdv,
+              initialPendingWage: initWage,
+            },
+          });
+          playChime();
+          toast(`✅ मज़दूर "${name}" सफलतापूर्वक दर्ज हुए!`);
+          close();
+          if (onSaved) onSaved();
+        } catch (err) {
+          toast(err.message || 'मज़दूर नहीं जोड़ा जा सका');
+          saveBtn.disabled = false;
+          saveBtn.textContent = '✓ मज़दूर जोड़ें';
+        }
+      };
+    },
+
+    // ─── LABOUR DETAIL: DATE-WISE LEDGER & PASSBOOK ───────────────────────────
+    async viewLabourDetail() {
+      try {
+        const { labour, entries } = await api(`/labour/${this.data.id}`);
+        const user = getUser() || {};
+        const shopTitle = user.displayName || (labour.shopId === 'shop2' ? 'दुकान 2' : 'दुकान 1');
+
+        const isOwed = labour.balance > 0;
+        const isAdvance = labour.balance < 0;
+        const balLabel = isOwed ? 'बाकी वेतन (देना है)' : isAdvance ? 'एडवांस जमा (Labour के पास)' : 'हिसाब चुकता ✓';
+        const balColor = isOwed ? '#f59e0b' : isAdvance ? '#38bdf8' : '#4ade80';
+
+        this.root.innerHTML = `
+          <div class="p-shell p-screen passbook-shell">
+            ${this.nav()}
+
+            <!-- Labour Header Card -->
+            <div class="pinned-bacha" style="background:linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);color:#ffffff;border-radius:20px;padding:20px;margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+                <div>
+                  <h2 style="margin:0;font-size:1.45rem;font-weight:900">${escapeHtml(labour.name)}</h2>
+                  <div style="font-size:.9rem;color:#bfdbfe;margin-top:2px">
+                    <span>👷 ${escapeHtml(labour.roleTitle || 'कारीगर')}</span>
+                    ${labour.phone ? ` · 📞 <a href="tel:${escapeHtml(labour.phone)}" style="color:#ffffff;text-decoration:none">${escapeHtml(labour.phone)}</a>` : ''}
+                  </div>
+                  <div style="font-size:.82rem;color:rgba(255,255,255,.8);margin-top:4px">
+                    💰 तय दर: <strong>₹${(labour.wageAmount || 0).toLocaleString('hi-IN')} / ${labour.wageType === 'daily' ? 'दिन' : 'माह'}</strong>
+                    · 📅 जुड़ा: ${new Date(labour.joiningDate || labour.createdAt).toLocaleDateString('hi-IN')}
+                  </div>
+                </div>
+                <button type="button" id="ld-wa-share" class="a-page-btn" style="background:#25D366;color:#ffffff;font-weight:800;font-size:.85rem;padding:8px 12px;border:none">
+                  📲 WhatsApp
+                </button>
+              </div>
+
+              <!-- Big Balance Display -->
+              <div style="margin-top:16px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:12px 16px;text-align:center">
+                <div style="font-size:.85rem;color:rgba(255,255,255,.85)">${balLabel}</div>
+                <div style="font-size:2rem;font-weight:900;color:${balColor};margin-top:2px">
+                  ${inr(Math.abs(labour.balance))}
+                </div>
+                <div style="font-size:.8rem;color:rgba(255,255,255,.75);margin-top:4px">
+                  कुल बना वेतन: ₹${(labour.totalEarned || 0).toLocaleString('hi-IN')} | कुल दिया (एडवांस+भुगतान): ₹${(labour.totalPaid || 0).toLocaleString('hi-IN')}
+                </div>
+              </div>
+            </div>
+
+            <!-- Two Large Prominent Buttons -->
+            <div class="labour-dock-grid">
+              <button class="btn-labour-pay" type="button" id="ld-open-pay">
+                <span>🔴 💸 पैसा दिया</span>
+                <span style="font-size:.78rem;font-weight:500;opacity:.9">एडवांस या सैलरी भुगतान</span>
+              </button>
+              <button class="btn-labour-credit" type="button" id="ld-open-credit">
+                <span>🟢 🗓️ वेतन जोड़ा</span>
+                <span style="font-size:.78rem;font-weight:500;opacity:.9">मासिक वेतन या दिहाड़ी हाज़िरी</span>
+              </button>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="tabs" role="tablist" id="ld-entry-filter" style="margin-top:16px">
+              <button role="tab" type="button" class="on" data-filter="all">सब लेन-देन (${entries.length})</button>
+              <button role="tab" type="button" data-filter="payment">केवल भुगतान दिया</button>
+              <button role="tab" type="button" data-filter="salary_credit">केवल वेतन जुड़ा</button>
+            </div>
+
+            <!-- Date-wise Entries Container -->
+            <div class="diary-page" id="ld-entries-container" style="margin-top:12px">
+              ${this._renderLabourPassbookRows(entries)}
+            </div>
+
+            <div id="ld-modal-root"></div>
+          </div>`;
+
+        // Filter tabs
+        this.root.querySelectorAll('#ld-entry-filter button').forEach((btn) => {
+          btn.onclick = () => {
+            this.root.querySelectorAll('#ld-entry-filter button').forEach((x) => x.classList.remove('on'));
+            btn.classList.add('on');
+            const filt = btn.dataset.filter;
+            const filtered = filt === 'all' ? entries : entries.filter((e) => e.type === filt);
+            const container = document.getElementById('ld-entries-container');
+            if (container) container.innerHTML = this._renderLabourPassbookRows(filtered);
+          };
+        });
+
+        // WhatsApp Share
+        document.getElementById('ld-wa-share').onclick = () => {
+          this._sendLabourWhatsAppStatement(labour, entries, shopTitle);
+        };
+
+        // Open Pay Modal
+        document.getElementById('ld-open-pay').onclick = () => {
+          this._showLabourPayModal(labour, () => this.viewLabourDetail());
+        };
+
+        // Open Credit Modal
+        document.getElementById('ld-open-credit').onclick = () => {
+          this._showLabourCreditModal(labour, () => this.viewLabourDetail());
+        };
+
+      } catch (err) {
+        toast('मज़दूर खाता नहीं खुला: ' + (err.message || 'त्रुटि'));
+        this.back();
+      }
+    },
+
+    // ── Helper to render labour passbook rows ──
+    _renderLabourPassbookRows(entries) {
+      if (!entries || !entries.length) {
+        return `<div class="a-card" style="text-align:center;padding:32px;color:#64748b">
+          <p style="font-weight:700;margin:0">अभी कोई लेन-देन दर्ज नहीं है</p>
+          <p style="font-size:.85rem;margin:4px 0 0">ऊपर 'पैसा दिया' या 'वेतन जोड़ा' से नया हिसाब दर्ज करें।</p>
+        </div>`;
+      }
+
+      return entries.map((e) => {
+        const isPayment = e.type === 'payment';
+        const dObj = new Date(e.date || e.createdAt);
+        const dateStr = dObj.toLocaleDateString('hi-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+        return `
+          <div class="passbook-row ${isPayment ? 'pb-row--payment' : 'pb-row--sale'}" style="margin-bottom:10px">
+            <div class="pb-col-main">
+              <div class="pb-item-title">
+                <strong style="color:var(--ink,#0f172a);font-size:1.05rem">
+                  ${isPayment ? '🔴 पैसा दिया' : '🟢 वेतन जुड़ा'}
+                </strong>
+                <span style="font-size:.8rem;font-weight:700;padding:2px 8px;border-radius:6px;background:${isPayment ? '#fee2e2;color:#991b1b' : '#dcfce7;color:#166534'}">
+                  ${escapeHtml(e.category ? e.category.toUpperCase() : '')}
+                </span>
+                ${e.paymentMode ? `<span class="pb-mode-pill">${escapeHtml(e.paymentMode.toUpperCase())}</span>` : ''}
+              </div>
+              <div class="pb-meta-line" style="margin-top:3px">
+                <span class="pb-date-pill">📅 ${dateStr}</span>
+                ${e.description ? `<span style="font-size:.85rem;color:#475569">· ${escapeHtml(e.description)}</span>` : ''}
+              </div>
+            </div>
+            <div class="pb-col-amt">
+              <div class="pb-amt-badge ${isPayment ? 'pb-udaar' : 'pb-jama'}">
+                <span class="pb-amt-type">${isPayment ? 'दिया' : 'जुड़ा'}</span>
+                <span class="pb-amt-val">${isPayment ? '−' : '+'}${inr(e.amount)}</span>
+              </div>
+              <div class="pb-running-pill" title="इस लेन-देन के बाद शुद्ध बाकी">
+                <span class="pb-rp-label">बाकी:</span>
+                <span class="pb-rp-val">${inr(Math.abs(e.runningBalance || 0))}</span>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    },
+
+    // ── Quick Modal: पैसा दिया (Advance / Salary Payout) ──
+    _showLabourPayModal(labour, onSaved) {
+      stopActiveMic();
+      const modalRoot = document.getElementById('ld-modal-root');
+      if (!modalRoot) return;
+
+      let selectedCategory = 'advance';
+      let selectedMode = 'cash';
+
+      modalRoot.innerHTML = `
+        <div class="a-modal-backdrop" id="lp-backdrop">
+          <div class="a-modal-card pb-modal-card" style="max-width:480px">
+            <div class="a-modal-header" style="background:#fee2e2;border-bottom:1.5px solid #fecaca">
+              <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#991b1b">🔴 मज़दूर को पैसा दिया (Payment / Advance)</h3>
+              <button class="a-page-btn" id="lp-close">✕</button>
+            </div>
+            <div class="a-modal-body" style="padding:16px 20px">
+              <div style="font-size:.9rem;color:#7f1d1d;margin-bottom:10px">
+                मज़दूर: <strong>${escapeHtml(labour.name)}</strong> (${escapeHtml(labour.roleTitle || 'कारीगर')})
+              </div>
+
+              <!-- Quick Presets -->
+              <div style="margin-bottom:10px">
+                <label style="font-weight:700;font-size:.85rem;color:#0f172a;display:block;margin-bottom:4px">त्वरित रकम चुनें:</label>
+                <div class="chip-row" id="lp-presets">
+                  <button type="button" class="chip" data-amt="500">₹500</button>
+                  <button type="button" class="chip" data-amt="1000">₹1,000</button>
+                  <button type="button" class="chip" data-amt="2000">₹2,000</button>
+                  <button type="button" class="chip" data-amt="5000">₹5,000</button>
+                </div>
+              </div>
+
+              <!-- Amount Input -->
+              <div>
+                <label style="font-weight:700;font-size:.9rem;color:#0f172a;display:block;margin-bottom:4px">
+                  दी गई रकम (Amount) <span style="color:#dc2626">*</span>
+                </label>
+                <div class="pb-amt-input-wrap">
+                  <span class="pb-rupee-sign">₹</span>
+                  <input type="number" id="lp-amt" class="pb-amt-input" placeholder="0" autofocus />
+                </div>
+              </div>
+
+              <!-- Category -->
+              <div style="margin-top:12px">
+                <label style="font-weight:700;font-size:.85rem;color:#0f172a;display:block;margin-bottom:4px">भुगतान प्रकार:</label>
+                <div class="chip-row" id="lp-cat-chips">
+                  <button type="button" class="chip chip--on" data-cat="advance">एडवांस (Advance)</button>
+                  <button type="button" class="chip" data-cat="salary">सैलरी भुगतान (Salary)</button>
+                  <button type="button" class="chip" data-cat="kharcha">खर्चा (Daily Expense)</button>
+                </div>
+              </div>
+
+              <!-- Mode -->
+              <div style="margin-top:12px">
+                <label style="font-weight:700;font-size:.85rem;color:#0f172a;display:block;margin-bottom:4px">माध्यम (Mode):</label>
+                <div class="chip-row" id="lp-mode-chips">
+                  <button type="button" class="chip chip--on" data-mode="cash">💵 नकद (Cash)</button>
+                  <button type="button" class="chip" data-mode="upi">📱 UPI / PhonePe</button>
+                </div>
+              </div>
+
+              <!-- Note -->
+              <div style="margin-top:12px">
+                <label style="font-weight:700;font-size:.85rem;color:#64748b;display:block;margin-bottom:4px">नोट / विवरण (वैकल्पिक)</label>
+                <input type="text" id="lp-note" class="entry-input" placeholder="जैसे: घर खर्च, दवा के लिए एडवांस" lang="hi" />
+              </div>
+
+              <!-- Buttons -->
+              <div style="margin-top:20px;display:flex;gap:10px">
+                <button type="button" id="lp-cancel" class="a-page-btn" style="flex:1;padding:12px;background:#f1f5f9;color:#475569">रद्द करें</button>
+                <button type="button" id="lp-save" class="a-page-btn" style="flex:2;padding:12px;background:#dc2626;color:#ffffff;font-weight:800">✓ भुगतान दर्ज करें</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const close = () => { modalRoot.innerHTML = ''; };
+      document.getElementById('lp-close').onclick = close;
+      document.getElementById('lp-cancel').onclick = close;
+      document.getElementById('lp-backdrop').onclick = (e) => { if (e.target.id === 'lp-backdrop') close(); };
+
+      // Presets
+      document.querySelectorAll('#lp-presets button').forEach((b) => {
+        b.onclick = () => {
+          document.querySelectorAll('#lp-presets button').forEach((x) => x.classList.remove('chip--on'));
+          b.classList.add('chip--on');
+          document.getElementById('lp-amt').value = b.dataset.amt;
+        };
+      });
+
+      // Category
+      document.querySelectorAll('#lp-cat-chips button').forEach((b) => {
+        b.onclick = () => {
+          document.querySelectorAll('#lp-cat-chips button').forEach((x) => x.classList.remove('chip--on'));
+          b.classList.add('chip--on');
+          selectedCategory = b.dataset.cat;
+        };
+      });
+
+      // Mode
+      document.querySelectorAll('#lp-mode-chips button').forEach((b) => {
+        b.onclick = () => {
+          document.querySelectorAll('#lp-mode-chips button').forEach((x) => x.classList.remove('chip--on'));
+          b.classList.add('chip--on');
+          selectedMode = b.dataset.mode;
+        };
+      });
+
+      // Save
+      document.getElementById('lp-save').onclick = async () => {
+        const amt = Number(document.getElementById('lp-amt')?.value);
+        if (!amt || amt <= 0) { toast('कृपया सही रकम डालें'); return; }
+
+        const note = (document.getElementById('lp-note')?.value || '').trim();
+        const saveBtn = document.getElementById('lp-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'दर्ज कर रहे हैं...';
+
+        try {
+          await api(`/labour/${labour._id}/entries`, {
+            method: 'POST',
+            body: {
+              type: 'payment',
+              amount: amt,
+              category: selectedCategory,
+              paymentMode: selectedMode,
+              description: note,
+            },
+          });
+          playChime();
+          toast(`✅ भुगतान ₹${amt.toLocaleString('hi-IN')} सफलतापूर्वक दर्ज हुआ!`);
+          close();
+          if (onSaved) onSaved();
+        } catch (err) {
+          toast(err.message || 'भुगतान दर्ज नहीं हो सका');
+          saveBtn.disabled = false;
+          saveBtn.textContent = '✓ भुगतान दर्ज करें';
+        }
+      };
+    },
+
+    // ── Quick Modal: वेतन जोड़ा (Credit Salary / Daily Wage) ──
+    _showLabourCreditModal(labour, onSaved) {
+      stopActiveMic();
+      const modalRoot = document.getElementById('ld-modal-root');
+      if (!modalRoot) return;
+
+      let selectedCategory = labour.wageType === 'daily' ? 'daily_wage' : 'salary';
+      const defaultAmt = labour.wageAmount || '';
+
+      modalRoot.innerHTML = `
+        <div class="a-modal-backdrop" id="lc-backdrop">
+          <div class="a-modal-card pb-modal-card" style="max-width:480px">
+            <div class="a-modal-header" style="background:#dcfce7;border-bottom:1.5px solid #bbf7d0">
+              <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#166534">🟢 वेतन / दिहाड़ी जोड़ें (Credit Salary / Wage)</h3>
+              <button class="a-page-btn" id="lc-close">✕</button>
+            </div>
+            <div class="a-modal-body" style="padding:16px 20px">
+              <div style="font-size:.9rem;color:#14532d;margin-bottom:10px">
+                मज़दूर: <strong>${escapeHtml(labour.name)}</strong> · तय दर: <strong>₹${(labour.wageAmount || 0).toLocaleString('hi-IN')} / ${labour.wageType === 'daily' ? 'दिन' : 'माह'}</strong>
+              </div>
+
+              <!-- Amount Input -->
+              <div>
+                <label style="font-weight:700;font-size:.9rem;color:#0f172a;display:block;margin-bottom:4px">
+                  जोड़ने वाली रकम (Amount) <span style="color:#dc2626">*</span>
+                </label>
+                <div class="pb-amt-input-wrap">
+                  <span class="pb-rupee-sign" style="color:#059669">₹</span>
+                  <input type="number" id="lc-amt" class="pb-amt-input" value="${defaultAmt}" placeholder="0" autofocus />
+                </div>
+              </div>
+
+              <!-- Category -->
+              <div style="margin-top:12px">
+                <label style="font-weight:700;font-size:.85rem;color:#0f172a;display:block;margin-bottom:4px">प्रकार:</label>
+                <div class="chip-row" id="lc-cat-chips">
+                  <button type="button" class="chip ${selectedCategory === 'salary' ? 'chip--on' : ''}" data-cat="salary">महीने का वेतन (Monthly Salary)</button>
+                  <button type="button" class="chip ${selectedCategory === 'daily_wage' ? 'chip--on' : ''}" data-cat="daily_wage">दिहाड़ी / हाज़िरी (Wage)</button>
+                  <button type="button" class="chip" data-cat="bonus">बोनस (Bonus)</button>
+                </div>
+              </div>
+
+              <!-- Note -->
+              <div style="margin-top:12px">
+                <label style="font-weight:700;font-size:.85rem;color:#64748b;display:block;margin-bottom:4px">विवरण (वैकल्पIC)</label>
+                <input type="text" id="lc-note" class="entry-input" placeholder="जैसे: 15 दिन की हाज़िरी, दिवाली बोनस" lang="hi" />
+              </div>
+
+              <!-- Buttons -->
+              <div style="margin-top:20px;display:flex;gap:10px">
+                <button type="button" id="lc-cancel" class="a-page-btn" style="flex:1;padding:12px;background:#f1f5f9;color:#475569">रद्द करें</button>
+                <button type="button" id="lc-save" class="a-page-btn" style="flex:2;padding:12px;background:#059669;color:#ffffff;font-weight:800">✓ वेतन जोड़ें</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const close = () => { modalRoot.innerHTML = ''; };
+      document.getElementById('lc-close').onclick = close;
+      document.getElementById('lc-cancel').onclick = close;
+      document.getElementById('lc-backdrop').onclick = (e) => { if (e.target.id === 'lc-backdrop') close(); };
+
+      // Category
+      document.querySelectorAll('#lc-cat-chips button').forEach((b) => {
+        b.onclick = () => {
+          document.querySelectorAll('#lc-cat-chips button').forEach((x) => x.classList.remove('chip--on'));
+          b.classList.add('chip--on');
+          selectedCategory = b.dataset.cat;
+        };
+      });
+
+      // Save
+      document.getElementById('lc-save').onclick = async () => {
+        const amt = Number(document.getElementById('lc-amt')?.value);
+        if (!amt || amt <= 0) { toast('कृपया सही रकम डालें'); return; }
+
+        const note = (document.getElementById('lc-note')?.value || '').trim();
+        const saveBtn = document.getElementById('lc-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'जोड़ रहे हैं...';
+
+        try {
+          await api(`/labour/${labour._id}/entries`, {
+            method: 'POST',
+            body: {
+              type: 'salary_credit',
+              amount: amt,
+              category: selectedCategory,
+              description: note,
+            },
+          });
+          playChime();
+          toast(`✅ वेतन ₹${amt.toLocaleString('hi-IN')} सफलतापूर्वक जोड़ा गया!`);
+          close();
+          if (onSaved) onSaved();
+        } catch (err) {
+          toast(err.message || 'वेतन नहीं जोड़ा जा सका');
+          saveBtn.disabled = false;
+          saveBtn.textContent = '✓ वेतन जोड़ें';
+        }
+      };
+    },
+
+    // ── Helper to send Labour WhatsApp Statement ──
+    _sendLabourWhatsAppStatement(labour, entries, shopTitle) {
+      const isOwed = labour.balance > 0;
+      const isAdvance = labour.balance < 0;
+      const statusText = isOwed ? `बाकी वेतन देना है: ₹${Math.abs(labour.balance).toLocaleString('hi-IN')}` :
+                         isAdvance ? `एडवांस जमा है: ₹${Math.abs(labour.balance).toLocaleString('hi-IN')}` :
+                         'हिसाब चुकता है ✓';
+
+      let msg = `*${shopTitle} — मज़दूर वेतन व हिसाब विवरण*\n`;
+      msg += `मज़दूर: *${labour.name}* (${labour.roleTitle || 'कारीगर'})\n`;
+      if (labour.wageAmount) {
+        msg += `तय दर: ₹${(labour.wageAmount || 0).toLocaleString('hi-IN')} / ${labour.wageType === 'daily' ? 'दिन' : 'माह'}\n`;
+      }
+      msg += `--------------------------------\n`;
+      msg += `कुल अर्जित वेतन: ₹${(labour.totalEarned || 0).toLocaleString('hi-IN')}\n`;
+      msg += `कुल भुगतान (एडवांस+वेतन): ₹${(labour.totalPaid || 0).toLocaleString('hi-IN')}\n`;
+      msg += `*वर्तमान शुद्ध स्थिति: ${statusText}*\n`;
+      msg += `--------------------------------\n`;
+      msg += `हालिया लेन-देन:\n`;
+
+      const recent = (entries || []).slice(0, 5);
+      recent.forEach((e) => {
+        const d = new Date(e.date || e.createdAt).toLocaleDateString('hi-IN', { day: '2-digit', month: 'short' });
+        const sign = e.type === 'salary_credit' ? '+ वेतन जुड़ा' : '- भुगतान दिया';
+        msg += `• ${d}: ${sign} ₹${(e.amount || 0).toLocaleString('hi-IN')}${e.description ? ` (${e.description})` : ''}\n`;
+      });
+
+      msg += `\n_यह विवरण दुकान के खाता रिकॉर्ड से भेजा गया है।_\n*${shopTitle}*`;
+
+      const phone = (labour.phone || '').replace(/\D/g, '');
+      const url = `https://wa.me/${phone.length === 10 ? '91' + phone : phone}?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
     },
   };
 

@@ -14,6 +14,7 @@ const customerRoutes = require('./routes/customers');
 const entryRoutes = require('./routes/entries');
 const adminRoutes = require('./routes/admin');
 const diaryRoutes = require('./routes/diary');
+const labourRoutes = require('./routes/labour');
 
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
@@ -62,6 +63,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/entries', entryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/diary', diaryRoutes);
+app.use('/api/labour', labourRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, db: mongoose.connection.readyState === 1 });
