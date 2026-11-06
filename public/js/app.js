@@ -3,7 +3,7 @@
  * Covers: redesigned login, हिसाब लिखें entry screen, search, admin portal.
  */
 (function (g) {
-  const { api, getUser, setSession, clearSession, inr, toast, escapeHtml, playChime } = g.KhataAPI;
+  const { api, getUser, setSession, clearSession, inr, toast, escapeHtml, playChime, sendWhatsAppStatement } = g.KhataAPI;
 
   // ─── App State ───────────────────────────────────────────────────────────────
   const state = {
@@ -357,9 +357,21 @@
                 <p class="a-page-subtitle" id="a-page-subtitle"></p>
               </div>
             </div>
+
+            <!-- Global Customer Search in Topbar -->
+            <div class="a-topbar-search-wrap">
+              <div class="a-topbar-search-box">
+                <span class="a-search-ico">🔍</span>
+                <input type="search" id="a-global-search-input" class="a-topbar-search-input" placeholder="${isHi ? 'ग्राहक खोजें (नाम / गाँव / फ़ोन)...' : 'Search customer (name/village/phone)...'}" autocomplete="off" />
+                <button type="button" id="a-global-search-mic" class="a-search-mic-btn" title="${isHi ? 'बोलकर खोजें' : 'Voice search'}">🎤</button>
+              </div>
+              <div id="a-global-search-results" class="a-search-dropdown hidden"></div>
+            </div>
+
             <div class="a-topbar-actions" id="a-topbar-actions"></div>
           </div>
           <div id="a-content"></div>
+          <div id="cq-modal-container"></div>
         </main>
       </div>`;
 
@@ -425,6 +437,95 @@
     const currentMeta = viewMeta[state.adminView] || { title: '', sub: '' };
     document.getElementById('a-page-title').textContent = currentMeta.title;
     document.getElementById('a-page-subtitle').textContent = currentMeta.sub;
+
+    // Wire Admin Global Topbar Customer Search
+    const searchInput = document.getElementById('a-global-search-input');
+    const searchDropdown = document.getElementById('a-global-search-results');
+    const searchMic = document.getElementById('a-global-search-mic');
+    let searchTimer = null;
+
+    const runAdminSearch = async () => {
+      const q = (searchInput?.value || '').trim();
+      if (!q) {
+        if (searchDropdown) { searchDropdown.innerHTML = ''; searchDropdown.classList.add('hidden'); }
+        return;
+      }
+      try {
+        const { customers } = await api(`/customers?q=${encodeURIComponent(q)}&all=1`);
+        if (!searchDropdown) return;
+        if (!customers || !customers.length) {
+          searchDropdown.innerHTML = `<div class="a-search-empty">${isHi ? 'कोई ग्राहक नहीं मिला' : 'No customers found'}</div>`;
+          searchDropdown.classList.remove('hidden');
+          return;
+        }
+        searchDropdown.innerHTML = customers.slice(0, 15).map((c) => {
+          const isSettled = (c.balance || 0) <= 0;
+          return `
+            <div class="a-search-item" data-id="${c._id}">
+              <div class="asi-main">
+                <div class="asi-name">
+                  <span class="a-badge-pill shop" style="font-size:.7rem;padding:2px 6px">${escapeHtml(c.shopId)}</span>
+                  ${c.diaryNo ? `<span class="asi-diary-no">#${c.diaryNo}</span>` : ''}
+                  ${c.honorific ? `${escapeHtml(c.honorific)} ` : ''}<strong>${escapeHtml(c.name)}</strong>
+                  ${c.identifierNote ? `<span class="asi-sub">(${escapeHtml(c.identifierNote)})</span>` : ''}
+                </div>
+                <div class="asi-loc">📍 ${escapeHtml(c.village || '—')}${c.phone ? ' · 📞 ' + escapeHtml(c.phone) : ''}</div>
+              </div>
+              <div class="asi-bal ${isSettled ? 'asi-settled' : 'asi-owed'}">
+                ${isSettled ? (isHi ? 'चुकता ✓' : 'Settled ✓') : inr(c.balance)}
+              </div>
+            </div>`;
+        }).join('');
+        searchDropdown.classList.remove('hidden');
+
+        searchDropdown.querySelectorAll('.a-search-item').forEach((item) => {
+          item.onclick = (e) => {
+            e.stopPropagation();
+            searchDropdown.classList.add('hidden');
+            if (item.dataset.id) openCustomerLedgerModal(item.dataset.id);
+          };
+        });
+      } catch {
+        if (searchDropdown) {
+          searchDropdown.innerHTML = `<div class="a-search-empty">${isHi ? 'खोजने में समस्या आई' : 'Search failed'}</div>`;
+          searchDropdown.classList.remove('hidden');
+        }
+      }
+    };
+
+    if (searchInput) {
+      searchInput.oninput = () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(runAdminSearch, 160);
+      };
+      searchInput.onfocus = () => {
+        if (searchInput.value.trim()) runAdminSearch();
+      };
+    }
+
+    // Dismiss search dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.a-topbar-search-wrap') && searchDropdown) {
+        searchDropdown.classList.add('hidden');
+      }
+    });
+
+    // Voice mic on admin search
+    if (searchMic) {
+      searchMic.onclick = async () => {
+        if (!window.VoiceEngine) { toast(isHi ? 'आवाज़ समर्थित नहीं है' : 'Voice not supported'); return; }
+        searchMic.classList.add('mic-pulsing');
+        const eng = new window.VoiceEngine({ silenceMs: 2500 });
+        try {
+          const spoken = await eng.listenOnce(5000);
+          if (spoken && searchInput) {
+            searchInput.value = spoken;
+            runAdminSearch();
+          }
+        } catch {}
+        searchMic.classList.remove('mic-pulsing');
+      };
+    }
 
     // Route to active view loader
     if (state.adminView === 'overview') loadOverview();
@@ -1641,7 +1742,7 @@
                       ${e.entryTime ? `<div class="muted" style="font-size:.75rem">${new Date(e.entryTime).toLocaleTimeString(isHi ? 'hi-IN' : 'en-IN', { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
                     </td>
                     <td>
-                      <div style="font-weight:700;color:#092c20">${escapeHtml(custName)}</div>
+                      ${c._id ? `<a href="#" class="lf-cust-link" data-id="${c._id}" style="font-weight:700;color:#092c20;text-decoration:none;display:inline-flex;align-items:center;gap:3px">${escapeHtml(custName)} <span style="font-size:.7rem;color:#059669">↗</span></a>` : `<div style="font-weight:700;color:#092c20">${escapeHtml(custName)}</div>`}
                       ${c.identifierNote ? `<div style="font-size:.76rem;color:#b45309">(${escapeHtml(c.identifierNote)})</div>` : ''}
                       ${c.phone ? `<div style="font-size:.75rem;color:#64748b">${escapeHtml(c.phone)}</div>` : ''}
                     </td>
@@ -1703,6 +1804,15 @@
               toast(isHi ? 'प्रविष्टि वापस ला दी गई! ✓' : 'Entry restored! ✓');
               fetchLedger();
             } catch (err) { toast(err.message); }
+          };
+        });
+
+        // Wire Click on Customer Name to open Passbook Modal
+        wrap.querySelectorAll('.lf-cust-link').forEach((link) => {
+          link.onclick = (e) => {
+            e.preventDefault();
+            const id = link.dataset.id;
+            if (id) openCustomerLedgerModal(id);
           };
         });
 
@@ -1960,23 +2070,25 @@
 
     container.innerHTML = `
       <div class="a-modal-backdrop" id="cq-modal-backdrop">
-        <div class="a-modal-card">
-          <div class="a-modal-header">
+        <div class="a-modal-card pb-admin-modal-card" style="max-width:960px;width:95%">
+          <div class="a-modal-header" style="background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:16px 20px">
             <div>
-              <h3 style="margin:0;font-size:1.25rem;font-weight:800;color:#092c20" id="cq-mod-name">${isHi ? 'ग्राहक खाता बही' : 'Customer Ledger'}</h3>
-              <p style="margin:2px 0 0;font-size:.8rem;color:#64748b" id="cq-mod-meta">${isHi ? 'लोड हो रहा है…' : 'Loading details…'}</p>
+              <h3 style="margin:0;font-size:1.3rem;font-weight:800;color:#092c20" id="cq-mod-name">${isHi ? 'ग्राहक खाता बही (Passbook)' : 'Customer Ledger Passbook'}</h3>
+              <p style="margin:2px 0 0;font-size:.85rem;color:#64748b" id="cq-mod-meta">${isHi ? 'विवरण लोड हो रहा है…' : 'Loading details…'}</p>
             </div>
-            <button class="a-page-btn" id="cq-mod-close" style="font-size:1.1rem;padding:4px 10px">✕</button>
+            <button class="a-page-btn" id="cq-mod-close" style="font-size:1.2rem;padding:4px 12px">✕</button>
           </div>
-          <div class="a-modal-body" id="cq-mod-body">
+          <div class="a-modal-body" id="cq-mod-body" style="padding:20px">
             <p class="muted" style="text-align:center;padding:48px">${isHi ? 'बहीखाता प्रविष्टियाँ लोड हो रही हैं…' : 'Loading ledger history…'}</p>
           </div>
+          <div id="cq-submodal-container"></div>
         </div>
       </div>`;
 
-    document.getElementById('cq-mod-close').onclick = () => { container.innerHTML = ''; };
+    const closeMainModal = () => { container.innerHTML = ''; };
+    document.getElementById('cq-mod-close').onclick = closeMainModal;
     document.getElementById('cq-modal-backdrop').onclick = (e) => {
-      if (e.target.id === 'cq-modal-backdrop') container.innerHTML = '';
+      if (e.target.id === 'cq-modal-backdrop') closeMainModal();
     };
 
     try {
@@ -1984,68 +2096,134 @@
       const c = res.customer || {};
       const entries = res.entries || [];
 
+      // Chronological running balance calculation (oldest -> newest)
+      const sortedChrono = [...entries].sort((a, b) => {
+        const da = new Date(a.date || a.createdAt || 0).getTime();
+        const db = new Date(b.date || b.createdAt || 0).getTime();
+        return da - db;
+      });
+
+      let running = 0;
+      sortedChrono.forEach((e) => {
+        if (e.type === 'payment') {
+          running -= (Number(e.amount) || 0);
+        } else {
+          running += (Number(e.amount) || 0);
+        }
+        e.runningBalance = running;
+      });
+
+      // Display newest transactions first
+      const displayEntries = [...sortedChrono].reverse();
+
+      const isSettled = (c.balance || 0) <= 0;
+
       document.getElementById('cq-mod-name').innerHTML = `
-        <span class="a-circle-no" style="margin-right:6px">${c.diaryNo || '—'}</span>
+        <span class="a-circle-no" style="margin-right:6px">#${c.diaryNo || '—'}</span>
         ${c.honorific ? `${escapeHtml(c.honorific)} ` : ''}${escapeHtml(c.name)}
-        ${c.identifierNote ? `<span style="font-size:.85rem;color:#b45309">(${escapeHtml(c.identifierNote)})</span>` : ''}`;
+        ${c.identifierNote ? `<span style="font-size:.9rem;color:#b45309">(${escapeHtml(c.identifierNote)})</span>` : ''}`;
 
       document.getElementById('cq-mod-meta').innerHTML = `
         <span>📍 ${escapeHtml(c.village || '—')}</span> · 
         <span>📞 ${c.phone ? `<a href="tel:${c.phone}">${c.phone}</a>` : '—'}</span> · 
-        <span class="a-badge-pill shop">${escapeHtml(c.shopId)}</span> · 
-        <strong style="color:${(c.balance || 0) > 0 ? '#b91c1c' : '#059669'}">${t('outstanding')}: ${inr(c.balance || 0)}</strong>`;
+        <span class="a-badge-pill shop">${escapeHtml(c.shopId)}</span>`;
 
       const bodyEl = document.getElementById('cq-mod-body');
 
-      if (!entries.length) {
-        bodyEl.innerHTML = `
-          <div style="text-align:center;padding:32px">
-            <p class="muted">${isHi ? 'इस ग्राहक के लिए अभी कोई स्वीकृत खाता प्रविष्टि नहीं है।' : 'No approved ledger entries for this customer yet.'}</p>
-            <button class="a-page-btn" id="cq-recalc-btn" style="margin-top:12px;background:#092c20;color:#ffffff">
-              🔄 ${t('recalcBalance')}
+      bodyEl.innerHTML = `
+        <!-- Net Balance Banner & Header Actions -->
+        <div style="background:linear-gradient(135deg, #092c20, #0f4a36);color:white;border-radius:14px;padding:18px 22px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+          <div>
+            <div style="font-size:.85rem;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:1px;font-weight:700">
+              ${isHi ? 'कुल बाकी हिसाब (Net Balance)' : 'Total Outstanding Balance'}
+            </div>
+            <div style="font-size:2rem;font-weight:900;letter-spacing:-0.5px;margin-top:2px;color:${isSettled ? '#86efac' : '#fca5a5'}">
+              ${inr(c.balance || 0)}
+            </div>
+            <div style="font-size:.85rem;color:rgba(255,255,255,.85);margin-top:2px">
+              ${isSettled ? (isHi ? 'खाता चुकता है ✓' : 'Account Settled ✓') : (isHi ? 'भुगतान शेष है ⚠️' : 'Payment Pending')}
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="a-page-btn" id="cq-share-wa" style="background:#25D366;color:#ffffff;font-weight:800;font-size:.9rem;padding:10px 16px;border:none">
+              📲 ${isHi ? 'WhatsApp पर हिसाब भेजें' : 'Send WhatsApp Statement'}
             </button>
-          </div>`;
-      } else {
-        bodyEl.innerHTML = `
-          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-            <button class="a-page-btn" id="cq-recalc-btn" style="background:#092c20;color:#ffffff;font-size:.82rem">
+            <button class="a-page-btn" id="cq-recalc-btn" style="background:rgba(255,255,255,.15);color:#ffffff;border:1px solid rgba(255,255,255,.3);font-size:.85rem;padding:10px 14px">
               🔄 ${t('recalcBalance')}
             </button>
           </div>
-          <table class="a-table">
-            <thead>
-              <tr>
-                <th>${t('date')}</th>
-                <th>${t('item')} & ${t('brand')}</th>
-                <th>${t('qty')}</th>
-                <th>${t('rate')}</th>
-                <th>${isHi ? 'उधार (+)' : 'Credit (+)'}</th>
-                <th>${isHi ? 'जमा (−)' : 'Payment (−)'}</th>
-                <th>${t('notes')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${entries.map((e) => {
-                const isPayment = e.type === 'payment';
-                const itemDesc = e.item || (e.items && e.items[0]?.name) || (isPayment ? (isHi ? 'जमा' : 'Payment') : '—');
-                const brand = e.brand || (e.items && e.items[0]?.brand) || '';
-                return `
-                  <tr>
-                    <td style="white-space:nowrap">${new Date(e.date).toLocaleDateString(isHi ? 'hi-IN' : 'en-IN')}</td>
-                    <td>
-                      <div style="font-weight:700">${escapeHtml(itemDesc)}</div>
-                      ${brand ? `<div class="muted" style="font-size:.75rem">${escapeHtml(brand)}</div>` : ''}
-                    </td>
-                    <td>${e.quantity || '1'}</td>
-                    <td>${e.rate ? inr(e.rate) : '—'}</td>
-                    <td style="font-weight:800;color:#dc2626">${!isPayment ? inr(e.amount) : '—'}</td>
-                    <td style="font-weight:800;color:#059669">${isPayment ? inr(e.amount) : '—'}</td>
-                    <td style="font-size:.8rem;color:#64748b">${escapeHtml(e.notes || e.note || '')}</td>
-                  </tr>`;
-              }).join('')}
-            </tbody>
-          </table>`;
-      }
+        </div>
+
+        <!-- Two Large Prominent Buttons: - उधार & + जमा -->
+        <div class="passbook-action-dock" style="margin-bottom:20px;grid-template-columns:1fr 1fr">
+          <button class="pb-dock-btn pb-dock-udaar" type="button" id="cq-open-udaar" style="min-height:64px">
+            <span class="dock-btn-icon">🔴 ✍️</span>
+            <span class="dock-btn-label">− ${isHi ? 'उधार' : 'Debit'}</span>
+            <span class="dock-btn-hint">${isHi ? 'सामान दिया (Debit)' : 'Add Credit Sale'}</span>
+          </button>
+          <button class="pb-dock-btn pb-dock-jama" type="button" id="cq-open-jama" style="min-height:64px">
+            <span class="dock-btn-icon">🟢 💰</span>
+            <span class="dock-btn-label">+ ${isHi ? 'जमा' : 'Credit'}</span>
+            <span class="dock-btn-hint">${isHi ? 'पैसा मिला (Credit)' : 'Receive Payment'}</span>
+          </button>
+        </div>
+
+        <!-- Passbook Entries Table -->
+        ${!displayEntries.length ? `
+          <div style="text-align:center;padding:40px 20px;background:#f8fafc;border-radius:12px;border:1px dashed #cbd5e1">
+            <div style="font-size:2.5rem;margin-bottom:6px">📖</div>
+            <p class="muted" style="margin:0;font-size:.95rem">${isHi ? 'इस ग्राहक के लिए अभी कोई स्वीकृत खाता प्रविष्टि नहीं है।' : 'No approved ledger entries for this customer yet.'}</p>
+          </div>
+        ` : `
+          <div style="overflow-x:auto">
+            <table class="a-table">
+              <thead>
+                <tr>
+                  <th>${t('date')}</th>
+                  <th>${t('item')} & ${t('brand')}</th>
+                  <th>${t('qty')}</th>
+                  <th>${t('rate')}</th>
+                  <th>${isHi ? 'उधार (+)' : 'Credit (+)'}</th>
+                  <th>${isHi ? 'जमा (−)' : 'Payment (−)'}</th>
+                  <th style="background:#f1f5f9;font-weight:800">${isHi ? 'बचा बाकी' : 'Running Bal'}</th>
+                  <th>${t('notes')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${displayEntries.map((e) => {
+                  const isPayment = e.type === 'payment';
+                  const itemDesc = e.item || (e.items && e.items[0]?.name) || (isPayment ? (isHi ? 'जमा भुगतान' : 'Payment') : '—');
+                  const brand = e.brand || (e.items && e.items[0]?.brand) || '';
+                  return `
+                    <tr>
+                      <td style="white-space:nowrap;font-weight:600">
+                        <div>${new Date(e.date).toLocaleDateString(isHi ? 'hi-IN' : 'en-IN')}</div>
+                        ${e.entryTime ? `<div class="muted" style="font-size:.75rem">${new Date(e.entryTime).toLocaleTimeString(isHi ? 'hi-IN' : 'en-IN', { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
+                      </td>
+                      <td>
+                        <div style="font-weight:700;color:#092c20">${escapeHtml(itemDesc)}</div>
+                        ${brand ? `<div class="muted" style="font-size:.75rem">${escapeHtml(brand)}</div>` : ''}
+                        ${e.dueDate ? `<div style="font-size:.72rem;color:#b45309;margin-top:2px">⏰ ${new Date(e.dueDate).toLocaleDateString(isHi ? 'hi-IN' : 'en-IN')}${e.dueDateNote ? ' (' + escapeHtml(e.dueDateNote) + ')' : ''}</div>` : ''}
+                      </td>
+                      <td>${e.quantity || '1'}</td>
+                      <td>${e.rate ? inr(e.rate) : '—'}</td>
+                      <td style="font-weight:800;color:#dc2626">${!isPayment ? `+${inr(e.amount)}` : '—'}</td>
+                      <td style="font-weight:800;color:#059669">${isPayment ? `−${inr(e.amount)}` : '—'}</td>
+                      <td style="font-weight:800;background:#f8fafc;color:#092c20">
+                        <span style="font-size:.95rem">${inr(e.runningBalance)}</span>
+                      </td>
+                      <td style="font-size:.8rem;color:#64748b">${escapeHtml(e.notes || e.note || '')}</td>
+                    </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}`;
+
+      // Wire WhatsApp Button
+      document.getElementById('cq-share-wa').onclick = () => {
+        sendWhatsAppStatement(c, displayEntries, `Admin (${c.shopId})`);
+      };
 
       // Wire Recalculate Balance Button
       const recalcBtn = document.getElementById('cq-recalc-btn');
@@ -2059,6 +2237,359 @@
           } catch (err) { toast(err.message); recalcBtn.disabled = false; }
         };
       }
+
+      // ── Submodal helper for In-Modal Udaar & Jama in Admin ──
+      const submodalContainer = document.getElementById('cq-submodal-container');
+
+      // Wire Quick Udaar
+      document.getElementById('cq-open-udaar').onclick = () => {
+        const quickItems = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'चादर', 'तौलिया', 'किराना', 'अन्य'];
+        let selectedItem = 'साड़ी';
+        let dueDateDays = null;
+
+        submodalContainer.innerHTML = `
+          <div class="a-modal-backdrop" id="cq-sub-backdrop" style="z-index:1100">
+            <div class="a-modal-card" style="max-width:500px">
+              <div class="a-modal-header" style="background:#fee2e2;border-bottom:1px solid #fecaca">
+                <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#991b1b">🔴 नया उधार जोड़ें (Debit)</h3>
+                <button class="a-page-btn" id="cq-sub-close">✕</button>
+              </div>
+              <div class="a-modal-body" style="padding:16px 20px">
+                <!-- Voice Mic -->
+                <div class="pb-quick-voice-wrap">
+                  <button type="button" class="pb-quick-mic-btn" id="cq-sub-mic">
+                    <span class="pb-qmic-icon">🎤</span>
+                    <span id="cq-sub-mic-label">${isHi ? 'बोलकर भरें (जैसे: 1200 की साड़ी)' : 'Voice Input (e.g. 1200 saree)'}</span>
+                  </button>
+                  <div id="cq-sub-transcript" class="pb-mic-transcript hidden"></div>
+                </div>
+
+                <div style="margin-top:14px">
+                  <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
+                    ${isHi ? 'उधार रकम (Amount)' : 'Amount'} <span style="color:#dc2626">*</span>
+                  </label>
+                  <div class="pb-amt-input-wrap">
+                    <span class="pb-rupee-sign">₹</span>
+                    <input type="number" id="cq-sub-amt" class="pb-amt-input" placeholder="0" autofocus />
+                  </div>
+                </div>
+
+                <div style="margin-top:14px">
+                  <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
+                    ${isHi ? 'सामान (Item)' : 'Item'}
+                  </label>
+                  <div class="chip-row" id="cq-sub-item-chips">
+                    ${quickItems.map((it) => `<button type="button" class="chip ${it === selectedItem ? 'chip--on' : ''}" data-val="${it}">${it}</button>`).join('')}
+                  </div>
+                  <div id="cq-sub-custom-item-wrap" style="margin-top:8px;display:none">
+                    <input type="text" id="cq-sub-custom-item" class="entry-input" placeholder="सामान का नाम..." />
+                  </div>
+                </div>
+
+                <div style="margin-top:14px">
+                  <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
+                    ⏰ ${isHi ? 'कब तक देंगे? (Due Date)' : 'Due Date'}
+                  </label>
+                  <div class="chip-row" id="cq-sub-due-chips">
+                    <button type="button" class="chip chip--on" data-days="none">${isHi ? 'तय नहीं' : 'None'}</button>
+                    <button type="button" class="chip" data-days="7">7 ${isHi ? 'दिन' : 'days'}</button>
+                    <button type="button" class="chip" data-days="15">15 ${isHi ? 'दिन' : 'days'}</button>
+                    <button type="button" class="chip" data-days="30">1 ${isHi ? 'महीना' : 'month'}</button>
+                  </div>
+                </div>
+
+                <div style="margin-top:14px">
+                  <label style="font-weight:700;font-size:.85rem;color:#64748b;display:block;margin-bottom:4px">
+                    ${isHi ? 'नोट / विवरण' : 'Notes'}
+                  </label>
+                  <input type="text" id="cq-sub-note" class="entry-input" placeholder="Optional notes..." />
+                </div>
+
+                <div style="margin-top:20px;display:flex;gap:10px">
+                  <button type="button" id="cq-sub-cancel" class="a-page-btn" style="flex:1;padding:12px;background:#f1f5f9;color:#475569">
+                    ${isHi ? 'रद्द करें' : 'Cancel'}
+                  </button>
+                  <button type="button" id="cq-sub-save" class="a-page-btn" style="flex:2;padding:12px;background:#dc2626;color:#ffffff;font-weight:800">
+                    ✓ ${isHi ? 'उधार जोड़ें' : 'Save Debit'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+
+        const closeSub = () => { submodalContainer.innerHTML = ''; };
+        document.getElementById('cq-sub-close').onclick = closeSub;
+        document.getElementById('cq-sub-cancel').onclick = closeSub;
+        document.getElementById('cq-sub-backdrop').onclick = (e) => { if (e.target.id === 'cq-sub-backdrop') closeSub(); };
+
+        // Item chips
+        const customWrap = document.getElementById('cq-sub-custom-item-wrap');
+        const customInput = document.getElementById('cq-sub-custom-item');
+        document.querySelectorAll('#cq-sub-item-chips button').forEach((btn) => {
+          btn.onclick = () => {
+            document.querySelectorAll('#cq-sub-item-chips button').forEach((b) => b.classList.remove('chip--on'));
+            btn.classList.add('chip--on');
+            selectedItem = btn.dataset.val;
+            if (selectedItem === 'अन्य') {
+              customWrap.style.display = 'block';
+              customInput.focus();
+            } else {
+              customWrap.style.display = 'none';
+            }
+          };
+        });
+
+        // Due chips
+        document.querySelectorAll('#cq-sub-due-chips button').forEach((btn) => {
+          btn.onclick = () => {
+            document.querySelectorAll('#cq-sub-due-chips button').forEach((b) => b.classList.remove('chip--on'));
+            btn.classList.add('chip--on');
+            const dVal = btn.dataset.days;
+            dueDateDays = dVal === 'none' ? null : Number(dVal);
+          };
+        });
+
+        // Mic
+        const subMic = document.getElementById('cq-sub-mic');
+        const subTranscript = document.getElementById('cq-sub-transcript');
+        if (subMic) {
+          subMic.onclick = async () => {
+            if (!window.VoiceEngine) return;
+            subMic.classList.add('mic-pulsing');
+            subTranscript.classList.remove('hidden');
+            subTranscript.textContent = isHi ? 'सुन रहे हैं...' : 'Listening...';
+            const eng = new window.VoiceEngine({ silenceMs: 2500 });
+            eng.onPartial = (p) => { if (p) subTranscript.textContent = p; };
+            try {
+              const spoken = await eng.listenOnce(6000);
+              if (spoken) {
+                subTranscript.textContent = `"${spoken}"`;
+                try {
+                  const { parsed } = await api('/entries/parse-speech', { method: 'POST', body: { text: spoken } });
+                  if (parsed) {
+                    if (parsed.amount) document.getElementById('cq-sub-amt').value = parsed.amount;
+                    if (parsed.items && parsed.items[0]?.name) {
+                      const itemName = parsed.items[0].name;
+                      const matched = Array.from(document.querySelectorAll('#cq-sub-item-chips button')).find((b) => b.dataset.val === itemName);
+                      if (matched) matched.click();
+                      else {
+                        const otherBtn = Array.from(document.querySelectorAll('#cq-sub-item-chips button')).find((b) => b.dataset.val === 'अन्य');
+                        if (otherBtn) otherBtn.click();
+                        if (customInput) customInput.value = itemName;
+                      }
+                    }
+                  }
+                } catch {}
+              }
+            } catch {}
+            subMic.classList.remove('mic-pulsing');
+          };
+        }
+
+        // Save
+        document.getElementById('cq-sub-save').onclick = async () => {
+          const amt = Number(document.getElementById('cq-sub-amt').value);
+          if (!amt || amt <= 0) {
+            toast(isHi ? 'कृपया सही उधार रकम डालें' : 'Please enter valid amount');
+            return;
+          }
+          let itName = selectedItem;
+          if (selectedItem === 'अन्य') itName = customInput.value.trim() || 'अन्य सामान';
+          let dueDate = null;
+          let dueDateNote = '';
+          if (dueDateDays) {
+            dueDate = new Date(Date.now() + dueDateDays * 86400000).toISOString().slice(0, 10);
+            dueDateNote = `${dueDateDays} दिन में`;
+          }
+          const note = document.getElementById('cq-sub-note').value.trim();
+
+          const saveBtn = document.getElementById('cq-sub-save');
+          saveBtn.disabled = true;
+          try {
+            await api('/entries', {
+              method: 'POST',
+              body: {
+                customerId: c._id,
+                shopId: c.shopId,
+                type: 'sale',
+                amount: amt,
+                item: itName,
+                items: [{ name: itName, qty: 1, amount: amt }],
+                dueDate: dueDate || undefined,
+                dueDateNote: dueDateNote || undefined,
+                note,
+                notes: note,
+                enteredVia: 'admin-passbook-quick',
+              },
+            });
+            playChime();
+            toast(isHi ? `उधार ${inr(amt)} सफलतापूर्वक दर्ज हुआ!` : `Credit sale of ${inr(amt)} recorded!`);
+            closeSub();
+            openCustomerLedgerModal(customerId);
+          } catch (err) {
+            toast(err.message);
+            saveBtn.disabled = false;
+          }
+        };
+      };
+
+      // Wire Quick Jama
+      document.getElementById('cq-open-jama').onclick = () => {
+        const curBal = Number(c.balance || 0);
+        let selectedMode = 'cash';
+
+        submodalContainer.innerHTML = `
+          <div class="a-modal-backdrop" id="cq-sub-backdrop" style="z-index:1100">
+            <div class="a-modal-card" style="max-width:500px">
+              <div class="a-modal-header" style="background:#dcfce7;border-bottom:1px solid #bbf7d0">
+                <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#166534">🟢 जमा राशि दर्ज करें (Credit Payment)</h3>
+                <button class="a-page-btn" id="cq-sub-close">✕</button>
+              </div>
+              <div class="a-modal-body" style="padding:16px 20px">
+                <!-- Voice Mic -->
+                <div class="pb-quick-voice-wrap">
+                  <button type="button" class="pb-quick-mic-btn pb-mic--jama" id="cq-sub-mic">
+                    <span class="pb-qmic-icon">🎤</span>
+                    <span id="cq-sub-mic-label">${isHi ? 'बोलकर भरें (जैसे: 500 नकद जमा)' : 'Voice Input (e.g. 500 cash)'}</span>
+                  </button>
+                  <div id="cq-sub-transcript" class="pb-mic-transcript hidden"></div>
+                </div>
+
+                <div style="margin-top:14px">
+                  <label style="font-weight:700;font-size:.85rem;color:#0f172a;display:block;margin-bottom:6px">
+                    ${isHi ? 'त्वरित रकम चुनें' : 'Quick Amount Presets'}:
+                  </label>
+                  <div class="chip-row" id="cq-sub-amt-chips">
+                    ${curBal > 0 ? `<button type="button" class="chip chip--on" data-amt="${curBal}">${isHi ? 'पूरा चुकता' : 'Full Settle'} (${inr(curBal)})</button>` : ''}
+                    <button type="button" class="chip" data-amt="500">₹500</button>
+                    <button type="button" class="chip" data-amt="1000">₹1,000</button>
+                    <button type="button" class="chip" data-amt="2000">₹2,000</button>
+                  </div>
+                </div>
+
+                <div style="margin-top:14px">
+                  <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
+                    ${isHi ? 'जमा रकम (Amount)' : 'Payment Amount'} <span style="color:#dc2626">*</span>
+                  </label>
+                  <div class="pb-amt-input-wrap">
+                    <span class="pb-rupee-sign" style="color:#059669">₹</span>
+                    <input type="number" id="cq-sub-amt" class="pb-amt-input" value="${curBal > 0 ? curBal : ''}" placeholder="0" autofocus />
+                  </div>
+                </div>
+
+                <div style="margin-top:14px">
+                  <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
+                    ${isHi ? 'माध्यम (Payment Mode)' : 'Mode'}
+                  </label>
+                  <div class="chip-row" id="cq-sub-mode-chips">
+                    <button type="button" class="chip chip--on" data-mode="cash">💵 ${isHi ? 'नकद' : 'Cash'}</button>
+                    <button type="button" class="chip" data-mode="upi">📱 UPI / PhonePe</button>
+                    <button type="button" class="chip" data-mode="bank">🏦 Bank</button>
+                  </div>
+                </div>
+
+                <div style="margin-top:14px">
+                  <label style="font-weight:700;font-size:.85rem;color:#64748b;display:block;margin-bottom:4px">
+                    ${isHi ? 'नोट / विवरण' : 'Notes'}
+                  </label>
+                  <input type="text" id="cq-sub-note" class="entry-input" placeholder="Optional notes..." />
+                </div>
+
+                <div style="margin-top:20px;display:flex;gap:10px">
+                  <button type="button" id="cq-sub-cancel" class="a-page-btn" style="flex:1;padding:12px;background:#f1f5f9;color:#475569">
+                    ${isHi ? 'रद्द करें' : 'Cancel'}
+                  </button>
+                  <button type="button" id="cq-sub-save" class="a-page-btn" style="flex:2;padding:12px;background:#059669;color:#ffffff;font-weight:800">
+                    ✓ ${isHi ? 'जमा दर्ज करें' : 'Save Payment'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>`;
+
+        const closeSub = () => { submodalContainer.innerHTML = ''; };
+        document.getElementById('cq-sub-close').onclick = closeSub;
+        document.getElementById('cq-sub-cancel').onclick = closeSub;
+        document.getElementById('cq-sub-backdrop').onclick = (e) => { if (e.target.id === 'cq-sub-backdrop') closeSub(); };
+
+        // Presets
+        document.querySelectorAll('#cq-sub-amt-chips button').forEach((btn) => {
+          btn.onclick = () => {
+            document.querySelectorAll('#cq-sub-amt-chips button').forEach((b) => b.classList.remove('chip--on'));
+            btn.classList.add('chip--on');
+            document.getElementById('cq-sub-amt').value = btn.dataset.amt;
+          };
+        });
+
+        // Modes
+        document.querySelectorAll('#cq-sub-mode-chips button').forEach((btn) => {
+          btn.onclick = () => {
+            document.querySelectorAll('#cq-sub-mode-chips button').forEach((b) => b.classList.remove('chip--on'));
+            btn.classList.add('chip--on');
+            selectedMode = btn.dataset.mode;
+          };
+        });
+
+        // Mic
+        const subMic = document.getElementById('cq-sub-mic');
+        const subTranscript = document.getElementById('cq-sub-transcript');
+        if (subMic) {
+          subMic.onclick = async () => {
+            if (!window.VoiceEngine) return;
+            subMic.classList.add('mic-pulsing');
+            subTranscript.classList.remove('hidden');
+            subTranscript.textContent = isHi ? 'सुन रहे हैं...' : 'Listening...';
+            const eng = new window.VoiceEngine({ silenceMs: 2500 });
+            eng.onPartial = (p) => { if (p) subTranscript.textContent = p; };
+            try {
+              const spoken = await eng.listenOnce(6000);
+              if (spoken) {
+                subTranscript.textContent = `"${spoken}"`;
+                try {
+                  const { parsed } = await api('/entries/parse-speech', { method: 'POST', body: { text: spoken } });
+                  if (parsed && parsed.amount) document.getElementById('cq-sub-amt').value = parsed.amount;
+                } catch {}
+              }
+            } catch {}
+            subMic.classList.remove('mic-pulsing');
+          };
+        }
+
+        // Save
+        document.getElementById('cq-sub-save').onclick = async () => {
+          const amt = Number(document.getElementById('cq-sub-amt').value);
+          if (!amt || amt <= 0) {
+            toast(isHi ? 'कृपया सही जमा रकम डालें' : 'Please enter valid amount');
+            return;
+          }
+          const note = document.getElementById('cq-sub-note').value.trim();
+
+          const saveBtn = document.getElementById('cq-sub-save');
+          saveBtn.disabled = true;
+          try {
+            await api('/entries', {
+              method: 'POST',
+              body: {
+                customerId: c._id,
+                shopId: c.shopId,
+                type: 'payment',
+                amount: amt,
+                paymentMode: selectedMode,
+                note,
+                notes: note,
+                enteredVia: 'admin-passbook-quick',
+              },
+            });
+            playChime();
+            toast(isHi ? `जमा ${inr(amt)} सफलतापूर्वक दर्ज हुआ!` : `Payment of ${inr(amt)} recorded!`);
+            closeSub();
+            openCustomerLedgerModal(customerId);
+          } catch (err) {
+            toast(err.message);
+            saveBtn.disabled = false;
+          }
+        };
+      };
 
     } catch (err) {
       document.getElementById('cq-mod-body').innerHTML = `<div style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;

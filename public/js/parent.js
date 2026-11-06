@@ -3,7 +3,7 @@
  * Screens: home → हिसाब लिखें | ग्राहक खोजें | डायरी फोटो
  */
 (function (g) {
-  const { api, getUser, inr, toast, escapeHtml, playChime } = g.KhataAPI;
+  const { api, getUser, inr, toast, escapeHtml, playChime, sendWhatsAppStatement, generateWhatsAppStatement } = g.KhataAPI;
 
   const ITEM_CHIPS = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'रुई/कपास', 'कंबल', 'पैंट-शरट', 'चादर', 'तौलिया', 'अन्य'];
   const UNIT_CHIPS = ['पीस', 'मीटर', 'जोड़ी', 'सेट'];
@@ -129,6 +129,17 @@
           </div>
           <h1 class="p-brand">खाता</h1>
           <p class="p-sub">${escapeHtml(user.displayName || '')} · नमस्ते 🙏</p>
+
+          <!-- 🔍 HOME CUSTOMER SEARCH BAR -->
+          <div class="home-search-wrap">
+            <div class="home-search-box">
+              <span class="home-search-ico">🔍</span>
+              <input type="search" id="home-cust-search" class="home-search-input" placeholder="ग्राहक खोजें (नाम / गाँव / फ़ोन)..." autocomplete="off" lang="hi" />
+              <button type="button" id="home-search-mic" class="home-search-mic-btn" title="बोलकर खोजें">🎤</button>
+            </div>
+            <div id="home-search-dropdown" class="home-search-dropdown hidden"></div>
+          </div>
+
           <div class="p-actions">
             <button class="p-card p-card--voice" type="button" id="go-entry">
               <span class="ico">✍️🎤</span>
@@ -148,6 +159,98 @@
           </div>
           <button type="button" id="logout" class="p-logout">दुकान बदलें / बाहर निकलें</button>
         </div>`;
+
+      // Wire Customer Search on Home
+      const searchInput = document.getElementById('home-cust-search');
+      const searchDropdown = document.getElementById('home-search-dropdown');
+      const searchMic = document.getElementById('home-search-mic');
+      let searchTimer = null;
+
+      const runHomeSearch = async () => {
+        const q = (searchInput?.value || '').trim();
+        if (!q) {
+          if (searchDropdown) { searchDropdown.innerHTML = ''; searchDropdown.classList.add('hidden'); }
+          return;
+        }
+        try {
+          const { customers } = await api(`/customers?q=${encodeURIComponent(q)}&all=1`);
+          if (!searchDropdown) return;
+          if (!customers || !customers.length) {
+            searchDropdown.innerHTML = `<div class="home-search-empty">कोई ग्राहक नहीं मिला</div>`;
+            searchDropdown.classList.remove('hidden');
+            return;
+          }
+          searchDropdown.innerHTML = customers.slice(0, 15).map((c) => {
+            const isSettled = (c.balance || 0) <= 0;
+            return `
+              <div class="home-search-item" data-id="${c._id}">
+                <div class="hsi-main">
+                  <div class="hsi-name">
+                    ${c.diaryNo ? `<span class="hsi-diary-pill">#${c.diaryNo}</span>` : ''}
+                    ${c.honorific ? `${escapeHtml(c.honorific)} ` : ''}<strong>${escapeHtml(c.name)}</strong>
+                    ${c.identifierNote ? `<span class="hsi-sub">(${escapeHtml(c.identifierNote)})</span>` : ''}
+                  </div>
+                  <div class="hsi-loc">${escapeHtml(c.village || '—')}${c.phone ? ' · ' + escapeHtml(c.phone) : ''}</div>
+                </div>
+                <div class="hsi-bal ${isSettled ? 'hsi-settled' : 'hsi-owed'}">
+                  ${isSettled ? 'चुकता ✓' : 'बचा ' + inr(c.balance)}
+                </div>
+              </div>`;
+          }).join('');
+          searchDropdown.classList.remove('hidden');
+
+          searchDropdown.querySelectorAll('.home-search-item').forEach((item) => {
+            item.onclick = (e) => {
+              e.stopPropagation();
+              const id = item.dataset.id;
+              if (id) this.go('customer', { id });
+            };
+          });
+        } catch {
+          if (searchDropdown) {
+            searchDropdown.innerHTML = `<div class="home-search-empty">खोजने में समस्या आई</div>`;
+            searchDropdown.classList.remove('hidden');
+          }
+        }
+      };
+
+      if (searchInput) {
+        searchInput.oninput = () => {
+          clearTimeout(searchTimer);
+          searchTimer = setTimeout(runHomeSearch, 160);
+        };
+        searchInput.onfocus = () => {
+          if (searchInput.value.trim()) runHomeSearch();
+        };
+      }
+
+      // Close dropdown when tapping anywhere outside
+      const onDocClick = (e) => {
+        if (!e.target.closest('.home-search-wrap') && searchDropdown) {
+          searchDropdown.classList.add('hidden');
+        }
+      };
+      document.addEventListener('click', onDocClick);
+
+      // Home Search Voice Mic
+      if (searchMic) {
+        searchMic.onclick = async () => {
+          stopActiveMic();
+          if (!g.VoiceEngine) { toast('आवाज़ इस ब्राउज़र में उपलब्ध नहीं है'); return; }
+          searchMic.classList.add('mic-pulsing');
+          const eng = new g.VoiceEngine({ silenceMs: 2500 });
+          _activeMicEngine = eng;
+          try {
+            const spoken = await eng.listenOnce(5000);
+            if (spoken && searchInput) {
+              searchInput.value = spoken;
+              runHomeSearch();
+            }
+          } catch {}
+          searchMic.classList.remove('mic-pulsing');
+        };
+      }
+
       document.getElementById('go-entry').onclick = () => { this.form = emptyForm(); this.go('entry'); };
       document.getElementById('go-search').onclick = () => this.go('search');
       document.getElementById('go-diary').onclick = () => this.go('diary');
@@ -1289,81 +1392,663 @@
       load();
     },
 
-    // ─── CUSTOMER DETAIL ──────────────────────────────────────────────────────
+    // ─── CUSTOMER DETAIL (PASSBOOK KHATA SHEET) ───────────────────────────────
     async viewCustomer() {
       try {
         const { customer, entries } = await api(`/customers/${this.data.id}`);
-        const renderEntries = (list) => {
-          if (!list.length) return '<p class="empty-state">अभी कोई हिसाब नहीं है। ➕ दबाकर पहला हिसाब लिखें।</p>';
+        const user = getUser() || {};
+        const shopTitle = user.displayName || (customer.shopId === 'shop2' ? 'दुकान 2' : 'दुकान 1');
+
+        // Chronological running balance calculation (oldest -> newest)
+        const sortedChrono = [...entries].sort((a, b) => {
+          const da = new Date(a.date || a.createdAt || 0).getTime();
+          const db = new Date(b.date || b.createdAt || 0).getTime();
+          return da - db;
+        });
+
+        let running = 0;
+        sortedChrono.forEach((e) => {
+          if (e.type === 'payment') {
+            running -= (Number(e.amount) || 0);
+          } else {
+            running += (Number(e.amount) || 0);
+          }
+          e.runningBalance = running;
+        });
+
+        // Display newest transactions first
+        const displayList = [...sortedChrono].reverse();
+
+        const renderPassbookRows = (list) => {
+          if (!list.length) {
+            return `
+              <div class="pb-empty-state">
+                <div style="font-size:3rem;margin-bottom:8px">📖</div>
+                <div style="font-weight:700;font-size:1.15rem;color:var(--forest)">अभी कोई हिसाब दर्ज नहीं है</div>
+                <p style="color:var(--ink-soft);font-size:.9rem;margin:4px 0 0">सामान देने पर <strong>− उधार</strong> या पैसे मिलने पर <strong>+ जमा</strong> दबाएँ।</p>
+              </div>`;
+          }
+
           return list.map((e) => {
-            const cleared = e.isCleared || (e.settledAmount >= e.amount && e.type === 'sale');
-            const itemLabel = e.items && e.items.length ? e.items.map((it) => it.name).join(', ') : (e.item || (e.type === 'payment' ? 'जमा' : 'उधार'));
-            return `<div class="entry-line ${cleared ? 'cleared' : ''}" data-type="${e.type}">
-                      <div class="desc">
-                        <strong>${escapeHtml(itemLabel)}</strong><br/>
-                        <span style="font-size:16px;color:var(--ink-soft)">${new Date(e.date).toLocaleDateString('hi-IN')}${e.entryTime ? ' · ' + new Date(e.entryTime).toLocaleTimeString('hi-IN',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
-                        ${e.note || e.notes ? `<br/><span style="font-size:14px;color:var(--ink-soft)">${escapeHtml(e.note || e.notes)}</span>` : ''}
-                      </div>
-                      <div class="rupee" style="font-weight:800;color:${e.type === 'payment' ? 'var(--ok)' : 'var(--owed)'}">${e.type === 'payment' ? '−' : '+'}${inr(e.amount)}</div>
-                    </div>`;
+            const isPayment = e.type === 'payment';
+            const cleared = e.isCleared || (e.settledAmount >= e.amount && !isPayment);
+            const itemLabel = e.items && e.items.length
+              ? e.items.map((it) => `${it.name}${it.qty && it.qty > 1 ? ` (${it.qty} ${it.unit || 'पीस'})` : ''}`).join(', ')
+              : (e.item || (isPayment ? 'जमा भुगतान' : 'उधार सामान'));
+
+            const dObj = new Date(e.date);
+            const dateStr = dObj.toLocaleDateString('hi-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            const timeStr = e.entryTime ? new Date(e.entryTime).toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+
+            return `
+              <div class="passbook-row ${isPayment ? 'pb-row--payment' : 'pb-row--sale'} ${cleared ? 'cleared' : ''}">
+                <div class="pb-col-main">
+                  <div class="pb-item-title">
+                    <strong style="color:var(--ink);font-size:1.05rem">${escapeHtml(itemLabel)}</strong>
+                    ${e.brand ? `<span class="pb-brand-tag">${escapeHtml(e.brand)}</span>` : ''}
+                  </div>
+                  <div class="pb-meta-line">
+                    <span class="pb-date-pill">📅 ${dateStr}${timeStr ? ' · ⏰ ' + timeStr : ''}</span>
+                    ${e.paymentMode ? `<span class="pb-mode-pill">${escapeHtml(e.paymentMode.toUpperCase())}</span>` : ''}
+                  </div>
+                  ${e.dueDate ? `
+                    <div class="pb-due-chip">
+                      ⏰ अंतिम भुगतान तिथि: ${new Date(e.dueDate).toLocaleDateString('hi-IN')}${e.dueDateNote ? ' (' + escapeHtml(e.dueDateNote) + ')' : ''}
+                    </div>` : ''}
+                  ${e.note || e.notes ? `<div class="pb-note-text">📝 ${escapeHtml(e.note || e.notes)}</div>` : ''}
+                </div>
+
+                <div class="pb-col-amt">
+                  <div class="pb-amt-badge ${isPayment ? 'pb-jama' : 'pb-udaar'}">
+                    <span class="pb-amt-type">${isPayment ? '↓ जमा' : '↑ उधार'}</span>
+                    <span class="pb-amt-val">${isPayment ? '−' : '+'}${inr(e.amount)}</span>
+                  </div>
+                  <div class="pb-running-pill" title="इस लेन-देन के बाद बचा हुआ खाता">
+                    <span class="pb-rp-label">बाकी:</span>
+                    <span class="pb-rp-val">${inr(e.runningBalance)}</span>
+                  </div>
+                </div>
+              </div>`;
           }).join('');
         };
 
+        const isSettled = (customer.balance || 0) <= 0;
+
         this.root.innerHTML = `
-          <div class="p-shell p-screen">
+          <div class="p-shell p-screen passbook-shell">
             ${this.nav()}
-            <div class="pinned-bacha">
+
+            <!-- Customer Passbook Header Card -->
+            <div class="pinned-bacha passbook-header-card">
               <div class="cust-header">
+                ${customer.diaryNo ? `<span class="pb-diary-badge">📖 #${customer.diaryNo}</span>` : ''}
                 ${customer.honorific ? `<span class="honorific-badge">${escapeHtml(customer.honorific)}</span>` : ''}
-                <span style="font-size:28px;font-weight:800">${escapeHtml(customer.name)}</span>
+                <span class="pb-cust-name">${escapeHtml(customer.name)}</span>
               </div>
-              ${customer.identifierNote || customer.relationNote ? `<div class="cust-note">${escapeHtml(customer.identifierNote || customer.relationNote)}</div>` : ''}
-              <div class="rel" style="color:var(--ink-soft);font-size:18px">${escapeHtml(customer.village || '')}${customer.phone ? ' · ' + escapeHtml(customer.phone) : ''}</div>
-              <div class="amt">बचा ${inr(customer.balance)}</div>
+              ${customer.identifierNote || customer.relationNote ? `<div class="cust-note">👤 ${escapeHtml(customer.identifierNote || customer.relationNote)}</div>` : ''}
+              <div class="rel" style="color:rgba(255,255,255,.9);font-size:1rem;margin-top:2px">
+                <span>📍 ${escapeHtml(customer.village || 'गाँव दर्ज नहीं')}</span>
+                ${customer.phone ? ` · <a href="tel:${escapeHtml(customer.phone)}" class="pb-phone-link">📞 ${escapeHtml(customer.phone)}</a>` : ''}
+              </div>
+
+              <div class="pb-header-balance-wrap">
+                <div class="pb-balance-box ${isSettled ? 'pb-bal-settled' : 'pb-bal-pending'}">
+                  <div class="pb-bal-caption">कुल बाकी (Net Balance)</div>
+                  <div class="pb-bal-figure">${inr(customer.balance || 0)}</div>
+                  <div class="pb-bal-status">${isSettled ? 'खाता चुकता है ✓' : 'भुगतान शेष है ⚠️'}</div>
+                </div>
+              </div>
+
+              <div class="pb-header-actions-row">
+                <button type="button" class="pb-hdr-btn pb-btn-wa" id="pb-share-wa">
+                  <span>📲 WhatsApp पर हिसाब भेजें</span>
+                </button>
+                <button type="button" class="pb-hdr-btn pb-btn-recalc" id="pb-recalc-btn" title="खाता पुनः जाँचे">
+                  <span>🔄 रीकैलकुलेट</span>
+                </button>
+              </div>
             </div>
-            <div class="tabs" role="tablist" id="entry-filter-tabs">
-              <button role="tab" type="button" class="on" data-filter="all">सब</button>
-              <button role="tab" type="button" data-filter="sale">उधार</button>
-              <button role="tab" type="button" data-filter="payment">जमा</button>
+
+            <!-- Two Large Prominent Buttons: - उधार & + जमा -->
+            <div class="passbook-action-dock" id="pb-action-dock">
+              <button class="pb-dock-btn pb-dock-udaar" type="button" id="pb-open-udaar">
+                <span class="dock-btn-icon">🔴 ✍️</span>
+                <span class="dock-btn-label">− उधार</span>
+                <span class="dock-btn-hint">सामान दिया (Debit)</span>
+              </button>
+              <button class="pb-dock-btn pb-dock-jama" type="button" id="pb-open-jama">
+                <span class="dock-btn-icon">🟢 💰</span>
+                <span class="dock-btn-label">+ जमा</span>
+                <span class="dock-btn-hint">पैसा मिला (Credit)</span>
+              </button>
             </div>
-            <div class="diary-page" id="diary-entries">
-              ${renderEntries(entries)}
+
+            <!-- Filter tabs -->
+            <div class="tabs" role="tablist" id="pb-filter-tabs" style="margin-top:16px">
+              <button role="tab" type="button" class="on" data-filter="all">सब हिसाब (${entries.length})</button>
+              <button role="tab" type="button" data-filter="sale">केवल उधार</button>
+              <button role="tab" type="button" data-filter="payment">केवल जमा</button>
             </div>
-            <div class="btn-row">
-              <button class="btn-huge btn-primary" type="button" id="new-credit">➕ नया उधार</button>
-              <button class="btn-huge btn-ok" type="button" id="new-pay">💰 जमा</button>
-              ${customer.phone ? `<a class="btn-huge btn-ghost" href="tel:${escapeHtml(customer.phone)}" style="display:grid;place-items:center;text-decoration:none">📞 कॉल करें</a>` : ''}
+
+            <!-- Passbook Entries Container -->
+            <div class="diary-page passbook-entries-list" id="pb-entries-container">
+              ${renderPassbookRows(displayList)}
             </div>
+
+            <!-- Bottom helper link to full manual entry if ever needed -->
+            <div style="text-align:center;margin:24px 0 32px">
+              <button type="button" id="pb-full-form-link" class="pb-secondary-link">
+                ✍️ विस्तृत / बहु-सामान फ़ॉर्म खोलें →
+              </button>
+            </div>
+
+            <!-- Modal Container for In-Page Udaar & Jama -->
+            <div id="pb-inline-modal-root"></div>
           </div>`;
 
-        // Filter tabs
-        this.root.querySelectorAll('#entry-filter-tabs button').forEach((b) => {
+        // Wire Filter tabs
+        this.root.querySelectorAll('#pb-filter-tabs button').forEach((b) => {
           b.onclick = () => {
-            this.root.querySelectorAll('#entry-filter-tabs button').forEach((x) => x.classList.remove('on'));
+            this.root.querySelectorAll('#pb-filter-tabs button').forEach((x) => x.classList.remove('on'));
             b.classList.add('on');
             const filter = b.dataset.filter;
-            const filtered = filter === 'all' ? entries : entries.filter((e) => e.type === filter);
-            const diaryEl = document.getElementById('diary-entries');
-            if (diaryEl) diaryEl.innerHTML = renderEntries(filtered);
+            const filtered = filter === 'all' ? displayList : displayList.filter((e) => e.type === filter);
+            const container = document.getElementById('pb-entries-container');
+            if (container) container.innerHTML = renderPassbookRows(filtered);
           };
         });
 
-        document.getElementById('new-credit').onclick = () => {
+        // Wire WhatsApp Statement
+        document.getElementById('pb-share-wa').onclick = () => {
+          sendWhatsAppStatement(customer, displayList, shopTitle);
+        };
+
+        // Wire Recalculate
+        document.getElementById('pb-recalc-btn').onclick = async () => {
+          try {
+            await api(`/customers/${customer._id}/recalc`, { method: 'POST' });
+            toast('खाता पुनः जाँचा गया ✓');
+            this.viewCustomer();
+          } catch (e) {
+            toast('पुनः जाँच नहीं हो सकी: ' + e.message);
+          }
+        };
+
+        // Wire Two Big Action Buttons
+        document.getElementById('pb-open-udaar').onclick = () => {
+          this._showQuickUdaarModal(customer, () => this.viewCustomer());
+        };
+
+        document.getElementById('pb-open-jama').onclick = () => {
+          this._showQuickJamaModal(customer, () => this.viewCustomer());
+        };
+
+        // Wire Detailed Form
+        document.getElementById('pb-full-form-link').onclick = () => {
           this.form = emptyForm();
           this._fillCustomer(customer);
           this.form.txType = 'sale';
           this.go('entry');
         };
-        document.getElementById('new-pay').onclick = () => {
-          this.form = emptyForm();
-          this._fillCustomer(customer);
-          this.form.txType = 'payment';
-          this.go('entry');
-        };
-      } catch {
-        toast('खाता नहीं खुला');
+
+      } catch (err) {
+        toast('खाता नहीं खुला: ' + (err.message || 'त्रुटि'));
         this.back();
       }
+    },
+
+    // ─── QUICK UDAAR (DEBIT) IN-PAGE MODAL ─────────────────────────────────────
+    _showQuickUdaarModal(customer, onSaved) {
+      stopActiveMic();
+      const modalRoot = document.getElementById('pb-inline-modal-root');
+      if (!modalRoot) return;
+
+      const quickItems = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'चादर', 'तौलिया', 'किराना', 'अन्य'];
+      let selectedItem = 'साड़ी';
+      let customItem = '';
+      let dueDateDays = null;
+      let dueDateCustom = '';
+
+      modalRoot.innerHTML = `
+        <div class="a-modal-backdrop" id="q-udaar-backdrop">
+          <div class="a-modal-card pb-modal-card">
+            <div class="a-modal-header" style="background:#fee2e2;border-bottom:1px solid #fecaca">
+              <div>
+                <h3 style="margin:0;font-size:1.2rem;font-weight:800;color:#991b1b">🔴 नया उधार दर्ज करें (Debit)</h3>
+                <div style="font-size:.85rem;color:#7f1d1d;margin-top:2px">
+                  ${customer.honorific ? customer.honorific + ' ' : ''}<strong>${escapeHtml(customer.name)}</strong> · ${escapeHtml(customer.village || '')}
+                </div>
+              </div>
+              <button class="a-page-btn" id="q-udaar-close" style="padding:4px 10px;font-size:1.1rem">✕</button>
+            </div>
+
+            <div class="a-modal-body" style="padding:16px 20px">
+              <!-- Live Voice Mic -->
+              <div class="pb-quick-voice-wrap">
+                <button type="button" class="pb-quick-mic-btn" id="q-udaar-mic">
+                  <span class="pb-qmic-icon">🎤</span>
+                  <span id="q-udaar-mic-text">बोलकर भरें (जैसे: 1200 की साड़ी)</span>
+                </button>
+                <div id="q-udaar-transcript" class="pb-mic-transcript hidden"></div>
+              </div>
+
+              <!-- Amount Input (Large ₹) -->
+              <div style="margin-top:14px">
+                <label style="font-weight:700;font-size:.9rem;color:var(--ink);display:block;margin-bottom:6px">
+                  उधार रकम (Amount) <span style="color:#dc2626">*</span>
+                </label>
+                <div class="pb-amt-input-wrap">
+                  <span class="pb-rupee-sign">₹</span>
+                  <input type="number" inputmode="numeric" id="q-udaar-amt" class="pb-amt-input" placeholder="0" autofocus />
+                </div>
+              </div>
+
+              <!-- Quick Item Chips -->
+              <div style="margin-top:14px">
+                <label style="font-weight:700;font-size:.9rem;color:var(--ink);display:block;margin-bottom:6px">
+                  सामान (Item)
+                </label>
+                <div class="chip-row" id="q-udaar-item-chips">
+                  ${quickItems.map((it) => `<button type="button" class="chip ${it === selectedItem ? 'chip--on' : ''}" data-val="${it}">${it}</button>`).join('')}
+                </div>
+                <div id="q-udaar-custom-item-wrap" style="margin-top:8px;display:none">
+                  <input type="text" id="q-udaar-custom-item" class="entry-input" placeholder="सामान का नाम टाइप करें..." lang="hi" />
+                </div>
+              </div>
+
+              <!-- Due Date Quick Chips -->
+              <div style="margin-top:14px">
+                <label style="font-weight:700;font-size:.9rem;color:var(--ink);display:block;margin-bottom:6px">
+                  ⏰ कब तक देंगे? (Due Date / Follow-up)
+                </label>
+                <div class="chip-row" id="q-udaar-due-chips">
+                  <button type="button" class="chip chip--on" data-days="none">कोई निश्चित नहीं</button>
+                  <button type="button" class="chip" data-days="7">7 दिन में</button>
+                  <button type="button" class="chip" data-days="15">15 दिन में</button>
+                  <button type="button" class="chip" data-days="30">1 महीना</button>
+                  <button type="button" class="chip" data-days="custom">तारीख चुनें</button>
+                </div>
+                <div id="q-udaar-custom-date-wrap" style="margin-top:8px;display:none">
+                  <input type="date" id="q-udaar-custom-date" class="entry-input" />
+                </div>
+              </div>
+
+              <!-- Notes (Optional) -->
+              <div style="margin-top:14px">
+                <label style="font-weight:700;font-size:.85rem;color:var(--ink-soft);display:block;margin-bottom:4px">
+                  विवरण / नोट (वैकल्पिक)
+                </label>
+                <input type="text" id="q-udaar-note" class="entry-input" placeholder="जैसे: शादी के लिए, 2 पीस" lang="hi" />
+              </div>
+
+              <!-- Save / Cancel Buttons -->
+              <div style="margin-top:20px;display:flex;gap:10px">
+                <button type="button" id="q-udaar-cancel" class="a-page-btn" style="flex:1;padding:12px;font-size:1rem;background:#f1f5f9;color:#475569">
+                  रद्द करें
+                </button>
+                <button type="button" id="q-udaar-save" class="a-page-btn" style="flex:2;padding:12px;font-size:1.05rem;font-weight:800;background:#dc2626;color:#ffffff">
+                  ✓ उधार जोड़ें
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const close = () => { stopActiveMic(); modalRoot.innerHTML = ''; };
+      document.getElementById('q-udaar-close').onclick = close;
+      document.getElementById('q-udaar-cancel').onclick = close;
+      document.getElementById('q-udaar-backdrop').onclick = (e) => { if (e.target.id === 'q-udaar-backdrop') close(); };
+
+      // Wire Item Chips
+      const customWrap = document.getElementById('q-udaar-custom-item-wrap');
+      const customInput = document.getElementById('q-udaar-custom-item');
+      document.querySelectorAll('#q-udaar-item-chips button').forEach((btn) => {
+        btn.onclick = () => {
+          document.querySelectorAll('#q-udaar-item-chips button').forEach((b) => b.classList.remove('chip--on'));
+          btn.classList.add('chip--on');
+          selectedItem = btn.dataset.val;
+          if (selectedItem === 'अन्य') {
+            customWrap.style.display = 'block';
+            customInput.focus();
+          } else {
+            customWrap.style.display = 'none';
+          }
+        };
+      });
+
+      // Wire Due Date Chips
+      const dateWrap = document.getElementById('q-udaar-custom-date-wrap');
+      const dateInput = document.getElementById('q-udaar-custom-date');
+      document.querySelectorAll('#q-udaar-due-chips button').forEach((btn) => {
+        btn.onclick = () => {
+          document.querySelectorAll('#q-udaar-due-chips button').forEach((b) => b.classList.remove('chip--on'));
+          btn.classList.add('chip--on');
+          const dVal = btn.dataset.days;
+          if (dVal === 'none') {
+            dueDateDays = null;
+            dueDateCustom = '';
+            dateWrap.style.display = 'none';
+          } else if (dVal === 'custom') {
+            dueDateDays = null;
+            dateWrap.style.display = 'block';
+            dateInput.focus();
+          } else {
+            dueDateDays = Number(dVal);
+            dueDateCustom = '';
+            dateWrap.style.display = 'none';
+          }
+        };
+      });
+
+      // Wire Voice Mic for Udaar
+      const micBtn = document.getElementById('q-udaar-mic');
+      const micText = document.getElementById('q-udaar-mic-text');
+      const transcriptBox = document.getElementById('q-udaar-transcript');
+      if (micBtn) {
+        micBtn.onclick = async () => {
+          stopActiveMic();
+          if (!g.VoiceEngine) { toast('आवाज़ उपलब्ध नहीं है'); return; }
+          micBtn.classList.add('mic-pulsing');
+          micText.textContent = 'सुन रहे हैं... बोलिए';
+          transcriptBox.classList.remove('hidden');
+          transcriptBox.textContent = 'बोलिए...';
+
+          const eng = new g.VoiceEngine({ silenceMs: 2500 });
+          _activeMicEngine = eng;
+          eng.onPartial = (p) => {
+            if (p) transcriptBox.textContent = p;
+          };
+
+          try {
+            const spoken = await eng.listenOnce(6000);
+            if (spoken) {
+              transcriptBox.textContent = `"${spoken}"`;
+              // Parse through speech API
+              try {
+                const { parsed } = await api('/entries/parse-speech', { method: 'POST', body: { text: spoken } });
+                if (parsed) {
+                  if (parsed.amount) {
+                    document.getElementById('q-udaar-amt').value = parsed.amount;
+                  }
+                  if (parsed.items && parsed.items[0]?.name) {
+                    const itemName = parsed.items[0].name;
+                    // Check if chip exists
+                    const matchedChip = Array.from(document.querySelectorAll('#q-udaar-item-chips button')).find((b) => b.dataset.val === itemName);
+                    if (matchedChip) {
+                      matchedChip.click();
+                    } else {
+                      const otherChip = Array.from(document.querySelectorAll('#q-udaar-item-chips button')).find((b) => b.dataset.val === 'अन्य');
+                      if (otherChip) otherChip.click();
+                      if (customInput) customInput.value = itemName;
+                    }
+                  }
+                  if (parsed.dueDateDays) {
+                    const chip = document.querySelector(`#q-udaar-due-chips button[data-days="${parsed.dueDateDays}"]`);
+                    if (chip) chip.click();
+                  }
+                }
+              } catch {}
+            }
+          } catch {}
+          micBtn.classList.remove('mic-pulsing');
+          micText.textContent = 'बोलकर भरें (जैसे: 1200 की साड़ी)';
+        };
+      }
+
+      // Wire Save Button
+      document.getElementById('q-udaar-save').onclick = async () => {
+        const amtVal = Number(document.getElementById('q-udaar-amt').value);
+        if (!amtVal || amtVal <= 0) {
+          toast('कृपया सही उधार रकम डालें');
+          document.getElementById('q-udaar-amt').focus();
+          return;
+        }
+
+        let finalItemName = selectedItem;
+        if (selectedItem === 'अन्य') {
+          finalItemName = customInput.value.trim() || 'अन्य सामान';
+        }
+
+        let computedDueDate = null;
+        let computedDueDateNote = '';
+        if (dateWrap.style.display !== 'none' && dateInput.value) {
+          computedDueDate = dateInput.value;
+          computedDueDateNote = 'तारीख तय';
+        } else if (dueDateDays) {
+          const d = new Date(Date.now() + dueDateDays * 86400000);
+          computedDueDate = d.toISOString().slice(0, 10);
+          computedDueDateNote = `${dueDateDays} दिन में`;
+        }
+
+        const noteVal = document.getElementById('q-udaar-note').value.trim();
+
+        const saveBtn = document.getElementById('q-udaar-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'जोड़ रहे हैं...';
+
+        try {
+          await api('/entries', {
+            method: 'POST',
+            body: {
+              customerId: customer._id,
+              shopId: customer.shopId,
+              type: 'sale',
+              amount: amtVal,
+              item: finalItemName,
+              items: [{ name: finalItemName, qty: 1, amount: amtVal }],
+              dueDate: computedDueDate || undefined,
+              dueDateNote: computedDueDateNote || undefined,
+              note: noteVal,
+              notes: noteVal,
+              enteredVia: 'passbook-quick',
+            },
+          });
+          playChime();
+          toast(`उधार ${inr(amtVal)} सफलतापूर्वक दर्ज हुआ!`);
+          close();
+          if (onSaved) onSaved();
+        } catch (err) {
+          toast(err.message || 'उधार दर्ज नहीं हो सका');
+          saveBtn.disabled = false;
+          saveBtn.textContent = '✓ उधार जोड़ें';
+        }
+      };
+    },
+
+    // ─── QUICK JAMA (CREDIT) IN-PAGE MODAL ─────────────────────────────────────
+    _showQuickJamaModal(customer, onSaved) {
+      stopActiveMic();
+      const modalRoot = document.getElementById('pb-inline-modal-root');
+      if (!modalRoot) return;
+
+      const currentBal = Number(customer.balance || 0);
+      let selectedMode = 'cash';
+
+      modalRoot.innerHTML = `
+        <div class="a-modal-backdrop" id="q-jama-backdrop">
+          <div class="a-modal-card pb-modal-card">
+            <div class="a-modal-header" style="background:#dcfce7;border-bottom:1px solid #bbf7d0">
+              <div>
+                <h3 style="margin:0;font-size:1.2rem;font-weight:800;color:#166534">🟢 जमा राशि दर्ज करें (Credit)</h3>
+                <div style="font-size:.85rem;color:#14532d;margin-top:2px">
+                  ${customer.honorific ? customer.honorific + ' ' : ''}<strong>${escapeHtml(customer.name)}</strong> · वर्तमान बाकी: <strong>${inr(currentBal)}</strong>
+                </div>
+              </div>
+              <button class="a-page-btn" id="q-jama-close" style="padding:4px 10px;font-size:1.1rem">✕</button>
+            </div>
+
+            <div class="a-modal-body" style="padding:16px 20px">
+              <!-- Live Voice Mic -->
+              <div class="pb-quick-voice-wrap">
+                <button type="button" class="pb-quick-mic-btn pb-mic--jama" id="q-jama-mic">
+                  <span class="pb-qmic-icon">🎤</span>
+                  <span id="q-jama-mic-text">बोलकर भरें (जैसे: 500 नकद जमा)</span>
+                </button>
+                <div id="q-jama-transcript" class="pb-mic-transcript hidden"></div>
+              </div>
+
+              <!-- Quick Amount Preset Chips -->
+              <div style="margin-top:14px">
+                <label style="font-weight:700;font-size:.85rem;color:var(--ink);display:block;margin-bottom:6px">
+                  त्वरित रकम चुनें (Quick Amount):
+                </label>
+                <div class="chip-row" id="q-jama-amt-chips">
+                  ${currentBal > 0 ? `<button type="button" class="chip chip--on" data-amt="${currentBal}">पूरा चुकता (${inr(currentBal)})</button>` : ''}
+                  <button type="button" class="chip" data-amt="500">₹500</button>
+                  <button type="button" class="chip" data-amt="1000">₹1,000</button>
+                  <button type="button" class="chip" data-amt="2000">₹2,000</button>
+                  <button type="button" class="chip" data-amt="5000">₹5,000</button>
+                </div>
+              </div>
+
+              <!-- Amount Input (Large ₹) -->
+              <div style="margin-top:14px">
+                <label style="font-weight:700;font-size:.9rem;color:var(--ink);display:block;margin-bottom:6px">
+                  जमा रकम (Amount) <span style="color:#dc2626">*</span>
+                </label>
+                <div class="pb-amt-input-wrap">
+                  <span class="pb-rupee-sign" style="color:#059669">₹</span>
+                  <input type="number" inputmode="numeric" id="q-jama-amt" class="pb-amt-input" value="${currentBal > 0 ? currentBal : ''}" placeholder="0" autofocus />
+                </div>
+              </div>
+
+              <!-- Payment Mode Chips -->
+              <div style="margin-top:14px">
+                <label style="font-weight:700;font-size:.9rem;color:var(--ink);display:block;margin-bottom:6px">
+                  भुगतान का माध्यम (Payment Mode)
+                </label>
+                <div class="chip-row" id="q-jama-mode-chips">
+                  <button type="button" class="chip chip--on" data-mode="cash">💵 नकद (Cash)</button>
+                  <button type="button" class="chip" data-mode="upi">📱 PhonePe / UPI</button>
+                  <button type="button" class="chip" data-mode="bank">🏦 बैंक ट्रांसफर</button>
+                </div>
+              </div>
+
+              <!-- Notes (Optional) -->
+              <div style="margin-top:14px">
+                <label style="font-weight:700;font-size:.85rem;color:var(--ink-soft);display:block;margin-bottom:4px">
+                  विवरण / नोट (वैकल्पिक)
+                </label>
+                <input type="text" id="q-jama-note" class="entry-input" placeholder="जैसे: लड़के ने दिया, UPI 4920" lang="hi" />
+              </div>
+
+              <!-- Save / Cancel Buttons -->
+              <div style="margin-top:20px;display:flex;gap:10px">
+                <button type="button" id="q-jama-cancel" class="a-page-btn" style="flex:1;padding:12px;font-size:1rem;background:#f1f5f9;color:#475569">
+                  रद्द करें
+                </button>
+                <button type="button" id="q-jama-save" class="a-page-btn" style="flex:2;padding:12px;font-size:1.05rem;font-weight:800;background:#059669;color:#ffffff">
+                  ✓ जमा दर्ज करें
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const close = () => { stopActiveMic(); modalRoot.innerHTML = ''; };
+      document.getElementById('q-jama-close').onclick = close;
+      document.getElementById('q-jama-cancel').onclick = close;
+      document.getElementById('q-jama-backdrop').onclick = (e) => { if (e.target.id === 'q-jama-backdrop') close(); };
+
+      // Wire Amount Presets
+      document.querySelectorAll('#q-jama-amt-chips button').forEach((btn) => {
+        btn.onclick = () => {
+          document.querySelectorAll('#q-jama-amt-chips button').forEach((b) => b.classList.remove('chip--on'));
+          btn.classList.add('chip--on');
+          document.getElementById('q-jama-amt').value = btn.dataset.amt;
+        };
+      });
+
+      // Wire Mode Chips
+      document.querySelectorAll('#q-jama-mode-chips button').forEach((btn) => {
+        btn.onclick = () => {
+          document.querySelectorAll('#q-jama-mode-chips button').forEach((b) => b.classList.remove('chip--on'));
+          btn.classList.add('chip--on');
+          selectedMode = btn.dataset.mode;
+        };
+      });
+
+      // Wire Voice Mic for Jama
+      const micBtn = document.getElementById('q-jama-mic');
+      const micText = document.getElementById('q-jama-mic-text');
+      const transcriptBox = document.getElementById('q-jama-transcript');
+      if (micBtn) {
+        micBtn.onclick = async () => {
+          stopActiveMic();
+          if (!g.VoiceEngine) { toast('आवाज़ उपलब्ध नहीं है'); return; }
+          micBtn.classList.add('mic-pulsing');
+          micText.textContent = 'सुन रहे हैं... बोलिए';
+          transcriptBox.classList.remove('hidden');
+          transcriptBox.textContent = 'बोलिए...';
+
+          const eng = new g.VoiceEngine({ silenceMs: 2500 });
+          _activeMicEngine = eng;
+          eng.onPartial = (p) => {
+            if (p) transcriptBox.textContent = p;
+          };
+
+          try {
+            const spoken = await eng.listenOnce(6000);
+            if (spoken) {
+              transcriptBox.textContent = `"${spoken}"`;
+              try {
+                const { parsed } = await api('/entries/parse-speech', { method: 'POST', body: { text: spoken } });
+                if (parsed) {
+                  if (parsed.amount) {
+                    document.getElementById('q-jama-amt').value = parsed.amount;
+                  }
+                  if (parsed.paymentMode) {
+                    const chip = document.querySelector(`#q-jama-mode-chips button[data-mode="${parsed.paymentMode}"]`);
+                    if (chip) chip.click();
+                  }
+                }
+              } catch {}
+            }
+          } catch {}
+          micBtn.classList.remove('mic-pulsing');
+          micText.textContent = 'बोलकर भरें (जैसे: 500 नकद जमा)';
+        };
+      }
+
+      // Wire Save Button
+      document.getElementById('q-jama-save').onclick = async () => {
+        const amtVal = Number(document.getElementById('q-jama-amt').value);
+        if (!amtVal || amtVal <= 0) {
+          toast('कृपया सही जमा रकम डालें');
+          document.getElementById('q-jama-amt').focus();
+          return;
+        }
+
+        const noteVal = document.getElementById('q-jama-note').value.trim();
+
+        const saveBtn = document.getElementById('q-jama-save');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'दर्ज कर रहे हैं...';
+
+        try {
+          await api('/entries', {
+            method: 'POST',
+            body: {
+              customerId: customer._id,
+              shopId: customer.shopId,
+              type: 'payment',
+              amount: amtVal,
+              paymentMode: selectedMode,
+              note: noteVal,
+              notes: noteVal,
+              enteredVia: 'passbook-quick',
+            },
+          });
+          playChime();
+          toast(`जमा ${inr(amtVal)} सफलतापूर्वक दर्ज हुआ!`);
+          close();
+          if (onSaved) onSaved();
+        } catch (err) {
+          toast(err.message || 'जमा दर्ज नहीं हो सका');
+          saveBtn.disabled = false;
+          saveBtn.textContent = '✓ जमा दर्ज करें';
+        }
+      };
     },
 
     // ─── DIARY PHOTO ─────────────────────────────────────────────────────────

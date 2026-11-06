@@ -285,8 +285,13 @@ router.patch('/:id', requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/:id/recalc', requireAdmin, async (req, res) => {
+router.post('/:id/recalc', requireAuth, async (req, res) => {
   try {
+    const cust = await Customer.findById(req.params.id);
+    if (!cust) return res.status(404).json({ error: 'Not found' });
+    if (req.session.user.role !== 'admin' && cust.shopId !== req.session.user.shopId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const customer = await recalculateBalance(req.params.id);
     res.json({ customer });
   } catch (err) {

@@ -69,7 +69,7 @@ router.get('/today-count', requireAuth, async (req, res) => {
 /** Create a new entry — supports multi-item body (§5) */
 router.post('/', requireAuth, async (req, res) => {
   try {
-    const shopId = resolveShopId(req, req.body.shopId);
+    let shopId = resolveShopId(req, req.body.shopId);
     let customerId = req.body.customerId;
 
     // Validate mobile if provided
@@ -78,7 +78,14 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     // Resolve / create customer
-    if (!customerId && req.body.customerName) {
+    if (customerId) {
+      const existingCustomer = await Customer.findById(customerId);
+      if (existingCustomer) {
+        if (!req.body.shopId || req.session.user.role === 'admin') {
+          shopId = existingCustomer.shopId;
+        }
+      }
+    } else if (req.body.customerName) {
       const name = String(req.body.customerName).trim();
       let customer = await Customer.findOne({
         shopId,
