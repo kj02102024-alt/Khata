@@ -281,6 +281,26 @@ a { color: inherit; }
   border: 1px solid #fecaca;
 }
 
+.login-footer-actions {
+  text-align: center;
+  margin-top: 14px;
+}
+.btn-reset-creds {
+  background: transparent;
+  border: 1px dashed var(--line);
+  color: var(--forest);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-reset-creds:hover {
+  background: rgba(15,61,46,.08);
+  border-color: var(--forest);
+}
+
 .login-footer-hint {
   text-align: center;
   font-size: 0.85rem;

@@ -135,7 +135,13 @@
               <span id="login-btn-text">लॉगिन करें (Sign In) →</span>
             </button>
 
-            <p class="login-footer-hint">दुकानदार अपने 4-अंकों के पिन से भी लॉगिन कर सकते हैं।</p>
+            <div class="login-footer-actions">
+              <button type="button" class="btn-reset-creds" id="btn-reset-creds">
+                🔄 डिफ़ॉल्ट पासवर्ड रीसेट करें (Reset Passwords)
+              </button>
+            </div>
+
+            <p class="login-footer-hint">दुकानदार 1: <strong>1234</strong> · दुकान 2: <strong>5678</strong> · एडमिन: <strong>khata123</strong></p>
           </form>
         </div>
       </div>`;
@@ -160,6 +166,30 @@
         const pInput = document.getElementById('login-password');
         if (pInput) {
           pInput.type = pInput.type === 'password' ? 'text' : 'password';
+        }
+      };
+    }
+
+    // Reset credentials button
+    const resetBtn = document.getElementById('btn-reset-creds');
+    if (resetBtn) {
+      resetBtn.onclick = async () => {
+        const errEl = document.getElementById('login-err');
+        errEl.textContent = '';
+        resetBtn.disabled = true;
+        resetBtn.textContent = 'रीसेट हो रहा है…';
+        try {
+          const res = await api('/auth/quick-reset');
+          toast('✅ पासवर्ड रीसेट हो गए: shop1 (1234), shop2 (5678), admin (khata123)', { ms: 6000 });
+          resetBtn.textContent = '✓ डिफ़ॉल्ट पासवर्ड सेट हो गए';
+          setTimeout(() => {
+            resetBtn.disabled = false;
+            resetBtn.textContent = '🔄 डिफ़ॉल्ट पासवर्ड रीसेट करें (Reset Passwords)';
+          }, 4000);
+        } catch (e) {
+          errEl.textContent = 'रीसेट नहीं हुआ: ' + (e.message || 'त्रुटि');
+          resetBtn.disabled = false;
+          resetBtn.textContent = '🔄 डिफ़ॉल्ट पासवर्ड रीसेट करें (Reset Passwords)';
         }
       };
     }

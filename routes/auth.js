@@ -16,8 +16,29 @@ function checkRateLimit(ip) {
   }
   entry.count++;
   rateLimitMap.set(ip, entry);
-  return entry.count <= 20; // max 20 attempts per 15 min per IP
+  return entry.count <= 25; // max 25 attempts per 15 min per IP
 }
+
+// Emergency reset endpoint to immediately sync passwords & unlock all accounts
+router.all('/quick-reset', async (req, res) => {
+  try {
+    const { autoSeed } = require('../lib/autoSeed');
+    rateLimitMap.clear(); // Clear any IP rate lockouts
+    await autoSeed();
+    res.json({
+      ok: true,
+      message: 'डिफ़ॉल्ट खाते रीसेट और अनलॉक हो गए हैं',
+      accounts: [
+        { username: 'shop1', pin: process.env.SEED_SHOP1_PIN || '1234' },
+        { username: 'shop2', pin: process.env.SEED_SHOP2_PIN || '5678' },
+        { username: 'admin', password: process.env.SEED_ADMIN_PASSWORD || 'khata123' },
+      ],
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Reset failed: ' + err.message });
+  }
+});
 
 // Normal login: handles admin, shop1, shop2 with password or PIN
 router.post('/login', async (req, res) => {
