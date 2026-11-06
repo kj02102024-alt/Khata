@@ -525,11 +525,28 @@
       container.querySelectorAll('.item-chips .chip').forEach((btn) => {
         const idx = Number(btn.closest('[data-idx]').dataset.idx);
         btn.onclick = () => {
-          f.items[idx].name = btn.dataset.item;
           container.querySelectorAll(`.item-chips[data-idx="${idx}"] .chip`).forEach((b) => b.classList.remove('chip--on'));
           btn.classList.add('chip--on');
           const nameInp = container.querySelector(`.item-name[data-idx="${idx}"]`);
-          if (nameInp) nameInp.value = btn.dataset.item;
+          if (btn.dataset.item === 'अन्य') {
+            // Don't save 'अन्य' — let user type/speak the actual item name
+            f.items[idx].name = '';
+            if (nameInp) {
+              nameInp.value = '';
+              nameInp.placeholder = 'सामान का नाम लिखें या 🎤 बोलें…';
+              nameInp.style.borderColor = '#d97706';
+              nameInp.style.background = '#fffbeb';
+              nameInp.focus();
+            }
+          } else {
+            f.items[idx].name = btn.dataset.item;
+            if (nameInp) {
+              nameInp.value = btn.dataset.item;
+              nameInp.placeholder = 'जैसे साड़ी, गद्दा';
+              nameInp.style.borderColor = '';
+              nameInp.style.background = '';
+            }
+          }
           this._updateStickyBar();
         };
       });
@@ -543,7 +560,15 @@
       });
       container.querySelectorAll('.item-name').forEach((inp) => {
         const idx = Number(inp.dataset.idx);
-        inp.oninput = () => { f.items[idx].name = inp.value; this._updateStickyBar(); };
+        inp.oninput = () => {
+          f.items[idx].name = inp.value;
+          // Reset highlight once user has typed something
+          if (inp.value.trim()) {
+            inp.style.borderColor = '';
+            inp.style.background = '';
+          }
+          this._updateStickyBar();
+        };
       });
       container.querySelectorAll('.item-brand').forEach((inp) => {
         const idx = Number(inp.dataset.idx);
@@ -687,7 +712,7 @@
     _startFieldMic(field, btnEl) {
       stopActiveMic();
       if (!g.VoiceEngine) { toast('आवाज़ इस ब्राउज़र में नहीं चलती'); return; }
-      const engine = new g.VoiceEngine({ silenceMs: 8000 });
+      const engine = new g.VoiceEngine({ silenceMs: 2500 });
       _activeMicEngine = engine;
       this.form.enteredVia = 'voice-field';
 
@@ -755,9 +780,10 @@
         return t ? t.toTimeString().slice(0, 5) : text;
       }
       if (field.startsWith('item')) {
-        // Chip match first
+        // Chip match first — but skip 'अन्य' so voice returns actual spoken name
         const lo = text.toLowerCase();
         for (const c of ITEM_CHIPS) {
+          if (c === 'अन्य') continue;
           if (lo.includes(c.toLowerCase())) return c;
         }
         return text;
@@ -848,7 +874,7 @@
 
       this.form.enteredVia = 'voice-master';
 
-      const engine = new g.VoiceEngine({ silenceMs: 9000 });
+      const engine = new g.VoiceEngine({ silenceMs: 3000 });
       _activeMicEngine = engine;
 
       engine.onPartial = (full) => { transcriptBox.textContent = full || 'सुन रहा हूँ…'; };
@@ -919,7 +945,7 @@
 
     async _askMissingField(field, question) {
       if (!g.VoiceEngine) return;
-      const engine = new g.VoiceEngine({ silenceMs: 8000 });
+      const engine = new g.VoiceEngine({ silenceMs: 2500 });
       await engine.speak(question, 0.85);
       return new Promise((resolve) => {
         engine.onComplete = (text) => {
@@ -1113,9 +1139,11 @@
               <div class="rel">${escapeHtml(c.identifierNote || c.relationNote || '')} · ${escapeHtml(c.village || '')}</div>
               <div class="bacha">${tab === 'settled' ? 'चुकता ✓' : 'बचा ' + inr(c.balance)}</div>
             </button>`).join('');
-          box.querySelectorAll('.cust-card').forEach((el) => {
-            el.onclick = () => this.go('customer', { id: el.dataset.id });
-          });
+          // Use event delegation so child-element taps don't break navigation
+          box.onclick = (e) => {
+            const card = e.target.closest('.cust-card');
+            if (card) this.go('customer', { id: card.dataset.id });
+          };
         } catch {
           const b = document.getElementById('slist');
           if (b) b.innerHTML = '<p class="empty">सूची नहीं खुली</p>';
@@ -1131,9 +1159,9 @@
       });
       document.getElementById('s-mic').onclick = async () => {
         if (!g.VoiceEngine) return;
-        const eng = new g.VoiceEngine({ silenceMs: 5000 });
+        const eng = new g.VoiceEngine({ silenceMs: 2500 });
         await eng.speak('किसका नाम ढूँढना है?', 0.85);
-        const t = await eng.listenOnce(8000);
+        const t = await eng.listenOnce(5000);
         if (t) { document.getElementById('sq').value = t; load(); }
       };
       load();
@@ -1143,6 +1171,22 @@
     async viewCustomer() {
       try {
         const { customer, entries } = await api(`/customers/${this.data.id}`);
+        const renderEntries = (list) => {
+          if (!list.length) return '<p class="empty-state">अभी कोई हिसाब नहीं है। ➕ दबाकर पहला हिसाब लिखें।</p>';
+          return list.map((e) => {
+            const cleared = e.isCleared || (e.settledAmount >= e.amount && e.type === 'sale');
+            const itemLabel = e.items && e.items.length ? e.items.map((it) => it.name).join(', ') : (e.item || (e.type === 'payment' ? 'जमा' : 'उधार'));
+            return `<div class="entry-line ${cleared ? 'cleared' : ''}" data-type="${e.type}">
+                      <div class="desc">
+                        <strong>${escapeHtml(itemLabel)}</strong><br/>
+                        <span style="font-size:16px;color:var(--ink-soft)">${new Date(e.date).toLocaleDateString('hi-IN')}${e.entryTime ? ' · ' + new Date(e.entryTime).toLocaleTimeString('hi-IN',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                        ${e.note || e.notes ? `<br/><span style="font-size:14px;color:var(--ink-soft)">${escapeHtml(e.note || e.notes)}</span>` : ''}
+                      </div>
+                      <div class="rupee" style="font-weight:800;color:${e.type === 'payment' ? 'var(--ok)' : 'var(--owed)'}">${e.type === 'payment' ? '−' : '+'}${inr(e.amount)}</div>
+                    </div>`;
+          }).join('');
+        };
+
         this.root.innerHTML = `
           <div class="p-shell p-screen">
             ${this.nav()}
@@ -1155,21 +1199,13 @@
               <div class="rel" style="color:var(--ink-soft);font-size:18px">${escapeHtml(customer.village || '')}${customer.phone ? ' · ' + escapeHtml(customer.phone) : ''}</div>
               <div class="amt">बचा ${inr(customer.balance)}</div>
             </div>
-            <div class="diary-page">
-              ${entries.length
-                ? entries.map((e) => {
-                    const cleared = e.isCleared || (e.settledAmount >= e.amount && e.type === 'sale');
-                    const itemLabel = e.items && e.items.length ? e.items.map((it) => it.name).join(', ') : (e.item || (e.type === 'payment' ? 'जमा' : 'उधार'));
-                    return `<div class="entry-line ${cleared ? 'cleared' : ''}">
-                      <div class="desc">
-                        <strong>${escapeHtml(itemLabel)}</strong><br/>
-                        <span style="font-size:16px;color:var(--ink-soft)">${new Date(e.date).toLocaleDateString('hi-IN')}${e.entryTime ? ' · ' + new Date(e.entryTime).toLocaleTimeString('hi-IN',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
-                        ${e.note || e.notes ? `<br/><span style="font-size:14px;color:var(--ink-soft)">${escapeHtml(e.note || e.notes)}</span>` : ''}
-                      </div>
-                      <div class="rupee" style="font-weight:800;color:${e.type === 'payment' ? 'var(--ok)' : 'var(--owed)'}">${e.type === 'payment' ? '−' : '+'}${inr(e.amount)}</div>
-                    </div>`;
-                  }).join('')
-                : '<p class="empty-state">अभी कोई हिसाब नहीं है। ➕ दबाकर पहला हिसाब लिखें।</p>'}
+            <div class="tabs" role="tablist" id="entry-filter-tabs">
+              <button role="tab" type="button" class="on" data-filter="all">सब</button>
+              <button role="tab" type="button" data-filter="sale">उधार</button>
+              <button role="tab" type="button" data-filter="payment">जमा</button>
+            </div>
+            <div class="diary-page" id="diary-entries">
+              ${renderEntries(entries)}
             </div>
             <div class="btn-row">
               <button class="btn-huge btn-primary" type="button" id="new-credit">➕ नया उधार</button>
@@ -1177,6 +1213,19 @@
               ${customer.phone ? `<a class="btn-huge btn-ghost" href="tel:${escapeHtml(customer.phone)}" style="display:grid;place-items:center;text-decoration:none">📞 कॉल करें</a>` : ''}
             </div>
           </div>`;
+
+        // Filter tabs
+        this.root.querySelectorAll('#entry-filter-tabs button').forEach((b) => {
+          b.onclick = () => {
+            this.root.querySelectorAll('#entry-filter-tabs button').forEach((x) => x.classList.remove('on'));
+            b.classList.add('on');
+            const filter = b.dataset.filter;
+            const filtered = filter === 'all' ? entries : entries.filter((e) => e.type === filter);
+            const diaryEl = document.getElementById('diary-entries');
+            if (diaryEl) diaryEl.innerHTML = renderEntries(filtered);
+          };
+        });
+
         document.getElementById('new-credit').onclick = () => {
           this.form = emptyForm();
           this._fillCustomer(customer);

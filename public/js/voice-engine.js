@@ -8,7 +8,7 @@
   class VoiceEngine {
     constructor(opts = {}) {
       this.lang = opts.lang || 'hi-IN';
-      this.silenceMs = opts.silenceMs || 8000;
+      this.silenceMs = opts.silenceMs || 3000;
       this.onPartial = opts.onPartial || (() => {});
       this.onState = opts.onState || (() => {});
       this.onComplete = opts.onComplete || (() => {});
@@ -162,7 +162,7 @@
           } catch {
             setTimeout(() => {
               if (this._active && !this._manual) this._startRec();
-            }, 180);
+            }, 80);
           }
         }
       };
