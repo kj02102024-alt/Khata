@@ -77,12 +77,31 @@
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
 
+    // Instant & persistent session restore from localStorage (for seamless offline & no auto-logout)
+    const cachedUser = getUser();
+    if (cachedUser) {
+      state.user = cachedUser;
+      route();
+    }
+
     try {
       const { user } = await api('/auth/me');
       state.user = user;
-      route();
-    } catch {
-      renderLogin();
+      setSession(null, user);
+      if (!cachedUser || cachedUser.id !== user.id || cachedUser.role !== user.role) {
+        route();
+      }
+    } catch (err) {
+      // Only log out if server explicitly returned 401 Unauthorized
+      if (err.status === 401) {
+        clearSession();
+        state.user = null;
+        renderLogin();
+      } else if (!cachedUser) {
+        // If offline and no cached user, show login
+        renderLogin();
+      }
+      // If offline/network glitch and cached user exists, stay logged in in Shop mode
     }
   }
 
@@ -236,6 +255,9 @@
             body: { username, password },
           });
 
+          // Save persistent user session
+          setSession(null, user);
+
           if (document.getElementById('login-remember')?.checked) {
             localStorage.setItem('khata_remembered_user', username);
           } else {
@@ -254,9 +276,9 @@
   }
 
   async function logout() {
-    try { await api('/auth/logout', { method: 'POST' }); } catch { /* */ }
+    clearSession();
     state.user = null;
-    // Clear remembered shop on logout
+    try { await api('/auth/logout', { method: 'POST' }); } catch { /* */ }
     renderLogin();
   }
 

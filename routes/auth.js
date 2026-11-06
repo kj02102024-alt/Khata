@@ -83,9 +83,12 @@ router.post('/login', async (req, res) => {
     }
     await user.recordSuccess();
     req.session.user = user.toSafeJSON();
-    // 30-day session for shopkeepers; 7 days for admin
-    req.session.cookie.maxAge = user.role === 'shopkeeper' ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
-    res.json({ user: req.session.user });
+    // 180-day persistent session for shopkeepers; 30 days for admin
+    req.session.cookie.maxAge = user.role === 'shopkeeper' ? 180 * 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000;
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('Session save error:', saveErr);
+      res.json({ user: req.session.user });
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed' });
@@ -129,8 +132,11 @@ router.post('/pin-login', async (req, res) => {
     }
     await user.recordSuccess();
     req.session.user = user.toSafeJSON();
-    req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
-    res.json({ user: req.session.user });
+    req.session.cookie.maxAge = 180 * 24 * 60 * 60 * 1000; // 180 days persistent session
+    req.session.save((saveErr) => {
+      if (saveErr) console.error('Session save error:', saveErr);
+      res.json({ user: req.session.user });
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login failed' });

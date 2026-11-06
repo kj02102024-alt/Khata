@@ -318,13 +318,37 @@ function parseCustomerName(text) {
   return nameWords.join(' ').trim();
 }
 
+function cleanPhraseDuplicates(str) {
+  if (!str) return '';
+  let words = str.trim().split(/\s+/);
+  if (words.length <= 1) return str.trim();
+  let modified = true;
+  let guard = 0;
+  while (modified && guard++ < 30) {
+    modified = false;
+    for (let len = Math.floor(words.length / 2); len >= 1; len--) {
+      for (let i = 0; i <= words.length - 2 * len; i++) {
+        const p1 = words.slice(i, i + len).join(' ');
+        const p2 = words.slice(i + len, i + 2 * len).join(' ');
+        if (p1.toLowerCase() === p2.toLowerCase()) {
+          words.splice(i + len, len);
+          modified = true;
+          break;
+        }
+      }
+      if (modified) break;
+    }
+  }
+  return words.join(' ');
+}
+
 // ─── Master mic slot-filling parser ──────────────────────────────────────────
 /**
  * Parse a free-form Hindi sentence into form slots.
  * Returns: { name, honorific, village, phone, item, brand, qty, unit, rate, amount, type, date, time, identifierNote, note, items[] }
  */
 function parseMasterSpeech(raw) {
-  const text = (raw || '').trim();
+  const text = cleanPhraseDuplicates(raw || '');
   if (!text) return { ok: false, error: 'empty' };
 
   const t = normalizeDigits(text);

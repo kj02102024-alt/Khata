@@ -1,9 +1,41 @@
 /**
- * Pause-tolerant voice ledger engine with app-level silence timer.
+ * Pause-tolerant, echo-suppressed voice ledger engine with app-level silence timer.
+ * Prevents Android Chrome resultIndex bugs, word/phrase duplications, and audio feedback loops.
  * States: IDLE → LISTENING → SILENCE_COUNTDOWN → (done) …
  */
 (function (g) {
   const SR = g.SpeechRecognition || g.webkitSpeechRecognition;
+
+  /**
+   * Cleans immediate duplicate words and repeating multi-word phrases (echo/glitch suppression).
+   * E.g. "साड़ी 500 साड़ी 500" -> "साड़ी 500"
+   * E.g. "रमेश रमेश" -> "रमेश"
+   */
+  function cleanPhraseDuplicates(str) {
+    if (!str) return '';
+    let words = str.trim().split(/\s+/);
+    if (words.length <= 1) return str.trim();
+
+    let modified = true;
+    let guard = 0;
+    while (modified && guard++ < 30) {
+      modified = false;
+      // Search for repeating phrases from half length down to 1 word
+      for (let len = Math.floor(words.length / 2); len >= 1; len--) {
+        for (let i = 0; i <= words.length - 2 * len; i++) {
+          const p1 = words.slice(i, i + len).join(' ');
+          const p2 = words.slice(i + len, i + 2 * len).join(' ');
+          if (p1.toLowerCase() === p2.toLowerCase()) {
+            words.splice(i + len, len);
+            modified = true;
+            break;
+          }
+        }
+        if (modified) break;
+      }
+    }
+    return words.join(' ');
+  }
 
   class VoiceEngine {
     constructor(opts = {}) {
@@ -15,14 +47,16 @@
       this.onError = opts.onError || (() => {});
 
       this._rec = null;
-      this._finals = [];
+      this._history = [];       // finals from previous restart cycles
+      this._sessionFinals = []; // finals from current SpeechRecognition instance
       this._interim = '';
-      this._lastInterim = '';
       this._active = false;
       this._manual = false;
       this._silenceTimer = null;
       this._silenceStart = null;
       this._raf = null;
+      this._partialRaf = null;
+      this._sessionId = 0;
       this.state = 'IDLE';
     }
 
@@ -31,7 +65,9 @@
     }
 
     get transcript() {
-      return `${this._finals.join(' ')} ${this._interim}`.replace(/\s+/g, ' ').trim();
+      const allFinals = [...this._history, ...this._sessionFinals];
+      const raw = `${allFinals.join(' ')} ${this._interim}`.replace(/\s+/g, ' ').trim();
+      return cleanPhraseDuplicates(raw);
     }
 
     _setState(s) {
@@ -50,11 +86,11 @@
         return;
       }
       this._manual = false;
-      this._finals = [];
+      this._history = [];
+      this._sessionFinals = [];
       this._interim = '';
-      this._lastInterim = '';
       this._active = true;
-      this._startRec();
+      this._startRec(true);
       this._armSilence();
       this._setState('LISTENING');
     }
@@ -62,17 +98,18 @@
     done() {
       this._manual = true;
       this._clearSilence();
+      const text = this.transcript;
       this._stopRec();
       this._active = false;
       this._setState('IDLE');
-      this.onComplete(this.transcript);
+      this.onComplete(cleanPhraseDuplicates(text));
     }
 
     clearBuffer() {
-      this._finals = [];
+      this._history = [];
+      this._sessionFinals = [];
       this._interim = '';
-      this._lastInterim = '';
-      this.onPartial(this.transcript, '');
+      this.onPartial('', '');
       this._armSilence();
       this._setState('LISTENING');
     }
@@ -82,6 +119,9 @@
       this._active = false;
       this._clearSilence();
       this._stopRec();
+      this._history = [];
+      this._sessionFinals = [];
+      this._interim = '';
       this._setState('IDLE');
     }
 
@@ -89,7 +129,8 @@
       return new Promise((resolve) => {
         this.cancel();
         this._manual = false;
-        this._finals = [];
+        this._history = [];
+        this._sessionFinals = [];
         this._interim = '';
         this._active = true;
         const prevComplete = this.onComplete;
@@ -98,9 +139,9 @@
         this.onComplete = (text) => {
           this.onComplete = prevComplete;
           this.silenceMs = prevSilence;
-          resolve(text);
+          resolve(cleanPhraseDuplicates(text));
         };
-        this._startRec();
+        this._startRec(false); // single-shot mode
         this._armSilence();
         this._setState('LISTENING');
       });
@@ -109,61 +150,99 @@
     speak(text, rate = 0.82) {
       return new Promise((resolve) => {
         if (!g.speechSynthesis) return resolve(false);
+        // Cancel any active speech or mic before speaking to avoid feedback loop
+        this.cancel();
         g.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = this.lang;
         u.rate = rate;
-        u.onend = () => resolve(true);
+        u.onend = () => {
+          // Grace delay for hardware speaker echo to dissipate before mic opens
+          setTimeout(() => resolve(true), 200);
+        };
         u.onerror = () => resolve(false);
         g.speechSynthesis.speak(u);
       });
     }
 
-    _startRec() {
-      this._stopRec(true);
+    _emitPartial() {
+      if (this._partialRaf) cancelAnimationFrame(this._partialRaf);
+      this._partialRaf = requestAnimationFrame(() => {
+        this._partialRaf = null;
+        if (this._active) {
+          this.onPartial(this.transcript, this._interim);
+        }
+      });
+    }
+
+    _startRec(continuous = true) {
+      this._stopRec();
+      const sessionId = ++this._sessionId;
       const rec = new SR();
       rec.lang = this.lang;
-      rec.continuous = true;
+      rec.continuous = continuous;
       rec.interimResults = true;
       rec.maxAlternatives = 1;
 
       rec.onresult = (ev) => {
+        if (sessionId !== this._sessionId) return;
+
+        // Reconstruct finals directly by slot index from ev.results.
+        // This is 100% immune to Chrome Android's resultIndex reset bug.
+        const finals = [];
         let interim = '';
-        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+
+        for (let i = 0; i < ev.results.length; i++) {
           const r = ev.results[i];
-          const t = r[0].transcript;
+          const t = (r[0] && r[0].transcript) ? r[0].transcript.trim() : '';
+          if (!t) continue;
           if (r.isFinal) {
-            this._finals.push(t.trim());
-            this._interim = '';
-            this._lastInterim = '';
+            finals.push(t);
           } else {
-            // De-dupe Android Chrome re-emits
-            if (t === this._lastInterim) continue;
-            this._lastInterim = t;
-            interim += t;
+            interim = t;
           }
         }
-        if (interim) this._interim = interim;
-        this.onPartial(this.transcript, this._interim);
+
+        this._sessionFinals = finals;
+        this._interim = interim;
+
+        this._emitPartial();
         this._armSilence();
         this._setState('LISTENING');
       };
 
       rec.onerror = (e) => {
+        if (sessionId !== this._sessionId) return;
         if (e.error === 'no-speech' || e.error === 'aborted') return;
         if (e.error === 'not-allowed') this.onError({ code: 'not-allowed' });
         else if (e.error === 'network') this.onError({ code: 'network' });
       };
 
       rec.onend = () => {
+        if (sessionId !== this._sessionId) return;
         if (this._active && !this._manual) {
-          try {
-            rec.start();
-          } catch {
-            setTimeout(() => {
-              if (this._active && !this._manual) this._startRec();
-            }, 80);
+          // If we already captured a complete transcript and speech ended naturally, finish now!
+          const current = this.transcript;
+          if (current && current.length >= 2) {
+            this.done();
+            return;
           }
+
+          // Otherwise commit any final fragments to history and restart listening for speech
+          if (this._sessionFinals.length) {
+            for (const f of this._sessionFinals) {
+              if (!this._history.length || this._history[this._history.length - 1] !== f) {
+                this._history.push(f);
+              }
+            }
+            this._sessionFinals = [];
+          }
+
+          setTimeout(() => {
+            if (this._active && !this._manual && sessionId === this._sessionId) {
+              this._startRec(continuous);
+            }
+          }, 100);
         }
       };
 
@@ -176,11 +255,16 @@
     }
 
     _stopRec() {
+      this._sessionId++;
+      if (this._partialRaf) cancelAnimationFrame(this._partialRaf);
+      this._partialRaf = null;
       if (!this._rec) return;
       try {
         this._rec.onend = null;
+        this._rec.onresult = null;
+        this._rec.onerror = null;
         this._rec.stop();
-      } catch { /* */ }
+      } catch { /* ignore */ }
       this._rec = null;
     }
 
@@ -208,14 +292,15 @@
     }
 
     _onSilence() {
-      if (this.transcript.length > 1) this.done();
+      if (this.transcript.length >= 2) this.done();
       else {
-        this.onPartial(this.transcript, '');
+        this.onPartial('', '');
         this._armSilence();
         this._setState('LISTENING');
       }
     }
   }
 
+  VoiceEngine.cleanPhraseDuplicates = cleanPhraseDuplicates;
   g.VoiceEngine = VoiceEngine;
 })(window);

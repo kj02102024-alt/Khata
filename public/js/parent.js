@@ -711,6 +711,7 @@
     // ─── FIELD MIC ─────────────────────────────────────────────────────────────
     _startFieldMic(field, btnEl) {
       stopActiveMic();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
       if (!g.VoiceEngine) { toast('आवाज़ इस ब्राउज़र में नहीं चलती'); return; }
       const engine = new g.VoiceEngine({ silenceMs: 2500 });
       _activeMicEngine = engine;
@@ -726,6 +727,7 @@
         this._applyFieldValue(field, val);
         btnEl.classList.remove('mic-active');
         btnEl.textContent = '🎤';
+        btnEl.onclick = () => this._startFieldMic(field, btnEl);
         stopActiveMic();
       };
 
@@ -740,7 +742,12 @@
         setField(parsed);
       };
 
-      engine.onError = () => { btnEl.classList.remove('mic-active'); btnEl.textContent = '🎤'; };
+      engine.onError = () => {
+        btnEl.classList.remove('mic-active');
+        btnEl.textContent = '🎤';
+        btnEl.onclick = () => this._startFieldMic(field, btnEl);
+        stopActiveMic();
+      };
 
       // Tap again = stop
       btnEl.onclick = () => { engine.done(); btnEl.onclick = () => this._startFieldMic(field, btnEl); };
@@ -765,7 +772,8 @@
       return null;
     },
 
-    _parseFieldValue(field, text) {
+    _parseFieldValue(field, rawText) {
+      const text = g.VoiceEngine?.cleanPhraseDuplicates ? g.VoiceEngine.cleanPhraseDuplicates(rawText) : String(rawText || '').trim();
       // Field-specific parsing
       if (field === 'phone') return g.KhataApp?.parsePhone ? g.KhataApp.parsePhone(text) : text.replace(/\D/g, '');
       if (field === 'paymentAmount' || field.startsWith('amount') || field.startsWith('rate')) {
@@ -862,6 +870,7 @@
     // ─── MASTER MIC ───────────────────────────────────────────────────────────
     _startMasterMic() {
       stopActiveMic();
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
       if (!g.VoiceEngine) { toast('आवाज़ इस ब्राउज़र में नहीं चलती'); return; }
 
       const btn = document.getElementById('master-mic');
@@ -881,6 +890,7 @@
       engine.onComplete = async (text) => {
         btn.classList.remove('master-mic--active');
         pulse.textContent = '🎤';
+        btn.onclick = () => this._startMasterMic();
         transcriptBox.textContent = text || '';
         stopActiveMic();
         await this._parseMasterTranscript(text);
@@ -888,6 +898,7 @@
       engine.onError = () => {
         btn.classList.remove('master-mic--active');
         pulse.textContent = '🎤';
+        btn.onclick = () => this._startMasterMic();
         stopActiveMic();
       };
 
