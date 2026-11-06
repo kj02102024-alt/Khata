@@ -17,36 +17,52 @@
   const i18n = {
     en: {
       overview: 'Overview', review: 'Diary Review', ledger: 'Ledger',
-      audit: 'Audit Log', logout: 'Log out', outstanding: 'Total Outstanding',
+      audit: 'Audit & Trash', logout: 'Log out', outstanding: 'Total Outstanding',
       collections: 'Today\'s Collections', activeCust: 'Active Customers',
-      pendingPhotos: 'Pending Diary Photos', approvePost: 'Approve & Post',
+      pendingPhotos: 'Diary Pending', approvePost: 'Approve & Post',
       reject: 'Reject', noPending: 'No diary pages waiting.',
       zoomIn: 'Zoom +', zoomOut: 'Zoom −', resetView: 'Reset',
       customer: 'Customer', item: 'Item', brand: 'Brand', meters: 'Meters',
       qty: 'Qty', rate: 'Rate', amount: 'Amount', notes: 'Notes',
       shop: 'Shop', date: 'Date', actions: 'Actions', softDelete: 'Delete',
-      restore: 'Restore', type: 'Type', status: 'Status', welcome: 'Pro Admin Portal',
+      restore: 'Restore', type: 'Type', status: 'Status', welcome: 'Khata Enterprise Admin',
       honorific: 'Honorific', diaryNo: 'Diary No.', identifierNote: 'Identifier',
       time: 'Time', paymentMode: 'Payment Mode', enteredVia: 'Entered Via',
-      noData: 'No data yet.',
+      noData: 'No data yet.', todayCredit: 'Today\'s Credit',
+      customers: 'Customers', aging: 'Aging Analysis',
+      villageDistribution: 'Village Distribution', trendChart: 'Credit vs Collections (7 Days)',
+      exportCsv: 'Export CSV', exportPdf: 'Print / PDF', saveDraft: 'Save Draft',
+      rotate: 'Rotate 90°', contrast: 'Contrast', brightness: 'Brightness',
+      recycleBin: 'Recycle Bin', allShops: 'All Shops', allTypes: 'All Types',
+      allStatuses: 'All Statuses', drilldown: 'View Ledger', recalcBalance: 'Recalculate Balance',
+      searchPlaceholder: 'Search name, village, mobile, item, amount...',
+      page: 'Page', of: 'of', entries: 'entries',
     },
     hi: {
-      overview: 'सारांश', review: 'डायरी जाँच', ledger: 'खाता बही',
-      audit: 'ऑडिट लॉग', logout: 'बाहर निकलें', outstanding: 'कुल बचा',
-      collections: 'आज की वसूली', activeCust: 'चालू ग्राहक',
-      pendingPhotos: 'लंबित डायरी फोटो', approvePost: 'मंज़ूर करें और खाते में डालें',
-      reject: 'रद्द', noPending: 'कोई डायरी पेज जाँच के लिए नहीं है।',
-      zoomIn: 'बड़ा', zoomOut: 'छोटा', resetView: 'रीसेट',
+      overview: 'सारांश (Dashboard)', review: 'डायरी जाँच (Review)', ledger: 'खाता बही (Ledger)',
+      audit: 'ऑडिट व कचरा (Audit)', logout: 'बाहर निकलें (Logout)', outstanding: 'कुल बकाया',
+      collections: 'आज की वसूली', activeCust: 'सक्रिय ग्राहक',
+      pendingPhotos: 'लंबित डायरी पन्ने', approvePost: 'मंज़ूर करें और दर्ज करें',
+      reject: 'रद्द करें', noPending: 'कोई डायरी पेज जाँच के लिए प्रतीक्षारत नहीं है।',
+      zoomIn: 'बड़ा (+)', zoomOut: 'छोटा (−)', resetView: 'रीसेट',
       customer: 'ग्राहक', item: 'सामान', brand: 'ब्रांड', meters: 'मीटर',
-      qty: 'नग', rate: 'रेट', amount: 'रकम', notes: 'नोट',
-      shop: 'दुकान', date: 'तारीख', actions: 'कार्य', softDelete: 'हटाएँ',
-      restore: 'वापस लाएँ', type: 'प्रकार', status: 'स्थिति', welcome: 'एडमिन पोर्टल',
-      honorific: 'आदर', diaryNo: 'डायरी क्रमांक', identifierNote: 'पहचान',
-      time: 'समय', paymentMode: 'भुगतान', enteredVia: 'कैसे लिखा',
-      noData: 'अभी कोई डेटा नहीं।',
+      qty: 'नग/मात्रा', rate: 'रेट (भाव)', amount: 'रकम (रुपये)', notes: 'टिप्पणी / विवरण',
+      shop: 'दुकान', date: 'तारीख', actions: 'कार्य', softDelete: 'हटाएँ (Trash)',
+      restore: 'वापस लाएँ', type: 'प्रकार', status: 'स्थिति', welcome: 'खता प्रो एडमिन',
+      honorific: 'आदरसूचक', diaryNo: 'डायरी नं.', identifierNote: 'पहचान (उपनाम)',
+      time: 'समय', paymentMode: 'भुगतान माध्यम', enteredVia: 'दर्ज करने का माध्यम',
+      noData: 'अभी कोई डेटा उपलब्ध नहीं है।', todayCredit: 'आज का उधार',
+      customers: 'ग्राहक सूची (Customers)', aging: 'उधारी आयु विश्लेषण (Aging)',
+      villageDistribution: 'गाँव अनुसार उधारी', trendChart: 'उधार बनाम वसूली (7 दिन)',
+      exportCsv: 'CSV डाउनलोड', exportPdf: 'प्रिंट / PDF', saveDraft: 'ड्राफ्ट सहेजें',
+      rotate: 'घुमाएँ 90°', contrast: 'कंट्रास्ट', brightness: 'रोशनी',
+      recycleBin: 'कचरापेटी (Recycle Bin)', allShops: 'सभी दुकानें', allTypes: 'सभी प्रकार',
+      allStatuses: 'सभी स्थितियाँ', drilldown: 'खाता देखें', recalcBalance: 'बैलेंस पुनः जांचें',
+      searchPlaceholder: 'नाम, गाँव, मोबाइल, डायरी नं. या सामान से खोजें...',
+      page: 'पेज', of: 'का', entries: 'रिकॉर्ड्स',
     },
   };
-  function t(key) { return i18n[state.lang][key] || i18n.en[key] || key; }
+  function t(key) { return (i18n[state.lang] && i18n[state.lang][key]) || i18n.en[key] || key; }
 
   // ─── Bootstrap ────────────────────────────────────────────────────────────────
   async function boot() {
@@ -257,35 +273,85 @@
   // ─── ADMIN PORTAL ─────────────────────────────────────────────────────────────
   function renderAdmin() {
     const app = document.getElementById('app');
+    const isHi = state.lang === 'hi';
+
     app.innerHTML = `
-      <div class="admin-shell" data-lang="${state.lang}">
-        <nav class="admin-nav" role="navigation" aria-label="Admin navigation">
-          <div class="nav-brand">Khata</div>
-          <p class="nav-tag">${t('welcome')}</p>
-          <button class="nav-item ${state.adminView === 'overview' ? 'active' : ''}" data-view="overview">${t('overview')}</button>
-          <button class="nav-item ${state.adminView === 'review' ? 'active' : ''}" data-view="review">${t('review')}</button>
-          <button class="nav-item ${state.adminView === 'ledger' ? 'active' : ''}" data-view="ledger">${t('ledger')}</button>
-          <button class="nav-item ${state.adminView === 'customers' ? 'active' : ''}" data-view="customers">${state.lang === 'hi' ? 'ग्राहक' : 'Customers'}</button>
-          <button class="nav-item ${state.adminView === 'audit' ? 'active' : ''}" data-view="audit">${t('audit')}</button>
-          <div class="lang-switch" role="group" aria-label="Language">
-            <button type="button" data-lang="en" class="${state.lang === 'en' ? 'active' : ''}">EN</button>
-            <button type="button" data-lang="hi" class="${state.lang === 'hi' ? 'active' : ''}">हिं</button>
+      <div class="a-shell" data-lang="${state.lang}">
+        <div class="a-sidebar-overlay" id="a-sidebar-overlay"></div>
+        <aside class="a-sidebar" id="a-sidebar" role="navigation" aria-label="Admin Navigation">
+          <div class="a-brand">
+            <div class="a-brand-icon">📒</div>
+            <div>
+              <div class="a-brand-title">Khata Pro</div>
+              <div class="a-brand-tag">${isHi ? 'एडमिन पोर्टल' : 'Enterprise Admin'}</div>
+            </div>
           </div>
-          <button class="nav-item" id="admin-logout" style="margin-top:16px;opacity:.7">${t('logout')}</button>
-        </nav>
-        <main class="admin-main" role="main">
-          <header class="admin-header">
-            <h1 id="admin-title"></h1>
-          </header>
-          <div id="admin-content"></div>
+
+          <div class="a-nav-section">${isHi ? 'मुख्य मेनू' : 'MAIN MENU'}</div>
+          <nav class="a-nav">
+            <button class="a-nav-item ${state.adminView === 'overview' ? 'active' : ''}" data-view="overview">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+              <span>${t('overview')}</span>
+            </button>
+            <button class="a-nav-item ${state.adminView === 'review' ? 'active' : ''}" data-view="review">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              <span>${t('review')}</span>
+              <span class="a-nav-badge" id="a-pending-badge" style="display:none">0</span>
+            </button>
+            <button class="a-nav-item ${state.adminView === 'ledger' ? 'active' : ''}" data-view="ledger">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span>${t('ledger')}</span>
+            </button>
+            <button class="a-nav-item ${state.adminView === 'customers' ? 'active' : ''}" data-view="customers">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <span>${t('customers')}</span>
+            </button>
+            <button class="a-nav-item ${state.adminView === 'audit' ? 'active' : ''}" data-view="audit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>${t('audit')}</span>
+            </button>
+          </nav>
+
+          <div class="a-sidebar-footer">
+            <div class="a-lang-pills">
+              <button type="button" class="a-lang-btn ${state.lang === 'hi' ? 'active' : ''}" data-lang="hi">हिन्दी</button>
+              <button type="button" class="a-lang-btn ${state.lang === 'en' ? 'active' : ''}" data-lang="en">English</button>
+            </div>
+            <button class="a-logout-btn" id="a-logout-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              <span>${t('logout')}</span>
+            </button>
+          </div>
+        </aside>
+
+        <main class="a-main" role="main">
+          <div class="a-topbar">
+            <div class="a-topbar-left">
+              <button class="a-menu-toggle" id="a-menu-toggle" aria-label="Toggle navigation">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
+              <div>
+                <h1 class="a-page-title" id="a-page-title"></h1>
+                <p class="a-page-subtitle" id="a-page-subtitle"></p>
+              </div>
+            </div>
+            <div class="a-topbar-actions" id="a-topbar-actions"></div>
+          </div>
+          <div id="a-content"></div>
         </main>
       </div>`;
 
-    app.querySelectorAll('.nav-item[data-view]').forEach((btn) => {
-      btn.onclick = () => { state.adminView = btn.dataset.view; renderAdmin(); };
+    // Sidebar navigation wiring
+    app.querySelectorAll('.a-nav-item[data-view]').forEach((btn) => {
+      btn.onclick = () => {
+        state.adminView = btn.dataset.view;
+        closeSidebar();
+        renderAdmin();
+      };
     });
-    document.getElementById('admin-logout').onclick = logout;
-    app.querySelectorAll('.lang-switch button').forEach((btn) => {
+
+    // Language switcher
+    app.querySelectorAll('.a-lang-btn[data-lang]').forEach((btn) => {
       btn.onclick = () => {
         state.lang = btn.dataset.lang;
         localStorage.setItem('khata_lang', state.lang);
@@ -293,12 +359,52 @@
       };
     });
 
-    const titles = {
-      overview: t('overview'), review: t('review'), ledger: t('ledger'),
-      audit: t('audit'), customers: state.lang === 'hi' ? 'ग्राहक' : 'Customers',
-    };
-    document.getElementById('admin-title').textContent = titles[state.adminView] || '';
+    // Logout
+    document.getElementById('a-logout-btn').onclick = logout;
 
+    // Mobile sidebar toggle
+    const sb = document.getElementById('a-sidebar');
+    const overlay = document.getElementById('a-sidebar-overlay');
+    const toggle = document.getElementById('a-menu-toggle');
+    const closeSidebar = () => {
+      sb.classList.remove('open');
+      overlay.classList.remove('active');
+    };
+    if (toggle) toggle.onclick = () => {
+      sb.classList.toggle('open');
+      overlay.classList.toggle('active');
+    };
+    if (overlay) overlay.onclick = closeSidebar;
+
+    // View title headers
+    const viewMeta = {
+      overview: {
+        title: t('overview'),
+        sub: isHi ? 'दुकानों का समग्र विश्लेषण व वित्तीय सारांश' : 'Executive Overview & Financial Metrics',
+      },
+      review: {
+        title: t('review'),
+        sub: isHi ? 'हस्तलिखित डायरी पेजों का OCR व सत्यापन' : 'Handwritten Ledger Verification Suite',
+      },
+      ledger: {
+        title: t('ledger'),
+        sub: isHi ? 'उधार-जमा लेन-देन विवरण व एक्सपोर्ट' : 'Transaction History, Filtering & Bulk Export',
+      },
+      customers: {
+        title: t('customers'),
+        sub: isHi ? 'ग्राहक बहीखाता व व्यक्तिगत हिसाब' : 'Searchable Customer Directory & Ledger Drill-down',
+      },
+      audit: {
+        title: t('audit'),
+        sub: isHi ? 'प्रणाली गतिविधि व रीसायकल बिन' : 'Security Audit Trail & Soft-Delete Trash',
+      },
+    };
+
+    const currentMeta = viewMeta[state.adminView] || { title: '', sub: '' };
+    document.getElementById('a-page-title').textContent = currentMeta.title;
+    document.getElementById('a-page-subtitle').textContent = currentMeta.sub;
+
+    // Route to active view loader
     if (state.adminView === 'overview') loadOverview();
     else if (state.adminView === 'review') loadReviewQueue();
     else if (state.adminView === 'ledger') loadLedger();
@@ -306,332 +412,1613 @@
     else if (state.adminView === 'audit') loadAudit();
   }
 
-  // ─── ADMIN: OVERVIEW ─────────────────────────────────────────────────────────
+  // ─── ADMIN: OVERVIEW (DASHBOARD & ANALYTICS) ──────────────────────────────────
   async function loadOverview() {
-    const el = document.getElementById('admin-content');
-    el.innerHTML = '<p class="muted">Loading…</p>';
+    const el = document.getElementById('a-content');
+    const isHi = state.lang === 'hi';
+    el.innerHTML = `<div class="a-card" style="text-align:center;padding:48px"><p class="muted">${isHi ? 'डेटा लोड हो रहा है…' : 'Loading financial intelligence…'}</p></div>`;
+
     try {
-      const m = await api('/admin/metrics');
-      const hasData = m.activeCustomers > 0 || m.totalOutstanding > 0;
-      el.innerHTML = `
-        <div class="metrics">
-          <div class="metric"><div class="label">${t('outstanding')}</div><div class="value warn">${inr(m.totalOutstanding)}</div></div>
-          <div class="metric"><div class="label">${t('collections')}</div><div class="value ok">${inr(m.todayCollections)}</div></div>
-          <div class="metric"><div class="label">${t('activeCust')}</div><div class="value">${m.activeCustomers}</div></div>
-          <div class="metric"><div class="label">${t('pendingPhotos')}</div><div class="value warn">${m.pendingPhotos}</div></div>
-        </div>
-        <div class="panel">
-          <h3 style="margin:0 0 12px">${t('shop')} — ${state.lang === 'hi' ? 'दुकानवार' : 'By shop'}</h3>
-          ${!hasData ? `<p class="empty-state">${t('noData')}<br><small style="font-weight:500">${state.lang === 'hi' ? 'ग्राहक जोड़ें और हिसाब लिखें।' : 'Add customers and entries to see data here.'}</small></p>` : `
-          <table class="data-table">
-            <thead><tr><th>${t('shop')}</th><th>${t('outstanding')}</th><th>${t('activeCust')}</th></tr></thead>
-            <tbody>
-              ${(m.byShop || []).map((s) =>
-                `<tr><td>${escapeHtml(s._id)}</td><td>${inr(s.outstanding)}</td><td>${s.count}</td></tr>`
-              ).join('') || `<tr><td colspan="3" class="muted">${t('noData')}</td></tr>`}
-            </tbody>
-          </table>`}
+      const [metrics, agingData, villageData] = await Promise.all([
+        api('/admin/metrics').catch(() => ({})),
+        api('/admin/aging').catch(() => ({ buckets: [] })),
+        api('/admin/village-stats').catch(() => ({ villages: [] })),
+      ]);
+
+      const m = metrics || {};
+      const pendingCount = m.pendingPhotos || 0;
+
+      // Update sidebar pending badge
+      const badge = document.getElementById('a-pending-badge');
+      if (badge) {
+        if (pendingCount > 0) {
+          badge.textContent = pendingCount;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
+      // ── KPI Cards ──
+      const kpisHtml = `
+        <div class="a-kpi-grid">
+          <div class="a-kpi-card warn">
+            <div class="a-kpi-header">
+              <span class="a-kpi-label">${t('todayCredit')}</span>
+              <div class="a-kpi-icon">📤</div>
+            </div>
+            <div class="a-kpi-val">${inr(m.todayCredit || 0)}</div>
+            <div class="a-kpi-meta">
+              <span class="a-kpi-trend neutral">${isHi ? 'आज का नया उधार' : 'New Credit Today'}</span>
+            </div>
+          </div>
+
+          <div class="a-kpi-card success">
+            <div class="a-kpi-header">
+              <span class="a-kpi-label">${t('collections')}</span>
+              <div class="a-kpi-icon">📥</div>
+            </div>
+            <div class="a-kpi-val" style="color:#059669">${inr(m.todayCollections || 0)}</div>
+            <div class="a-kpi-meta">
+              <span class="a-kpi-trend up">${isHi ? 'आज की जमा रकम' : 'Cash/UPI Collected'}</span>
+            </div>
+          </div>
+
+          <div class="a-kpi-card danger">
+            <div class="a-kpi-header">
+              <span class="a-kpi-label">${t('outstanding')}</span>
+              <div class="a-kpi-icon">💰</div>
+            </div>
+            <div class="a-kpi-val" style="color:#b91c1c">${inr(m.totalOutstanding || 0)}</div>
+            <div class="a-kpi-meta">
+              <span class="a-kpi-trend alert">${isHi ? 'दुकानों का कुल बाकी' : 'Total Across Shops'}</span>
+            </div>
+          </div>
+
+          <div class="a-kpi-card info">
+            <div class="a-kpi-header">
+              <span class="a-kpi-label">${t('activeCust')}</span>
+              <div class="a-kpi-icon">👥</div>
+            </div>
+            <div class="a-kpi-val">${m.activeCustomers || 0}</div>
+            <div class="a-kpi-meta">
+              <span class="a-kpi-trend neutral">${isHi ? 'उधारी वाले ग्राहक' : 'With Active Balance'}</span>
+            </div>
+          </div>
+
+          <div class="a-kpi-card ${pendingCount > 0 ? 'warn' : 'neutral'}">
+            <div class="a-kpi-header">
+              <span class="a-kpi-label">${t('pendingPhotos')}</span>
+              <div class="a-kpi-icon">📷</div>
+            </div>
+            <div class="a-kpi-val" style="${pendingCount > 0 ? 'color:#d97706' : ''}">${pendingCount}</div>
+            <div class="a-kpi-meta">
+              <span class="a-kpi-trend ${pendingCount > 0 ? 'alert' : 'neutral'}">
+                ${pendingCount > 0 ? (isHi ? 'जाँच हेतु प्रतीक्षारत' : 'Needs Verification') : (isHi ? 'सभी स्वीकृत' : 'All Cleared')}
+              </span>
+            </div>
+          </div>
         </div>`;
-    } catch (e) {
-      el.innerHTML = `<p class="muted">${escapeHtml(e.message)}</p>`;
+
+      // ── Dual-Line Interactive Chart (Credit vs Collections) ──
+      const trend = m.trend && m.trend.length ? m.trend : [
+        { date: 'Day 1', credit: 0, collection: 0 },
+        { date: 'Day 2', credit: 0, collection: 0 },
+        { date: 'Day 3', credit: 0, collection: 0 },
+        { date: 'Day 4', credit: 0, collection: 0 },
+        { date: 'Day 5', credit: 0, collection: 0 },
+        { date: 'Day 6', credit: 0, collection: 0 },
+        { date: 'Day 7', credit: 0, collection: 0 },
+      ];
+
+      const maxVal = Math.max(100, ...trend.map(t => Math.max(t.credit || 0, t.collection || 0))) * 1.15;
+      const chartW = 560;
+      const chartH = 200;
+      const padLeft = 40;
+      const padRight = 20;
+      const padTop = 20;
+      const padBottom = 30;
+      const effW = chartW - padLeft - padRight;
+      const effH = chartH - padTop - padBottom;
+
+      const getX = (idx) => padLeft + (idx / (trend.length - 1 || 1)) * effW;
+      const getY = (val) => padTop + effH - (val / maxVal) * effH;
+
+      const creditPts = trend.map((t, i) => `${getX(i)},${getY(t.credit || 0)}`);
+      const collPts = trend.map((t, i) => `${getX(i)},${getY(t.collection || 0)}`);
+
+      const creditPath = `M ${creditPts.join(' L ')}`;
+      const collPath = `M ${collPts.join(' L ')}`;
+
+      const creditArea = `M ${getX(0)},${getY(0)} L ${creditPts.join(' L ')} L ${getX(trend.length - 1)},${getY(0)} Z`;
+      const collArea = `M ${getX(0)},${getY(0)} L ${collPts.join(' L ')} L ${getX(trend.length - 1)},${getY(0)} Z`;
+
+      const chartSvg = `
+        <div class="a-chart-wrap" id="a-trend-chart-wrap">
+          <div class="a-chart-tooltip" id="a-chart-tooltip"></div>
+          <svg class="a-chart-svg" viewBox="0 0 ${chartW} ${chartH}">
+            <defs>
+              <linearGradient id="gradCredit" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.0"/>
+              </linearGradient>
+              <linearGradient id="gradColl" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#10b981" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Horizontal grid lines -->
+            ${[0, 0.33, 0.66, 1].map((pct) => {
+              const y = padTop + effH * (1 - pct);
+              const val = Math.round(maxVal * pct);
+              return `
+                <line x1="${padLeft}" y1="${y}" x2="${chartW - padRight}" y2="${y}" stroke="#f1f5f9" stroke-width="1.5" stroke-dasharray="3 3"/>
+                <text x="${padLeft - 6}" y="${y + 3}" text-anchor="end" font-size="9" fill="#94a3b8" font-family="sans-serif">₹${val >= 1000 ? (val/1000).toFixed(0)+'k' : val}</text>`;
+            }).join('')}
+
+            <!-- Area fills -->
+            <path d="${creditArea}" fill="url(#gradCredit)"/>
+            <path d="${collArea}" fill="url(#gradColl)"/>
+
+            <!-- Lines -->
+            <path d="${creditPath}" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="${collPath}" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+            <!-- Data point markers with hover -->
+            ${trend.map((t, i) => {
+              const cx = getX(i);
+              const cyC = getY(t.credit || 0);
+              const cyP = getY(t.collection || 0);
+              return `
+                <text x="${cx}" y="${chartH - 8}" text-anchor="middle" font-size="10" font-weight="600" fill="#64748b" font-family="sans-serif">${escapeHtml(t.date)}</text>
+                <circle cx="${cx}" cy="${cyC}" r="4.5" fill="#f59e0b" stroke="#ffffff" stroke-width="2" class="a-chart-dot" data-date="${escapeHtml(t.date)}" data-credit="${t.credit || 0}" data-coll="${t.collection || 0}" data-x="${cx}" data-y="${cyC}" style="cursor:pointer;transition:transform .15s"/>
+                <circle cx="${cx}" cy="${cyP}" r="4.5" fill="#10b981" stroke="#ffffff" stroke-width="2" class="a-chart-dot" data-date="${escapeHtml(t.date)}" data-credit="${t.credit || 0}" data-coll="${t.collection || 0}" data-x="${cx}" data-y="${cyP}" style="cursor:pointer;transition:transform .15s"/>`;
+            }).join('')}
+          </svg>
+          <div class="a-chart-legend">
+            <div class="a-chart-legend-item"><span class="a-legend-dot" style="background:#f59e0b"></span><span>${isHi ? 'उधार (Credit)' : 'Credit'}</span></div>
+            <div class="a-chart-legend-item"><span class="a-legend-dot" style="background:#10b981"></span><span>${isHi ? 'वसूली (Collections)' : 'Collections'}</span></div>
+          </div>
+        </div>`;
+
+      // ── Gradient Doughnut Chart (Aging Analysis) ──
+      const buckets = agingData.buckets && agingData.buckets.length ? agingData.buckets : [
+        { label: '0-30 days', count: 0, total: 0, color: '#10b981' },
+        { label: '31-60 days', count: 0, total: 0, color: '#3b82f6' },
+        { label: '61-90 days', count: 0, total: 0, color: '#f59e0b' },
+        { label: '90+ days', count: 0, total: 0, color: '#ef4444' },
+      ];
+
+      const agingTotal = buckets.reduce((s, b) => s + (b.total || 0), 0);
+      const circumference = 2 * Math.PI * 60; // r=60
+      let strokeOffset = 0;
+
+      const donutArcs = buckets.map((b) => {
+        const share = agingTotal > 0 ? (b.total / agingTotal) : (1 / buckets.length);
+        const arcLen = share * circumference;
+        const dashArray = `${arcLen} ${circumference - arcLen}`;
+        const dashOffset = -strokeOffset;
+        strokeOffset += arcLen;
+        return `
+          <circle cx="90" cy="90" r="60" fill="transparent"
+            stroke="${b.color || '#10b981'}" stroke-width="18"
+            stroke-dasharray="${dashArray}" stroke-dashoffset="${dashOffset}"
+            stroke-linecap="round" style="transition:stroke-width .2s"
+          />`;
+      }).join('');
+
+      const donutHtml = `
+        <div class="a-donut-layout">
+          <div class="a-donut-circle-wrap">
+            <svg viewBox="0 0 180 180" style="transform:rotate(-90deg);width:100%;height:100%">
+              <circle cx="90" cy="90" r="60" fill="transparent" stroke="#f1f5f9" stroke-width="18"/>
+              ${donutArcs}
+            </svg>
+            <div class="a-donut-center">
+              <div class="a-donut-total">${inr(agingTotal)}</div>
+              <div class="a-donut-sub">${isHi ? 'कुल बकाया' : 'Total'}</div>
+            </div>
+          </div>
+          <div class="a-aging-legend">
+            ${buckets.map((b) => {
+              const pct = agingTotal > 0 ? Math.round((b.total / agingTotal) * 100) : 0;
+              return `
+                <div class="a-aging-item">
+                  <div class="a-aging-label-group">
+                    <span class="a-aging-dot" style="background:${b.color || '#10b981'}"></span>
+                    <span style="font-weight:700">${escapeHtml(b.label)}</span>
+                    <span class="muted" style="font-size:.75rem">(${b.count} ${isHi ? 'ग्राहक' : 'cust'})</span>
+                  </div>
+                  <div style="font-weight:800;color:#0f172a">${inr(b.total)} <span class="muted" style="font-size:.75rem">(${pct}%)</span></div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+
+      // ── Village Distribution Bar Chart ──
+      const rawVillages = villageData.villages || [];
+      const villages = rawVillages.slice(0, 8);
+      const maxVillageAmt = Math.max(1, ...villages.map(v => v.outstanding || 0));
+
+      const villageHtml = villages.length ? `
+        <div class="a-village-list">
+          ${villages.map((v) => {
+            const pct = Math.round(((v.outstanding || 0) / maxVillageAmt) * 100);
+            return `
+              <div class="a-village-row">
+                <div class="a-village-header">
+                  <span class="a-village-name">
+                    <span>📍</span>
+                    <span>${escapeHtml(v.village || (isHi ? 'अज्ञात' : 'Unknown'))}</span>
+                    <span class="a-village-count">${v.count} ${isHi ? 'ग्राहक' : 'cust'}</span>
+                  </span>
+                  <span class="a-village-amt">${inr(v.outstanding || 0)}</span>
+                </div>
+                <div class="a-bar-track">
+                  <div class="a-bar-fill" style="width:${pct}%"></div>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>` : `<p class="muted" style="padding:16px;text-align:center">${isHi ? 'कोई गाँव वार डेटा उपलब्ध नहीं' : 'No village data yet'}</p>`;
+
+      // ── Shop Breakdown Cards ──
+      const byShop = m.byShop || [];
+      const shopHtml = `
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+          ${['shop1', 'shop2'].map((sId) => {
+            const sData = byShop.find(s => s._id === sId) || { outstanding: 0, count: 0 };
+            const shopTitle = sId === 'shop1' ? (isHi ? 'दुकान 1 (Shop 1)' : 'Shop 1') : (isHi ? 'दुकान 2 (Shop 2)' : 'Shop 2');
+            return `
+              <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;padding:16px 18px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <span style="font-weight:800;font-size:1.05rem;color:#092c20">${shopTitle}</span>
+                  <span class="a-badge-pill shop">${sData.count} ${isHi ? 'ग्राहक' : 'active'}</span>
+                </div>
+                <div style="font-size:1.45rem;font-weight:800;color:#9a3412">${inr(sData.outstanding)}</div>
+                <div style="font-size:.78rem;color:#64748b;margin-top:4px">${isHi ? 'सक्रिय उधारी खाता' : 'Active ledger balance'}</div>
+              </div>`;
+          }).join('')}
+        </div>`;
+
+      // Compose full dashboard layout
+      el.innerHTML = `
+        ${kpisHtml}
+
+        <div class="a-analytics-grid">
+          <div class="a-card">
+            <div class="a-card-header">
+              <div>
+                <h3 class="a-card-title">📈 ${t('trendChart')}</h3>
+                <p class="a-card-subtitle">${isHi ? 'दैनिक उधार बनाम नकद/UPI वसूली का तुलनात्मक चार्ट' : 'Daily Credit vs Collections Comparison'}</p>
+              </div>
+            </div>
+            ${chartSvg}
+          </div>
+
+          <div class="a-card">
+            <div class="a-card-header">
+              <div>
+                <h3 class="a-card-title">⏱️ ${t('aging')}</h3>
+                <p class="a-card-subtitle">${isHi ? 'बकाया रकम की समय-सीमा अनुसार स्थिति' : 'Outstanding grouped by duration'}</p>
+              </div>
+            </div>
+            ${donutHtml}
+          </div>
+        </div>
+
+        <div class="a-analytics-grid" style="grid-template-columns:1fr 1fr">
+          <div class="a-card">
+            <div class="a-card-header">
+              <div>
+                <h3 class="a-card-title">🏘️ ${t('villageDistribution')}</h3>
+                <p class="a-card-subtitle">${isHi ? 'गाँव अनुसार सर्वाधिक उधारी वितरण' : 'Top villages with highest credit volume'}</p>
+              </div>
+            </div>
+            ${villageHtml}
+          </div>
+
+          <div class="a-card">
+            <div class="a-card-header">
+              <div>
+                <h3 class="a-card-title">🏪 ${isHi ? 'दुकानवार स्थिति' : 'Shop Breakdown'}</h3>
+                <p class="a-card-subtitle">${isHi ? 'दुकान 1 और दुकान 2 का सीधा तुलनात्मक अवलोकन' : 'Shop 1 vs Shop 2 performance'}</p>
+              </div>
+            </div>
+            ${shopHtml}
+          </div>
+        </div>`;
+
+      // Tooltip hover wiring for SVG chart
+      const tooltip = document.getElementById('a-chart-tooltip');
+      const dots = el.querySelectorAll('.a-chart-dot');
+      dots.forEach((dot) => {
+        dot.onmouseenter = (e) => {
+          const d = dot.dataset;
+          dot.setAttribute('r', '7');
+          tooltip.innerHTML = `<strong>${escapeHtml(d.date)}</strong><br><span style="color:#f59e0b">● ${isHi ? 'उधार' : 'Credit'}: ${inr(d.credit)}</span><br><span style="color:#10b981">● ${isHi ? 'वसूली' : 'Coll'}: ${inr(d.coll)}</span>`;
+          tooltip.style.left = `${d.x}px`;
+          tooltip.style.top = `${d.y}px`;
+          tooltip.style.opacity = '1';
+        };
+        dot.onmouseleave = () => {
+          dot.setAttribute('r', '4.5');
+          tooltip.style.opacity = '0';
+        };
+      });
+
+    } catch (err) {
+      console.error(err);
+      el.innerHTML = `<div class="a-card" style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
     }
   }
 
-  // ─── ADMIN: DIARY REVIEW QUEUE ───────────────────────────────────────────────
+  // ─── ADMIN: DIARY REVIEW & OCR VERIFICATION SUITE ────────────────────────────
   async function loadReviewQueue() {
-    const el = document.getElementById('admin-content');
-    el.innerHTML = '<p class="muted">Loading…</p>';
+    const el = document.getElementById('a-content');
+    const isHi = state.lang === 'hi';
+    el.innerHTML = `<div class="a-card" style="text-align:center;padding:48px"><p class="muted">${isHi ? 'डायरी समीक्षा सूची लोड हो रही है…' : 'Loading verification queue…'}</p></div>`;
+
     try {
-      const { entries } = await api('/entries/pending-review');
-      if (!entries.length) {
-        el.innerHTML = `<div class="panel"><p class="empty-state">${t('noPending')}<br><small style="font-weight:500">${state.lang === 'hi' ? 'दुकान से डायरी फोटो आने पर यहाँ दिखेगी।' : 'Diary photos from the shop will appear here.'}</small></p></div>`;
+      // Pull both pending DiaryImage records and pending Entry records
+      const [diaryRes, entryRes] = await Promise.all([
+        api('/diary?status=pending').catch(() => ({ images: [] })),
+        api('/entries/pending-review').catch(() => ({ entries: [] })),
+      ]);
+
+      const diaryItems = (diaryRes.images || []).map(img => ({
+        _type: 'diaryImage',
+        _id: img._id,
+        imageUrl: img.path,
+        shopId: img.shopId,
+        createdAt: img.createdAt,
+        customerHint: img.customerHint || '',
+        rows: img.rows || [],
+      }));
+
+      const entryItems = (entryRes.entries || []).map(entry => ({
+        _type: 'entry',
+        _id: entry._id,
+        imageUrl: entry.imageUrl,
+        shopId: entry.shopId,
+        createdAt: entry.createdAt,
+        customer: entry.customer,
+        item: entry.item,
+        brand: entry.brand,
+        quantity: entry.quantity,
+        rate: entry.rate,
+        amount: entry.amount,
+        paymentMode: entry.paymentMode,
+        entryTime: entry.entryTime,
+        notes: entry.notes || entry.note,
+        honorific: entry.honorific,
+      }));
+
+      const allItems = [...diaryItems, ...entryItems];
+
+      // Update sidebar badge
+      const badge = document.getElementById('a-pending-badge');
+      if (badge) {
+        if (allItems.length > 0) {
+          badge.textContent = allItems.length;
+          badge.style.display = 'inline-block';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+
+      if (!allItems.length) {
+        el.innerHTML = `
+          <div class="a-card" style="text-align:center;padding:56px 24px">
+            <div style="font-size:3.5rem;margin-bottom:12px">🎉</div>
+            <h3 style="font-size:1.35rem;font-weight:800;color:#092c20;margin:0 0 8px">${t('noPending')}</h3>
+            <p class="muted" style="max-width:440px;margin:0 auto">
+              ${isHi ? 'दुकानों से नए डायरी पेज या लंबित प्रविष्टियाँ अपलोड होने पर यहाँ स्वचालित दिखाई देंगी।' : 'When new handwritten diary pages are uploaded from shop portals, they will appear here.'}
+            </p>
+          </div>`;
         return;
       }
-      state._reviewEntries = entries;
+
+      state._reviewItems = allItems;
       state._reviewIndex = 0;
       renderReviewUI(el);
-    } catch (e) {
-      el.innerHTML = `<p class="muted">${escapeHtml(e.message)}</p>`;
+
+    } catch (err) {
+      console.error(err);
+      el.innerHTML = `<div class="a-card" style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
     }
   }
 
   function renderReviewUI(el) {
-    const entries = state._reviewEntries || [];
+    const items = state._reviewItems || [];
     const idx = state._reviewIndex || 0;
-    const entry = entries[idx];
-    if (!entry) {
-      el.innerHTML = `<div class="panel"><p class="empty-state">${t('noPending')}</p></div>`;
+    const item = items[idx];
+    const isHi = state.lang === 'hi';
+
+    if (!item) {
+      loadReviewQueue();
       return;
     }
-    const c = entry.customer || {};
+
+    const isDiaryDoc = item._type === 'diaryImage';
+    const c = item.customer || {};
+    const firstRow = isDiaryDoc && item.rows && item.rows[0] ? item.rows[0] : {};
+
+    const initialName = c.displayName || c.name || item.customerHint || firstRow.customerName || '';
+    const initialItem = item.item || firstRow.item || '';
+    const initialBrand = item.brand || firstRow.brand || '';
+    const initialQty = item.quantity || firstRow.qty || 1;
+    const initialRate = item.rate || firstRow.rate || 0;
+    const initialAmt = item.amount || firstRow.amount || (initialQty * initialRate) || 0;
+    const initialNotes = item.notes || '';
+    const initialMode = item.paymentMode || 'cash';
+    const initialHonorific = item.honorific || c.honorific || 'श्री';
+
     el.innerHTML = `
-      <div class="queue-list">
-        ${entries.map((e, i) => `
-          <button class="queue-item ${i === idx ? 'active' : ''}" type="button" data-i="${i}">
-            ${escapeHtml(e.shopId)} · ${escapeHtml((e.customer && (e.customer.displayName || e.customer.name)) || '—')} · ${new Date(e.createdAt).toLocaleString('hi-IN')}
-          </button>`).join('')}
+      <!-- Queue Navigator Bar -->
+      <div class="a-filter-bar" style="margin-bottom:18px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="font-weight:800;color:#092c20">
+            ${isHi ? 'प्रविष्टि' : 'Entry'} ${idx + 1} / ${items.length}
+          </span>
+          <span class="a-badge-pill shop">${escapeHtml(item.shopId)}</span>
+          <span class="a-badge-pill neutral">${new Date(item.createdAt).toLocaleString(isHi ? 'hi-IN' : 'en-IN')}</span>
+          ${isDiaryDoc ? `<span class="a-badge-pill diary">📷 ${isHi ? 'डायरी फोटो' : 'Scanned Ledger'}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="a-page-btn" id="rv-prev" ${idx === 0 ? 'disabled' : ''}>← ${isHi ? 'पिछला' : 'Prev'} [Alt+←]</button>
+          <button class="a-page-btn" id="rv-next" ${idx === items.length - 1 ? 'disabled' : ''}>${isHi ? 'अगला' : 'Next'} [Alt+→] →</button>
+        </div>
       </div>
-      <div class="split-review">
-        <div class="viewer-pane">
-          <div class="viewer-toolbar">
-            <button type="button" id="zoom-in">${t('zoomIn')}</button>
-            <button type="button" id="zoom-out">${t('zoomOut')}</button>
-            <button type="button" id="zoom-reset">${t('resetView')}</button>
+
+      <div class="a-split-suite">
+        <!-- Advanced Image Inspector -->
+        <div class="a-inspector-pane">
+          <div class="a-inspector-hud">
+            <div class="a-hud-group">
+              <button class="a-hud-btn" id="rv-zoom-in" title="Zoom In">🔍+</button>
+              <button class="a-hud-btn" id="rv-zoom-out" title="Zoom Out">🔍−</button>
+              <button class="a-hud-btn" id="rv-zoom-reset" title="Reset Scale">1:1</button>
+              <button class="a-hud-btn" id="rv-rotate" title="Rotate 90°">⟳ 90°</button>
+            </div>
+            <div class="a-hud-group">
+              <span class="a-slider-label">${t('contrast')}</span>
+              <input type="range" class="a-hud-slider" id="rv-contrast-slider" min="0.6" max="2.4" step="0.1" value="1.0" />
+              <button class="a-hud-btn" id="rv-invert-btn" title="Invert Colors / High-Contrast B&W">🌓</button>
+            </div>
           </div>
-          <div class="viewer-stage" id="viewer-stage">
-            ${entry.imageUrl ? `<img id="viewer-img" src="${escapeHtml(entry.imageUrl)}" alt="diary page" draggable="false" />` : '<p class="muted" style="padding:24px">No image</p>'}
+          <div class="a-inspector-stage" id="rv-stage">
+            ${item.imageUrl ? `<img id="rv-img" src="${escapeHtml(item.imageUrl)}" alt="Handwritten Ledger Sheet" draggable="false" />` : `<p class="muted" style="color:#94a3b8">${isHi ? 'कोई फोटो उपलब्ध नहीं है' : 'No photo uploaded'}</p>`}
           </div>
         </div>
-        <div class="form-pane">
-          <h3>${t('review')}</h3>
-          <div class="form-grid">
-            <div><label>${t('customer')}</label><input id="rv-customer" value="${escapeHtml(c.displayName || c.name || '')}" /></div>
-            <div><label>${t('honorific')}</label>
-              <div class="chip-row">
-                ${['श्री','श्रीमती','कुमारी',''].map((h) => `<button class="chip ${(entry.honorific||'')=== h?'chip--on':''}" type="button" data-h="${h}">${h||'—'}</button>`).join('')}
+
+        <!-- Side-by-Side OCR Verification Panel -->
+        <div class="a-ocr-pane">
+          <div class="a-ocr-header">
+            <div>
+              <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#092c20">${isHi ? 'सत्यापन व खाता प्रविष्टि' : 'Structured Field Verification'}</h3>
+              <p style="margin:2px 0 0;font-size:.8rem;color:#64748b">${isHi ? 'फोटो देखकर सही जानकारी भरें अथवा जाँचें' : 'Verify auto-extracted values against ledger photo'}</p>
+            </div>
+            <span class="a-badge-pill ${isDiaryDoc ? 'diary' : 'neutral'}">${isDiaryDoc ? 'DIARY PHOTO' : 'ENTRY'}</span>
+          </div>
+
+          <form id="rv-form" onsubmit="return false">
+            <div class="a-ocr-form-grid">
+              <div class="full a-field-group">
+                <label>${t('customer')} *</label>
+                <div style="position:relative">
+                  <input id="rv-cust-name" value="${escapeHtml(initialName)}" placeholder="${isHi ? 'ग्राहक का नाम लिखें...' : 'Customer Name...'}" autocomplete="off" required />
+                  <div id="rv-cust-suggest" style="position:absolute;top:100%;left:0;right:0;background:#ffffff;border:1.5px solid #cbd5e1;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:50;display:none;max-height:160px;overflow-y:auto"></div>
+                </div>
               </div>
-              <input id="rv-honorific" type="hidden" value="${escapeHtml(entry.honorific || '')}" />
+
+              <div class="a-field-group">
+                <label>${t('honorific')}</label>
+                <select id="rv-honorific">
+                  <option value="श्री" ${initialHonorific === 'श्री' ? 'selected' : ''}>श्री (Shri)</option>
+                  <option value="श्रीमती" ${initialHonorific === 'श्रीमती' ? 'selected' : ''}>श्रीमती (Shrimati)</option>
+                  <option value="कुमारी" ${initialHonorific === 'कुमारी' ? 'selected' : ''}>कुमारी (Kumari)</option>
+                  <option value="" ${!initialHonorific ? 'selected' : ''}>— कोई नहीं —</option>
+                </select>
+              </div>
+
+              <div class="a-field-group">
+                <label>${t('diaryNo')}</label>
+                <input id="rv-diary-no" type="number" value="${c.diaryNo || ''}" placeholder="1, 2, 3..." />
+              </div>
+
+              <div class="a-field-group">
+                <label>${isHi ? 'गाँव' : 'Village'}</label>
+                <input id="rv-village" value="${escapeHtml(c.village || firstRow.village || '')}" placeholder="${isHi ? 'गाँव का नाम' : 'Village'}" />
+              </div>
+
+              <div class="a-field-group">
+                <label>${isHi ? 'मोबाइल नंबर' : 'Phone / Mobile'}</label>
+                <input id="rv-phone" type="tel" value="${escapeHtml(c.phone || c.mobile || firstRow.mobile || '')}" placeholder="10-digit mobile" />
+              </div>
+
+              <div class="full a-field-group">
+                <label>${t('identifierNote')} <small class="muted">(${isHi ? 'उपनाम जैसे: गन्ने वाले, झोला वाले' : 'e.g. Ganna wale'})</small></label>
+                <input id="rv-identifier" value="${escapeHtml(c.identifierNote || c.relationNote || firstRow.relationNote || '')}" placeholder="${isHi ? 'पहचान / उपनाम' : 'Identifier Tag'}" />
+              </div>
+
+              <div class="a-field-group">
+                <label>${t('item')}</label>
+                <input id="rv-item" value="${escapeHtml(initialItem)}" placeholder="${isHi ? 'सामान (उदा. कपड़ा, खाद)' : 'Item name'}" />
+              </div>
+
+              <div class="a-field-group">
+                <label>${t('brand')}</label>
+                <input id="rv-brand" value="${escapeHtml(initialBrand)}" placeholder="${isHi ? 'ब्रांड (उदा. सियाराम)' : 'Brand'}" />
+              </div>
+
+              <div class="a-field-group">
+                <label>${t('qty')}</label>
+                <input id="rv-qty" type="number" step="any" value="${initialQty}" />
+              </div>
+
+              <div class="a-field-group">
+                <label>${t('rate')}</label>
+                <input id="rv-rate" type="number" step="any" value="${initialRate}" />
+              </div>
+
+              <div class="full a-field-group" style="background:#fefce8;padding:12px;border-radius:12px;border:1.5px solid #fef08a">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                  <label style="color:#854d0e;font-weight:800;font-size:.9rem">${t('amount')} (₹) *</label>
+                  <button type="button" id="rv-calc-btn" class="a-hud-btn" style="background:#fef08a;color:#713f12;border-color:#fde047;padding:3px 8px;font-size:.72rem">
+                    🧮 ${isHi ? 'मात्रा × रेट से गणना' : 'Qty × Rate'}
+                  </button>
+                </div>
+                <input id="rv-amount" type="number" step="any" value="${initialAmt}" style="font-size:1.35rem;font-weight:800;color:#092c20;background:#ffffff" required />
+              </div>
+
+              <div class="a-field-group">
+                <label>${t('paymentMode')}</label>
+                <select id="rv-payment-mode">
+                  <option value="cash" ${initialMode === 'cash' ? 'selected' : ''}>${isHi ? 'नकद (Cash)' : 'Cash'}</option>
+                  <option value="upi" ${initialMode === 'upi' ? 'selected' : ''}>UPI / ऑनलाइन</option>
+                </select>
+              </div>
+
+              <div class="a-field-group">
+                <label>${t('date')}</label>
+                <input id="rv-date" type="date" value="${new Date().toISOString().slice(0, 10)}" />
+              </div>
+
+              <div class="full a-field-group">
+                <label>${t('notes')}</label>
+                <textarea id="rv-notes" rows="2" placeholder="${isHi ? 'कोई अतिरिक्त विवरण या टिप्पणी...' : 'Additional notes...'}">${escapeHtml(initialNotes)}</textarea>
+              </div>
             </div>
-            <div><label>${t('identifierNote')}</label><input id="rv-identifier" value="${escapeHtml(c.identifierNote || c.relationNote || '')}" /></div>
-            <div><label>${t('diaryNo')}</label><input id="rv-diary-no" type="number" value="${c.diaryNo || ''}" /></div>
-            <div><label>${t('item')}</label><input id="rv-item" value="${escapeHtml(entry.item || '')}" /></div>
-            <div><label>${t('brand')}</label><input id="rv-brand" value="${escapeHtml(entry.brand || '')}" /></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-              <div><label>${t('qty')}</label><input id="rv-qty" type="number" value="${entry.quantity || 1}" /></div>
-              <div><label>${t('rate')}</label><input id="rv-rate" type="number" value="${entry.rate || 0}" /></div>
+
+            <!-- Action Buttons with Shortcuts -->
+            <div class="a-action-bar">
+              <button type="button" class="a-btn-action approve" id="rv-btn-approve">
+                <span>✓ ${t('approvePost')}</span>
+                <span class="a-shortcut-key">Alt+A</span>
+              </button>
+              <button type="button" class="a-btn-action draft" id="rv-btn-draft">
+                <span>💾 ${t('saveDraft')}</span>
+                <span class="a-shortcut-key">Alt+S</span>
+              </button>
+              <button type="button" class="a-btn-action reject" id="rv-btn-reject">
+                <span>✕ ${t('reject')}</span>
+                <span class="a-shortcut-key">Alt+R</span>
+              </button>
             </div>
-            <div><label>${t('amount')}</label><input id="rv-amount" type="number" value="${entry.amount || 0}" /></div>
-            <div><label>${t('time')}</label><input id="rv-time" type="datetime-local" value="${entry.entryTime ? new Date(entry.entryTime).toISOString().slice(0,16) : ''}" /></div>
-            <div><label>${t('paymentMode')}</label>
-              <select id="rv-payment-mode">
-                <option value="">—</option>
-                <option value="cash" ${entry.paymentMode==='cash'?'selected':''}>नकद</option>
-                <option value="upi" ${entry.paymentMode==='upi'?'selected':''}>UPI</option>
-              </select>
-            </div>
-            <div><label>${t('notes')}</label><textarea id="rv-notes" rows="2">${escapeHtml(entry.notes || entry.note || '')}</textarea></div>
-            ${entry.enteredVia ? `<div><label>${t('enteredVia')}</label><span class="badge">${escapeHtml(entry.enteredVia)}</span></div>` : ''}
-          </div>
-          <div class="form-actions">
-            <button class="approve" type="button" id="rv-approve">${t('approvePost')}</button>
-            <button class="reject" type="button" id="rv-reject">${t('reject')}</button>
-          </div>
+          </form>
         </div>
       </div>`;
 
-    el.querySelectorAll('.queue-item').forEach((btn) => {
-      btn.onclick = () => { state._reviewIndex = Number(btn.dataset.i); renderReviewUI(el); };
-    });
-    el.querySelectorAll('.chip[data-h]').forEach((btn) => {
-      btn.onclick = () => {
-        document.getElementById('rv-honorific').value = btn.dataset.h;
-        el.querySelectorAll('.chip[data-h]').forEach((b) => b.classList.remove('chip--on'));
-        btn.classList.add('chip--on');
+    // ── Image Inspector Controller ──
+    initAdvancedInspector();
+
+    // ── Auto-Calculation ──
+    const qtyIn = document.getElementById('rv-qty');
+    const rateIn = document.getElementById('rv-rate');
+    const amtIn = document.getElementById('rv-amount');
+    const calcAuto = () => {
+      const q = parseFloat(qtyIn.value) || 0;
+      const r = parseFloat(rateIn.value) || 0;
+      if (q > 0 && r > 0) amtIn.value = Math.round(q * r * 100) / 100;
+    };
+    if (qtyIn) qtyIn.oninput = calcAuto;
+    if (rateIn) rateIn.oninput = calcAuto;
+    const calcBtn = document.getElementById('rv-calc-btn');
+    if (calcBtn) calcBtn.onclick = calcAuto;
+
+    // ── Customer Autocomplete ──
+    const custInput = document.getElementById('rv-cust-name');
+    const suggestBox = document.getElementById('rv-cust-suggest');
+    let suggestTimer = null;
+
+    if (custInput) {
+      custInput.oninput = () => {
+        clearTimeout(suggestTimer);
+        const q = custInput.value.trim();
+        if (q.length < 2) {
+          suggestBox.style.display = 'none';
+          return;
+        }
+        suggestTimer = setTimeout(async () => {
+          try {
+            const res = await api(`/customers/autocomplete?field=name&q=${encodeURIComponent(q)}&shopId=${item.shopId}`);
+            const suggestions = res.suggestions || [];
+            if (!suggestions.length) {
+              suggestBox.style.display = 'none';
+              return;
+            }
+            suggestBox.innerHTML = suggestions.map(s => `
+              <div class="rv-suggest-item" data-name="${escapeHtml(s)}" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;font-weight:600;font-size:.9rem">
+                👤 ${escapeHtml(s)}
+              </div>
+            `).join('');
+            suggestBox.style.display = 'block';
+
+            suggestBox.querySelectorAll('.rv-suggest-item').forEach(si => {
+              si.onclick = () => {
+                custInput.value = si.dataset.name;
+                suggestBox.style.display = 'none';
+              };
+            });
+          } catch { /* ignore */ }
+        }, 220);
       };
-    });
-
-    initImageViewer();
-
-    document.getElementById('rv-approve').onclick = async () => {
-      try {
-        let customerId = c._id;
-        const name = document.getElementById('rv-customer').value.trim();
-        if (name && name !== (c.displayName || c.name)) {
-          const resolved = await api('/customers/resolve', { method: 'POST', body: { name, shopId: entry.shopId, createIfMissing: true } });
-          if (resolved.customer) customerId = resolved.customer._id;
+      document.addEventListener('click', (e) => {
+        if (!custInput.contains(e.target) && !suggestBox.contains(e.target)) {
+          suggestBox.style.display = 'none';
         }
-        await api(`/entries/${entry._id}/approve`, {
-          method: 'POST',
-          body: {
-            customerId,
-            item: document.getElementById('rv-item').value,
-            brand: document.getElementById('rv-brand').value,
-            quantity: document.getElementById('rv-qty').value,
-            rate: document.getElementById('rv-rate').value,
-            amount: document.getElementById('rv-amount').value,
-            notes: document.getElementById('rv-notes').value,
-            paymentMode: document.getElementById('rv-payment-mode').value,
-            entryTime: document.getElementById('rv-time').value,
-            honorific: document.getElementById('rv-honorific').value,
-          },
-        });
-        toast(state.lang === 'hi' ? 'खाते में डाल दिया ✓' : 'Posted to ledger');
-        loadReviewQueue();
-      } catch (e) { toast(e.message); }
-    };
+      });
+    }
 
-    document.getElementById('rv-reject').onclick = async () => {
-      try {
-        await api(`/entries/${entry._id}/reject`, { method: 'POST', body: { reason: 'Rejected by admin' } });
-        toast(state.lang === 'hi' ? 'रद्द' : 'Rejected');
-        loadReviewQueue();
-      } catch (e) { toast(e.message); }
-    };
-  }
-
-  // ─── ADMIN: LEDGER ──────────────────────────────────────────────────────────
-  async function loadLedger() {
-    const el = document.getElementById('admin-content');
-    el.innerHTML = `
-      <div class="panel">
-        <div class="ledger-filter">
-          <select id="lf-shop"><option value="">All shops</option><option value="shop1">दुकान 1</option><option value="shop2">दुकान 2</option></select>
-          <select id="lf-type"><option value="">All types</option><option value="sale">उधार</option><option value="payment">जमा</option></select>
-          <button class="btn-sm" id="lf-load">Load</button>
-        </div>
-        <div id="ledger-table"><p class="muted">Loading…</p></div>
-      </div>`;
-    const load = async () => {
-      const shopId = document.getElementById('lf-shop').value;
-      const type = document.getElementById('lf-type').value;
-      const q = new URLSearchParams({ limit: '200' });
-      if (shopId) q.set('shopId', shopId);
-      if (type) q.set('type', type);
-      const tbl = document.getElementById('ledger-table');
-      tbl.innerHTML = '<p class="muted">Loading…</p>';
-      try {
-        const { entries } = await api(`/admin/ledger?${q}`);
-        if (!entries.length) {
-          tbl.innerHTML = `<p class="empty-state">${t('noData')}<br><small>${state.lang==='hi'?'दुकान से हिसाब आने पर यहाँ दिखेगा।':'Entries from the shop will appear here.'}</small></p>`;
-          return;
-        }
-        tbl.innerHTML = `<table class="data-table">
-          <thead><tr>
-            <th>${t('date')}</th><th>${t('time')}</th><th>${t('customer')}</th>
-            <th>${t('honorific')}</th><th>${t('identifierNote')}</th>
-            <th>${t('item')}</th><th>${t('brand')}</th>
-            <th>${t('qty')}</th><th>${t('rate')}</th><th>${t('amount')}</th>
-            <th>${t('paymentMode')}</th><th>${t('enteredVia')}</th>
-            <th>${t('shop')}</th><th>${t('status')}</th>
-          </tr></thead>
-          <tbody>
-            ${entries.map((e) => {
-              const c = e.customer || {};
-              return `<tr class="${e.isCleared ? 'row-cleared' : ''}">
-                <td>${new Date(e.date).toLocaleDateString('hi-IN')}</td>
-                <td>${e.entryTime ? new Date(e.entryTime).toLocaleTimeString('hi-IN',{hour:'2-digit',minute:'2-digit'}) : '—'}</td>
-                <td>${escapeHtml(c.displayName || c.name || '—')}</td>
-                <td>${escapeHtml(c.honorific || '')}</td>
-                <td>${escapeHtml(c.identifierNote || c.relationNote || '')}</td>
-                <td>${escapeHtml(e.itemLabel || e.item || '—')}</td>
-                <td>${escapeHtml(e.brand || '')}</td>
-                <td>${e.quantity || '—'}</td>
-                <td>${e.rate ? inr(e.rate) : '—'}</td>
-                <td class="${e.type==='payment'?'ok':'warn'}">${inr(e.amount)}</td>
-                <td>${escapeHtml(e.paymentMode || '—')}</td>
-                <td>${e.enteredVia ? `<span class="badge">${escapeHtml(e.enteredVia)}</span>` : '—'}</td>
-                <td>${escapeHtml(e.shopId || '')}</td>
-                <td>${escapeHtml(e.type==='payment'?'जमा':'उधार')}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>`;
-      } catch (err) {
-        tbl.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+    // ── Queue Navigation ──
+    const prevBtn = document.getElementById('rv-prev');
+    const nextBtn = document.getElementById('rv-next');
+    if (prevBtn) prevBtn.onclick = () => {
+      if (state._reviewIndex > 0) {
+        state._reviewIndex--;
+        renderReviewUI(el);
       }
     };
-    document.getElementById('lf-load').onclick = load;
-    load();
-  }
-
-  // ─── ADMIN: CUSTOMERS ────────────────────────────────────────────────────────
-  async function loadCustomers() {
-    const el = document.getElementById('admin-content');
-    el.innerHTML = `
-      <div class="panel">
-        <div class="ledger-filter">
-          <input id="cq" placeholder="${state.lang==='hi'?'नाम / गाँव / फ़ोन':'Name / Village / Phone'}" style="flex:1" />
-          <select id="cq-shop"><option value="">All shops</option><option value="shop1">दुकान 1</option><option value="shop2">दुकान 2</option></select>
-          <button class="btn-sm" id="cq-load">Search</button>
-        </div>
-        <div id="cust-table"><p class="muted">Loading…</p></div>
-      </div>`;
-    const load = async () => {
-      const q = document.getElementById('cq').value.trim();
-      const shopId = document.getElementById('cq-shop').value;
-      const params = new URLSearchParams({ all: '1' });
-      if (q) params.set('q', q);
-      if (shopId) params.set('shopId', shopId);
-      const tbl = document.getElementById('cust-table');
-      tbl.innerHTML = '<p class="muted">Loading…</p>';
-      try {
-        const { customers } = await api(`/customers?${params}`);
-        if (!customers.length) {
-          tbl.innerHTML = `<p class="empty-state">${t('noData')}<br><small>${state.lang==='hi'?'ग्राहक अभी तक नहीं जोड़े गए।':'No customers yet.'}</small></p>`;
-          return;
-        }
-        tbl.innerHTML = `<table class="data-table">
-          <thead><tr>
-            <th>${t('diaryNo')}</th><th>${t('honorific')}</th><th>${state.lang==='hi'?'नाम':'Name'}</th>
-            <th>${t('identifierNote')}</th><th>${state.lang==='hi'?'गाँव':'Village'}</th>
-            <th>${state.lang==='hi'?'मोबाइल':'Mobile'}</th><th>${t('outstanding')}</th><th>${t('shop')}</th>
-          </tr></thead>
-          <tbody>
-            ${customers.map((c) => `<tr>
-              <td>${c.diaryNo || '—'}</td>
-              <td>${escapeHtml(c.honorific || '')}</td>
-              <td>${escapeHtml(c.name)}</td>
-              <td>${escapeHtml(c.identifierNote || c.relationNote || '')}</td>
-              <td>${escapeHtml(c.village || '—')}</td>
-              <td>${escapeHtml(c.phone || '—')}${c.mobile2 ? ' / '+escapeHtml(c.mobile2) : ''}</td>
-              <td class="${c.balance>0?'warn':'ok'}">${inr(c.balance)}</td>
-              <td>${escapeHtml(c.shopId)}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>`;
-      } catch (err) {
-        tbl.innerHTML = `<p class="muted">${escapeHtml(err.message)}</p>`;
+    if (nextBtn) nextBtn.onclick = () => {
+      if (state._reviewIndex < items.length - 1) {
+        state._reviewIndex++;
+        renderReviewUI(el);
       }
     };
-    document.getElementById('cq-load').onclick = load;
-    document.getElementById('cq').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
-    load();
-  }
 
-  // ─── ADMIN: AUDIT ────────────────────────────────────────────────────────────
-  async function loadAudit() {
-    const el = document.getElementById('admin-content');
-    el.innerHTML = '<p class="muted">Loading…</p>';
-    try {
-      const { logs } = await api('/admin/audit?limit=100');
-      if (!logs.length) {
-        el.innerHTML = `<div class="panel"><p class="empty-state">${t('noData')}<br><small>Audit logs will appear as actions are taken.</small></p></div>`;
+    // ── Approve & Post Action ──
+    const approveBtn = document.getElementById('rv-btn-approve');
+    const doApprove = async () => {
+      const custName = custInput.value.trim();
+      const amount = parseFloat(amtIn.value);
+      if (!custName) {
+        toast(isHi ? 'कृपया ग्राहक का नाम दर्ज करें' : 'Customer name is required');
+        custInput.focus();
         return;
       }
-      el.innerHTML = `<div class="panel"><table class="data-table">
-        <thead><tr><th>Time</th><th>Action</th><th>User</th><th>${t('shop')}</th><th>Details</th></tr></thead>
-        <tbody>
-          ${logs.map((l) => `<tr>
-            <td>${new Date(l.createdAt).toLocaleString()}</td>
-            <td>${escapeHtml(l.action)}</td>
-            <td>${escapeHtml(l.userId?.username || '—')}</td>
-            <td>${escapeHtml(l.shopId || '—')}</td>
-            <td style="font-size:.85rem;max-width:220px;word-break:break-all">${escapeHtml(JSON.stringify(l.details || {}))}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table></div>`;
-    } catch (e) {
-      el.innerHTML = `<p class="muted">${escapeHtml(e.message)}</p>`;
+      if (!amount || amount <= 0) {
+        toast(isHi ? 'कृपया वैध रकम दर्ज करें' : 'Valid amount is required');
+        amtIn.focus();
+        return;
+      }
+
+      approveBtn.disabled = true;
+      try {
+        if (isDiaryDoc) {
+          // DiaryImage approval endpoint
+          const rowData = {
+            customerName: custName,
+            village: document.getElementById('rv-village').value.trim(),
+            mobile: document.getElementById('rv-phone').value.trim(),
+            relationNote: document.getElementById('rv-identifier').value.trim(),
+            item: document.getElementById('rv-item').value.trim() || 'डायरी हिसाब',
+            brand: document.getElementById('rv-brand').value.trim(),
+            qty: parseFloat(qtyIn.value) || 1,
+            rate: parseFloat(rateIn.value) || 0,
+            amount: amount,
+            date: document.getElementById('rv-date').value,
+            type: 'credit',
+          };
+          await api(`/diary/${item._id}/approve`, {
+            method: 'POST',
+            body: { rows: [rowData] },
+          });
+        } else {
+          // Entry approval endpoint
+          let customerId = c._id;
+          if (!customerId || custName !== (c.displayName || c.name)) {
+            const resolved = await api('/customers/resolve', {
+              method: 'POST',
+              body: {
+                name: custName,
+                shopId: item.shopId,
+                createIfMissing: true,
+                village: document.getElementById('rv-village').value.trim(),
+                phone: document.getElementById('rv-phone').value.trim(),
+                identifierNote: document.getElementById('rv-identifier').value.trim(),
+                honorific: document.getElementById('rv-honorific').value,
+                diaryNo: document.getElementById('rv-diary-no').value || undefined,
+              },
+            });
+            if (resolved.customer) customerId = resolved.customer._id;
+          }
+
+          await api(`/entries/${item._id}/approve`, {
+            method: 'POST',
+            body: {
+              customerId,
+              item: document.getElementById('rv-item').value.trim(),
+              brand: document.getElementById('rv-brand').value.trim(),
+              quantity: parseFloat(qtyIn.value) || 1,
+              rate: parseFloat(rateIn.value) || 0,
+              amount: amount,
+              notes: document.getElementById('rv-notes').value.trim(),
+              paymentMode: document.getElementById('rv-payment-mode').value,
+              entryTime: document.getElementById('rv-date').value,
+              honorific: document.getElementById('rv-honorific').value,
+            },
+          });
+        }
+
+        playChime?.();
+        toast(isHi ? 'सफलतापूर्वक खाते में दर्ज कर दिया गया! ✓' : 'Approved & Posted to Ledger! ✓');
+        loadReviewQueue();
+
+      } catch (err) {
+        toast(err.message || 'Approval failed');
+        approveBtn.disabled = false;
+      }
+    };
+    if (approveBtn) approveBtn.onclick = doApprove;
+
+    // ── Save Draft Action ──
+    const draftBtn = document.getElementById('rv-btn-draft');
+    const doDraft = async () => {
+      try {
+        if (isDiaryDoc) {
+          const rowData = {
+            customerName: custInput.value.trim(),
+            village: document.getElementById('rv-village').value.trim(),
+            mobile: document.getElementById('rv-phone').value.trim(),
+            item: document.getElementById('rv-item').value.trim(),
+            amount: parseFloat(amtIn.value) || 0,
+          };
+          await api(`/diary/${item._id}`, {
+            method: 'PATCH',
+            body: { rows: [rowData], customerHint: custInput.value.trim() },
+          });
+        }
+        toast(isHi ? 'ड्राफ्ट सहेज लिया गया' : 'Draft saved');
+      } catch (err) {
+        toast(err.message || 'Draft failed');
+      }
+    };
+    if (draftBtn) draftBtn.onclick = doDraft;
+
+    // ── Reject Action ──
+    const rejectBtn = document.getElementById('rv-btn-reject');
+    const doReject = async () => {
+      const reason = prompt(isHi ? 'रद्द करने का कारण दर्ज करें:' : 'Reason for rejection:', 'Handwriting unclear / illegible');
+      if (reason === null) return;
+
+      rejectBtn.disabled = true;
+      try {
+        if (isDiaryDoc) {
+          await api(`/diary/${item._id}/reject`, { method: 'POST', body: { reason } });
+        } else {
+          await api(`/entries/${item._id}/reject`, { method: 'POST', body: { reason } });
+        }
+        toast(isHi ? 'प्रविष्टि रद्द कर दी गई' : 'Entry rejected');
+        loadReviewQueue();
+      } catch (err) {
+        toast(err.message || 'Reject failed');
+        rejectBtn.disabled = false;
+      }
+    };
+    if (rejectBtn) rejectBtn.onclick = doReject;
+
+    // ── Global Keyboard Shortcuts ──
+    const keyHandler = (e) => {
+      if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        doApprove();
+      } else if (e.altKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        doDraft();
+      } else if (e.altKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        doReject();
+      } else if (e.altKey && e.key === 'ArrowRight') {
+        e.preventDefault();
+        if (nextBtn && !nextBtn.disabled) nextBtn.click();
+      } else if (e.altKey && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        if (prevBtn && !prevBtn.disabled) prevBtn.click();
+      }
+    };
+    window._khataKeyHandler = keyHandler;
+    window.removeEventListener('keydown', window._khataPrevKeyHandler || (() => {}));
+    window.addEventListener('keydown', keyHandler);
+    window._khataPrevKeyHandler = keyHandler;
+  }
+
+  // ─── ADVANCED IMAGE INSPECTOR (ZOOM, PAN, ROTATE, CONTRAST) ──────────────────
+  function initAdvancedInspector() {
+    const img = document.getElementById('rv-img');
+    const stage = document.getElementById('rv-stage');
+    if (!img || !stage) return;
+
+    let scale = 1.0;
+    let rotation = 0;
+    let ox = 0, oy = 0;
+    let contrast = 1.0;
+    let isInverted = false;
+    let dragging = false;
+    let startX = 0, startY = 0;
+
+    const applyTransform = () => {
+      img.style.transform = `translate(${ox}px, ${oy}px) scale(${scale}) rotate(${rotation}deg)`;
+      const filterParts = [`contrast(${contrast})`];
+      if (isInverted) filterParts.push('invert(1) grayscale(1)');
+      img.style.filter = filterParts.join(' ');
+    };
+
+    // Zoom Buttons
+    const zi = document.getElementById('rv-zoom-in');
+    const zo = document.getElementById('rv-zoom-out');
+    const zr = document.getElementById('rv-zoom-reset');
+    const rot = document.getElementById('rv-rotate');
+    const cSlider = document.getElementById('rv-contrast-slider');
+    const invBtn = document.getElementById('rv-invert-btn');
+
+    if (zi) zi.onclick = () => { scale = Math.min(5.0, scale + 0.35); applyTransform(); };
+    if (zo) zo.onclick = () => { scale = Math.max(0.4, scale - 0.35); applyTransform(); };
+    if (zr) zr.onclick = () => { scale = 1.0; ox = 0; oy = 0; rotation = 0; contrast = 1.0; isInverted = false; if (cSlider) cSlider.value = 1.0; applyTransform(); };
+    if (rot) rot.onclick = () => { rotation = (rotation + 90) % 360; applyTransform(); };
+
+    if (cSlider) cSlider.oninput = (e) => {
+      contrast = parseFloat(e.target.value) || 1.0;
+      applyTransform();
+    };
+
+    if (invBtn) invBtn.onclick = () => {
+      isInverted = !isInverted;
+      invBtn.style.background = isInverted ? '#10b981' : '';
+      applyTransform();
+    };
+
+    // Mouse Pan Dragging
+    stage.onmousedown = (e) => {
+      dragging = true;
+      startX = e.clientX - ox;
+      startY = e.clientY - oy;
+    };
+    window.onmousemove = (e) => {
+      if (!dragging) return;
+      ox = e.clientX - startX;
+      oy = e.clientY - startY;
+      applyTransform();
+    };
+    window.onmouseup = () => { dragging = false; };
+
+    // Mouse Wheel Zoom
+    stage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.2 : -0.2;
+      scale = Math.min(5.0, Math.max(0.4, scale + delta));
+      applyTransform();
+    }, { passive: false });
+
+    // Touch Support (Mobile Pan & Pinch)
+    let lastTouchX = 0, lastTouchY = 0;
+    stage.ontouchstart = (e) => {
+      if (e.touches.length === 1) {
+        lastTouchX = e.touches[0].clientX - ox;
+        lastTouchY = e.touches[0].clientY - oy;
+      }
+    };
+    stage.ontouchmove = (e) => {
+      if (e.touches.length === 1) {
+        e.preventDefault();
+        ox = e.touches[0].clientX - lastTouchX;
+        oy = e.touches[0].clientY - lastTouchY;
+        applyTransform();
+      }
+    };
+  }
+
+  // ─── ADMIN: LEDGER & TRANSACTION MANAGEMENT ──────────────────────────────────
+  async function loadLedger() {
+    const el = document.getElementById('a-content');
+    const isHi = state.lang === 'hi';
+
+    let currentPage = 1;
+    const limit = 50;
+
+    el.innerHTML = `
+      <!-- Multi-Filter Bar -->
+      <div class="a-filter-bar">
+        <div class="a-search-box">
+          <svg class="a-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="lf-q" placeholder="${t('searchPlaceholder')}" />
+        </div>
+
+        <select class="a-select" id="lf-shop">
+          <option value="all">${t('allShops')}</option>
+          <option value="shop1">${isHi ? 'दुकान 1 (Shop 1)' : 'Shop 1'}</option>
+          <option value="shop2">${isHi ? 'दुकान 2 (Shop 2)' : 'Shop 2'}</option>
+        </select>
+
+        <select class="a-select" id="lf-type">
+          <option value="all">${t('allTypes')}</option>
+          <option value="credit">📤 ${isHi ? 'उधार (Credit)' : 'Credit'}</option>
+          <option value="payment">📥 ${isHi ? 'जमा (Payment)' : 'Payment'}</option>
+        </select>
+
+        <select class="a-select" id="lf-date-preset">
+          <option value="all">${isHi ? 'सभी तिथियाँ (All Time)' : 'All Time'}</option>
+          <option value="today">${isHi ? 'आज (Today)' : 'Today'}</option>
+          <option value="7days">${isHi ? 'पिछले 7 दिन (Last 7 Days)' : 'Last 7 Days'}</option>
+          <option value="month">${isHi ? 'इस महीने (This Month)' : 'This Month'}</option>
+          <option value="custom">${isHi ? 'कस्टम तारीख (Custom)' : 'Custom Range'}</option>
+        </select>
+
+        <div id="lf-custom-dates" style="display:none;gap:6px;align-items:center">
+          <input type="date" id="lf-start-date" class="a-select" style="min-height:42px" />
+          <span class="muted">to</span>
+          <input type="date" id="lf-end-date" class="a-select" style="min-height:42px" />
+        </div>
+
+        <select class="a-select" id="lf-status">
+          <option value="approved">${isHi ? 'स्वीकृत (Approved)' : 'Approved'}</option>
+          <option value="all">${isHi ? 'सभी स्थितियाँ' : 'All Statuses'}</option>
+          <option value="deletedOnly">🗑️ ${isHi ? 'कचरापेटी (Trash)' : 'Recycle Bin'}</option>
+        </select>
+
+        <button class="a-filter-btn" id="lf-export-csv" style="background:#092c20;color:#ffffff" title="Export Ledger to CSV (Excel compatible)">
+          📊 ${t('exportCsv')}
+        </button>
+        <button class="a-filter-btn" id="lf-export-pdf" style="background:#f1f5f9;color:#334155;border:1px solid #cbd5e1" title="Print or Save PDF">
+          🖨️ ${t('exportPdf')}
+        </button>
+      </div>
+
+      <!-- Table Container -->
+      <div class="a-table-container">
+        <div class="a-table-scroll">
+          <div id="lf-table-wrap">
+            <p class="muted" style="text-align:center;padding:48px">${isHi ? 'खाता बही लोड हो रही है…' : 'Loading transactions…'}</p>
+          </div>
+        </div>
+        <div class="a-pagination-bar" id="lf-pagination" style="display:none"></div>
+      </div>`;
+
+    // Date preset selector logic
+    const presetSelect = document.getElementById('lf-date-preset');
+    const customDiv = document.getElementById('lf-custom-dates');
+    if (presetSelect) {
+      presetSelect.onchange = () => {
+        customDiv.style.display = presetSelect.value === 'custom' ? 'flex' : 'none';
+        currentPage = 1;
+        fetchLedger();
+      };
+    }
+
+    const fetchLedger = async () => {
+      const qVal = document.getElementById('lf-q').value.trim();
+      const shopVal = document.getElementById('lf-shop').value;
+      const typeVal = document.getElementById('lf-type').value;
+      const statusVal = document.getElementById('lf-status').value;
+      const presetVal = presetSelect.value;
+
+      let startDate = '';
+      let endDate = '';
+
+      if (presetVal === 'today') {
+        const d = new Date().toISOString().slice(0, 10);
+        startDate = d;
+        endDate = d;
+      } else if (presetVal === '7days') {
+        const d = new Date();
+        d.setDate(d.getDate() - 7);
+        startDate = d.toISOString().slice(0, 10);
+      } else if (presetVal === 'month') {
+        const d = new Date();
+        startDate = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
+      } else if (presetVal === 'custom') {
+        startDate = document.getElementById('lf-start-date').value;
+        endDate = document.getElementById('lf-end-date').value;
+      }
+
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit,
+      });
+
+      if (qVal) params.set('q', qVal);
+      if (shopVal !== 'all') params.set('shopId', shopVal);
+      if (typeVal !== 'all') params.set('type', typeVal);
+      if (statusVal === 'deletedOnly') params.set('deletedOnly', '1');
+      else if (statusVal !== 'all') params.set('status', statusVal);
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+
+      const wrap = document.getElementById('lf-table-wrap');
+      wrap.innerHTML = `<p class="muted" style="text-align:center;padding:48px">${isHi ? 'डेटा लाया जा रहा है…' : 'Fetching records…'}</p>`;
+
+      try {
+        const res = await api(`/admin/ledger?${params}`);
+        const entries = res.entries || [];
+        const total = res.total || 0;
+        const totalPages = res.totalPages || 1;
+
+        if (!entries.length) {
+          wrap.innerHTML = `
+            <div style="text-align:center;padding:56px 20px">
+              <div style="font-size:3rem;margin-bottom:8px">📂</div>
+              <h4 style="font-size:1.15rem;font-weight:700;color:#092c20;margin:0 0 6px">${t('noData')}</h4>
+              <p class="muted" style="font-size:.85rem;margin:0">${isHi ? 'कोई मेल खाती प्रविष्टि नहीं मिली।' : 'No entries match your search criteria.'}</p>
+            </div>`;
+          document.getElementById('lf-pagination').style.display = 'none';
+          return;
+        }
+
+        // Render Table Rows
+        wrap.innerHTML = `
+          <table class="a-table">
+            <thead>
+              <tr>
+                <th>${t('date')}</th>
+                <th>${t('customer')}</th>
+                <th>${isHi ? 'गाँव' : 'Village'}</th>
+                <th>${t('item')} & ${t('brand')}</th>
+                <th>${t('qty')}</th>
+                <th>${t('rate')}</th>
+                <th>${t('amount')}</th>
+                <th>${t('paymentMode')}</th>
+                <th>${t('shop')}</th>
+                <th>${t('actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${entries.map((e) => {
+                const c = e.customer || {};
+                const isCleared = e.isCleared;
+                const isPayment = e.type === 'payment';
+                const itemDesc = e.itemLabel || e.item || (e.items && e.items[0]?.desc) || (isPayment ? (isHi ? 'जमा भुगतान' : 'Payment') : '—');
+                const brand = e.brand || (e.items && e.items[0]?.brand) || '';
+                const custName = c.displayName || c.name || '—';
+                const dateStr = new Date(e.date).toLocaleDateString(isHi ? 'hi-IN' : 'en-IN');
+                const isDeleted = !!e.deletedAt;
+
+                return `
+                  <tr class="${isCleared ? 'cleared' : ''}">
+                    <td style="white-space:nowrap;font-weight:600">
+                      <div>${dateStr}</div>
+                      ${e.entryTime ? `<div class="muted" style="font-size:.75rem">${new Date(e.entryTime).toLocaleTimeString(isHi ? 'hi-IN' : 'en-IN', { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
+                    </td>
+                    <td>
+                      <div style="font-weight:700;color:#092c20">${escapeHtml(custName)}</div>
+                      ${c.identifierNote ? `<div style="font-size:.76rem;color:#b45309">(${escapeHtml(c.identifierNote)})</div>` : ''}
+                      ${c.phone ? `<div style="font-size:.75rem;color:#64748b">${escapeHtml(c.phone)}</div>` : ''}
+                    </td>
+                    <td>
+                      ${c.village ? `<span class="a-badge-pill neutral">📍 ${escapeHtml(c.village)}</span>` : '—'}
+                    </td>
+                    <td>
+                      <div style="font-weight:600">${escapeHtml(itemDesc)}</div>
+                      ${brand ? `<div class="muted" style="font-size:.75rem">${escapeHtml(brand)}</div>` : ''}
+                    </td>
+                    <td>${e.quantity || '1'}</td>
+                    <td>${e.rate ? inr(e.rate) : '—'}</td>
+                    <td style="font-weight:800;font-size:1rem;color:${isPayment ? '#059669' : '#dc2626'}">
+                      <span class="a-badge-pill ${isPayment ? 'payment' : 'sale'}">
+                        ${isPayment ? '↓ जमा' : '↑ उधार'}
+                      </span>
+                      <div style="margin-top:2px">${inr(e.amount)}</div>
+                    </td>
+                    <td>
+                      <span class="muted" style="text-transform:uppercase;font-size:.76rem;font-weight:700">
+                        ${escapeHtml(e.paymentMode || 'cash')}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="a-badge-pill shop">${escapeHtml(e.shopId)}</span>
+                    </td>
+                    <td style="white-space:nowrap">
+                      ${isDeleted ? `
+                        <button class="a-page-btn lf-restore-btn" data-id="${e._id}" style="color:#059669;border-color:#10b981">
+                          ♻️ ${t('restore')}
+                        </button>
+                      ` : `
+                        <button class="a-page-btn lf-delete-btn" data-id="${e._id}" style="color:#dc2626;border-color:#fca5a5" title="Soft-delete">
+                          🗑️
+                        </button>
+                      `}
+                    </td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+
+        // Wire Row Actions (Soft Delete & Restore)
+        wrap.querySelectorAll('.lf-delete-btn').forEach((btn) => {
+          btn.onclick = async () => {
+            if (!confirm(isHi ? 'क्या आप इस प्रविष्टि को हटाना चाहते हैं?' : 'Soft-delete this entry?')) return;
+            try {
+              await api(`/entries/${btn.dataset.id}`, { method: 'DELETE' });
+              toast(isHi ? 'प्रविष्टि हटा दी गई (कचरापेटी में भेजी गई)' : 'Entry soft-deleted');
+              fetchLedger();
+            } catch (err) { toast(err.message); }
+          };
+        });
+
+        wrap.querySelectorAll('.lf-restore-btn').forEach((btn) => {
+          btn.onclick = async () => {
+            try {
+              await api(`/entries/${btn.dataset.id}/restore`, { method: 'POST' });
+              toast(isHi ? 'प्रविष्टि वापस ला दी गई! ✓' : 'Entry restored! ✓');
+              fetchLedger();
+            } catch (err) { toast(err.message); }
+          };
+        });
+
+        // ── Render Pagination Bar ──
+        const pag = document.getElementById('lf-pagination');
+        pag.style.display = 'flex';
+        const startItem = (currentPage - 1) * limit + 1;
+        const endItem = Math.min(total, currentPage * limit);
+
+        pag.innerHTML = `
+          <div class="a-pagination-info">
+            ${isHi ? `कुल ${total} में से ${startItem}–${endItem} रिकॉर्ड्स` : `Showing ${startItem}–${endItem} of ${total} entries`}
+          </div>
+          <div class="a-pagination-controls">
+            <button class="a-page-btn" id="lf-pg-first" ${currentPage === 1 ? 'disabled' : ''}>« First</button>
+            <button class="a-page-btn" id="lf-pg-prev" ${currentPage === 1 ? 'disabled' : ''}>‹ Prev</button>
+            <span style="font-weight:700;font-size:.85rem;padding:0 8px">${t('page')} ${currentPage} ${t('of')} ${totalPages}</span>
+            <button class="a-page-btn" id="lf-pg-next" ${currentPage === totalPages ? 'disabled' : ''}>Next ›</button>
+            <button class="a-page-btn" id="lf-pg-last" ${currentPage === totalPages ? 'disabled' : ''}>Last »</button>
+          </div>`;
+
+        document.getElementById('lf-pg-first').onclick = () => { currentPage = 1; fetchLedger(); };
+        document.getElementById('lf-pg-prev').onclick = () => { if (currentPage > 1) { currentPage--; fetchLedger(); } };
+        document.getElementById('lf-pg-next').onclick = () => { if (currentPage < totalPages) { currentPage++; fetchLedger(); } };
+        document.getElementById('lf-pg-last').onclick = () => { currentPage = totalPages; fetchLedger(); };
+
+      } catch (err) {
+        wrap.innerHTML = `<div style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
+      }
+    };
+
+    // Filter event bindings with debounce
+    let searchDebounce = null;
+    document.getElementById('lf-q').oninput = () => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => { currentPage = 1; fetchLedger(); }, 250);
+    };
+    document.getElementById('lf-shop').onchange = () => { currentPage = 1; fetchLedger(); };
+    document.getElementById('lf-type').onchange = () => { currentPage = 1; fetchLedger(); };
+    document.getElementById('lf-status').onchange = () => { currentPage = 1; fetchLedger(); };
+    document.getElementById('lf-start-date').onchange = () => { currentPage = 1; fetchLedger(); };
+    document.getElementById('lf-end-date').onchange = () => { currentPage = 1; fetchLedger(); };
+
+    // ── Export CSV Action (with UTF-8 BOM for Excel Hindi support) ──
+    document.getElementById('lf-export-csv').onclick = async () => {
+      toast(isHi ? 'CSV तैयार की जा रही है…' : 'Generating CSV export…');
+      try {
+        const res = await api('/admin/ledger?limit=1000');
+        const rows = res.entries || [];
+        if (!rows.length) {
+          toast(isHi ? 'एक्सपोर्ट के लिए कोई डेटा नहीं है' : 'No records to export');
+          return;
+        }
+
+        const headers = ['Date', 'Time', 'Customer', 'Village', 'Mobile', 'Item', 'Brand', 'Qty', 'Rate', 'Amount', 'Type', 'PaymentMode', 'Shop', 'Status'];
+        const csvRows = [headers.join(',')];
+
+        rows.forEach(e => {
+          const c = e.customer || {};
+          const row = [
+            `"${new Date(e.date).toLocaleDateString('en-GB')}"`,
+            `"${e.entryTime ? new Date(e.entryTime).toLocaleTimeString('en-IN') : ''}"`,
+            `"${(c.name || '').replace(/"/g, '""')}"`,
+            `"${(c.village || '').replace(/"/g, '""')}"`,
+            `"${(c.phone || '').replace(/"/g, '""')}"`,
+            `"${(e.item || '').replace(/"/g, '""')}"`,
+            `"${(e.brand || '').replace(/"/g, '""')}"`,
+            e.quantity || 1,
+            e.rate || 0,
+            e.amount || 0,
+            `"${e.type}"`,
+            `"${e.paymentMode || 'cash'}"`,
+            `"${e.shopId}"`,
+            `"${e.deletedAt ? 'Deleted' : e.status}"`,
+          ];
+          csvRows.push(row.join(','));
+        });
+
+        const csvContent = '\uFEFF' + csvRows.join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Khata_Ledger_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast(isHi ? 'CSV डाउनलोड प्रारंभ हो गया ✓' : 'CSV download started ✓');
+      } catch (err) {
+        toast(err.message || 'Export failed');
+      }
+    };
+
+    // Print / PDF Action
+    document.getElementById('lf-export-pdf').onclick = () => {
+      window.print();
+    };
+
+    fetchLedger();
+  }
+
+  // ─── ADMIN: CUSTOMER HUB & LEDGER DRILL-DOWN ─────────────────────────────────
+  async function loadCustomers() {
+    const el = document.getElementById('a-content');
+    const isHi = state.lang === 'hi';
+
+    el.innerHTML = `
+      <div class="a-filter-bar">
+        <div class="a-search-box">
+          <svg class="a-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="cq-input" placeholder="${isHi ? 'ग्राहक का नाम, गाँव, मोबाइल या डायरी नं. से खोजें...' : 'Search by name, village, mobile or diary no...'}" />
+        </div>
+
+        <select class="a-select" id="cq-shop">
+          <option value="all">${t('allShops')}</option>
+          <option value="shop1">${isHi ? 'दुकान 1 (Shop 1)' : 'Shop 1'}</option>
+          <option value="shop2">${isHi ? 'दुकान 2 (Shop 2)' : 'Shop 2'}</option>
+        </select>
+
+        <select class="a-select" id="cq-status">
+          <option value="all">${isHi ? 'सभी ग्राहक (All)' : 'All Customers'}</option>
+          <option value="outstanding">${isHi ? 'बकाया वाले (> ₹0)' : 'With Balance (> 0)'}</option>
+          <option value="settled">${isHi ? 'हिसाब चुकता (Settled)' : 'Settled (₹0)'}</option>
+        </select>
+      </div>
+
+      <div class="a-table-container">
+        <div class="a-table-scroll">
+          <div id="cq-table-wrap">
+            <p class="muted" style="text-align:center;padding:48px">${isHi ? 'ग्राहक सूची लोड हो रही है…' : 'Loading customers…'}</p>
+          </div>
+        </div>
+      </div>
+      <div id="cq-modal-container"></div>`;
+
+    const fetchCustomers = async () => {
+      const q = document.getElementById('cq-input').value.trim();
+      const shopId = document.getElementById('cq-shop').value;
+      const statusFilter = document.getElementById('cq-status').value;
+
+      const params = new URLSearchParams({ all: '1' });
+      if (q) params.set('q', q);
+      if (shopId !== 'all') params.set('shopId', shopId);
+      if (statusFilter === 'settled') params.set('settled', '1');
+
+      const wrap = document.getElementById('cq-table-wrap');
+      wrap.innerHTML = `<p class="muted" style="text-align:center;padding:48px">${isHi ? 'डेटा लाया जा रहा है…' : 'Fetching…'}</p>`;
+
+      try {
+        const res = await api(`/customers?${params}`);
+        let customers = res.customers || [];
+
+        if (statusFilter === 'outstanding') {
+          customers = customers.filter(c => (c.balance || 0) > 0.01);
+        }
+
+        if (!customers.length) {
+          wrap.innerHTML = `
+            <div style="text-align:center;padding:56px 20px">
+              <div style="font-size:3rem;margin-bottom:8px">👥</div>
+              <h4 style="font-size:1.15rem;font-weight:700;color:#092c20;margin:0 0 6px">${isHi ? 'कोई ग्राहक नहीं मिला' : 'No customers found'}</h4>
+              <p class="muted" style="margin:0">${isHi ? 'खोज शब्द बदलकर देखें।' : 'Try adjusting your search criteria.'}</p>
+            </div>`;
+          return;
+        }
+
+        wrap.innerHTML = `
+          <table class="a-table">
+            <thead>
+              <tr>
+                <th style="width:50px">${t('diaryNo')}</th>
+                <th>${t('customer')}</th>
+                <th>${t('identifierNote')}</th>
+                <th>${isHi ? 'गाँव' : 'Village'}</th>
+                <th>${isHi ? 'मोबाइल' : 'Mobile'}</th>
+                <th>${t('outstanding')}</th>
+                <th>${t('shop')}</th>
+                <th style="text-align:right">${t('actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${customers.map((c) => {
+                const hasBalance = (c.balance || 0) > 0.01;
+                return `
+                  <tr>
+                    <td>
+                      <span class="a-circle-no">${c.diaryNo || '—'}</span>
+                    </td>
+                    <td>
+                      <a href="#" class="cq-drill-btn" data-id="${c._id}" style="font-weight:800;color:#092c20;text-decoration:none">
+                        ${c.honorific ? `<span class="muted">${escapeHtml(c.honorific)}</span> ` : ''}${escapeHtml(c.name)}
+                      </a>
+                    </td>
+                    <td>
+                      ${c.identifierNote ? `<span style="font-weight:600;color:#b45309">(${escapeHtml(c.identifierNote)})</span>` : '—'}
+                    </td>
+                    <td>
+                      ${c.village ? `<span class="a-badge-pill neutral">📍 ${escapeHtml(c.village)}</span>` : '—'}
+                    </td>
+                    <td>
+                      ${c.phone ? `
+                        <a href="tel:${escapeHtml(c.phone)}" style="color:#0369a1;font-weight:600;text-decoration:none">
+                          📞 ${escapeHtml(c.phone)}
+                        </a>
+                      ` : '—'}
+                    </td>
+                    <td>
+                      <span style="font-size:1.05rem;font-weight:800;color:${hasBalance ? '#b91c1c' : '#059669'}">
+                        ${inr(c.balance || 0)}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="a-badge-pill shop">${escapeHtml(c.shopId)}</span>
+                    </td>
+                    <td style="text-align:right">
+                      <button class="a-page-btn cq-drill-btn" data-id="${c._id}" style="background:#092c20;color:#ffffff;border:none">
+                        📖 ${t('drilldown')}
+                      </button>
+                    </td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+
+        // Wire Customer Drill-Down Ledger Modal
+        wrap.querySelectorAll('.cq-drill-btn').forEach((btn) => {
+          btn.onclick = (e) => {
+            e.preventDefault();
+            openCustomerLedgerModal(btn.dataset.id);
+          };
+        });
+
+      } catch (err) {
+        wrap.innerHTML = `<div style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
+      }
+    };
+
+    let searchTimer = null;
+    document.getElementById('cq-input').oninput = () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(fetchCustomers, 250);
+    };
+    document.getElementById('cq-shop').onchange = fetchCustomers;
+    document.getElementById('cq-status').onchange = fetchCustomers;
+
+    fetchCustomers();
+  }
+
+  // ─── CUSTOMER LEDGER DRILL-DOWN MODAL ─────────────────────────────────────────
+  async function openCustomerLedgerModal(customerId) {
+    const isHi = state.lang === 'hi';
+    const container = document.getElementById('cq-modal-container');
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="a-modal-backdrop" id="cq-modal-backdrop">
+        <div class="a-modal-card">
+          <div class="a-modal-header">
+            <div>
+              <h3 style="margin:0;font-size:1.25rem;font-weight:800;color:#092c20" id="cq-mod-name">${isHi ? 'ग्राहक खाता बही' : 'Customer Ledger'}</h3>
+              <p style="margin:2px 0 0;font-size:.8rem;color:#64748b" id="cq-mod-meta">${isHi ? 'लोड हो रहा है…' : 'Loading details…'}</p>
+            </div>
+            <button class="a-page-btn" id="cq-mod-close" style="font-size:1.1rem;padding:4px 10px">✕</button>
+          </div>
+          <div class="a-modal-body" id="cq-mod-body">
+            <p class="muted" style="text-align:center;padding:48px">${isHi ? 'बहीखाता प्रविष्टियाँ लोड हो रही हैं…' : 'Loading ledger history…'}</p>
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('cq-mod-close').onclick = () => { container.innerHTML = ''; };
+    document.getElementById('cq-modal-backdrop').onclick = (e) => {
+      if (e.target.id === 'cq-modal-backdrop') container.innerHTML = '';
+    };
+
+    try {
+      const res = await api(`/customers/${customerId}`);
+      const c = res.customer || {};
+      const entries = res.entries || [];
+
+      document.getElementById('cq-mod-name').innerHTML = `
+        <span class="a-circle-no" style="margin-right:6px">${c.diaryNo || '—'}</span>
+        ${c.honorific ? `${escapeHtml(c.honorific)} ` : ''}${escapeHtml(c.name)}
+        ${c.identifierNote ? `<span style="font-size:.85rem;color:#b45309">(${escapeHtml(c.identifierNote)})</span>` : ''}`;
+
+      document.getElementById('cq-mod-meta').innerHTML = `
+        <span>📍 ${escapeHtml(c.village || '—')}</span> · 
+        <span>📞 ${c.phone ? `<a href="tel:${c.phone}">${c.phone}</a>` : '—'}</span> · 
+        <span class="a-badge-pill shop">${escapeHtml(c.shopId)}</span> · 
+        <strong style="color:${(c.balance || 0) > 0 ? '#b91c1c' : '#059669'}">${t('outstanding')}: ${inr(c.balance || 0)}</strong>`;
+
+      const bodyEl = document.getElementById('cq-mod-body');
+
+      if (!entries.length) {
+        bodyEl.innerHTML = `
+          <div style="text-align:center;padding:32px">
+            <p class="muted">${isHi ? 'इस ग्राहक के लिए अभी कोई स्वीकृत खाता प्रविष्टि नहीं है।' : 'No approved ledger entries for this customer yet.'}</p>
+            <button class="a-page-btn" id="cq-recalc-btn" style="margin-top:12px;background:#092c20;color:#ffffff">
+              🔄 ${t('recalcBalance')}
+            </button>
+          </div>`;
+      } else {
+        bodyEl.innerHTML = `
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <button class="a-page-btn" id="cq-recalc-btn" style="background:#092c20;color:#ffffff;font-size:.82rem">
+              🔄 ${t('recalcBalance')}
+            </button>
+          </div>
+          <table class="a-table">
+            <thead>
+              <tr>
+                <th>${t('date')}</th>
+                <th>${t('item')} & ${t('brand')}</th>
+                <th>${t('qty')}</th>
+                <th>${t('rate')}</th>
+                <th>${isHi ? 'उधार (+)' : 'Credit (+)'}</th>
+                <th>${isHi ? 'जमा (−)' : 'Payment (−)'}</th>
+                <th>${t('notes')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${entries.map((e) => {
+                const isPayment = e.type === 'payment';
+                const itemDesc = e.item || (e.items && e.items[0]?.name) || (isPayment ? (isHi ? 'जमा' : 'Payment') : '—');
+                const brand = e.brand || (e.items && e.items[0]?.brand) || '';
+                return `
+                  <tr>
+                    <td style="white-space:nowrap">${new Date(e.date).toLocaleDateString(isHi ? 'hi-IN' : 'en-IN')}</td>
+                    <td>
+                      <div style="font-weight:700">${escapeHtml(itemDesc)}</div>
+                      ${brand ? `<div class="muted" style="font-size:.75rem">${escapeHtml(brand)}</div>` : ''}
+                    </td>
+                    <td>${e.quantity || '1'}</td>
+                    <td>${e.rate ? inr(e.rate) : '—'}</td>
+                    <td style="font-weight:800;color:#dc2626">${!isPayment ? inr(e.amount) : '—'}</td>
+                    <td style="font-weight:800;color:#059669">${isPayment ? inr(e.amount) : '—'}</td>
+                    <td style="font-size:.8rem;color:#64748b">${escapeHtml(e.notes || e.note || '')}</td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+      }
+
+      // Wire Recalculate Balance Button
+      const recalcBtn = document.getElementById('cq-recalc-btn');
+      if (recalcBtn) {
+        recalcBtn.onclick = async () => {
+          recalcBtn.disabled = true;
+          try {
+            const upd = await api(`/customers/${customerId}/recalc`, { method: 'POST' });
+            toast(isHi ? `बैलेंस पुनः जाँचा गया: ${inr(upd.customer?.balance || 0)}` : `Balance recalculated: ${inr(upd.customer?.balance || 0)}`);
+            openCustomerLedgerModal(customerId);
+          } catch (err) { toast(err.message); recalcBtn.disabled = false; }
+        };
+      }
+
+    } catch (err) {
+      document.getElementById('cq-mod-body').innerHTML = `<div style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
     }
   }
 
-  // ─── IMAGE VIEWER ─────────────────────────────────────────────────────────────
-  function initImageViewer() {
-    const img = document.getElementById('viewer-img');
-    const stage = document.getElementById('viewer-stage');
-    if (!img || !stage) return;
-    let scale = 1, ox = 0, oy = 0, dragging = false, startX, startY;
-    const apply = () => { img.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`; };
-    const zi = document.getElementById('zoom-in');
-    const zo = document.getElementById('zoom-out');
-    const zr = document.getElementById('zoom-reset');
-    if (zi) zi.onclick = () => { scale = Math.min(4, scale + 0.3); apply(); };
-    if (zo) zo.onclick = () => { scale = Math.max(0.5, scale - 0.3); apply(); };
-    if (zr) zr.onclick = () => { scale = 1; ox = 0; oy = 0; apply(); };
-    img.onmousedown = (e) => { dragging = true; startX = e.clientX - ox; startY = e.clientY - oy; };
-    img.onmousemove = (e) => { if (!dragging) return; ox = e.clientX - startX; oy = e.clientY - startY; apply(); };
-    img.onmouseup = () => (dragging = false);
-    stage.addEventListener('wheel', (e) => { e.preventDefault(); scale = Math.min(4, Math.max(0.5, scale - e.deltaY * 0.001)); apply(); }, { passive: false });
+  // ─── ADMIN: AUDIT LOG & RECYCLE BIN ──────────────────────────────────────────
+  async function loadAudit() {
+    const el = document.getElementById('a-content');
+    const isHi = state.lang === 'hi';
+
+    el.innerHTML = `
+      <div class="a-filter-bar">
+        <select class="a-select" id="al-shop">
+          <option value="all">${t('allShops')}</option>
+          <option value="shop1">${isHi ? 'दुकान 1 (Shop 1)' : 'Shop 1'}</option>
+          <option value="shop2">${isHi ? 'दुकान 2 (Shop 2)' : 'Shop 2'}</option>
+        </select>
+
+        <select class="a-select" id="al-action">
+          <option value="all">${isHi ? 'सभी कार्य (All Actions)' : 'All Actions'}</option>
+          <option value="entry.approve">✓ ${isHi ? 'प्रविष्टि स्वीकृति (Approve)' : 'Entry Approve'}</option>
+          <option value="entry.soft_delete">🗑️ ${isHi ? 'हटाना (Soft Delete)' : 'Soft Delete'}</option>
+          <option value="entry.restore">♻️ ${isHi ? 'वापसी (Restore)' : 'Restore'}</option>
+          <option value="customer.create">👤 ${isHi ? 'नया ग्राहक (Customer Create)' : 'Customer Create'}</option>
+        </select>
+      </div>
+
+      <div class="a-table-container">
+        <div class="a-table-scroll">
+          <div id="al-table-wrap">
+            <p class="muted" style="text-align:center;padding:48px">${isHi ? 'ऑडिट लॉग लोड हो रहा है…' : 'Loading audit log…'}</p>
+          </div>
+        </div>
+      </div>`;
+
+    const fetchAudit = async () => {
+      const shopId = document.getElementById('al-shop').value;
+      const action = document.getElementById('al-action').value;
+      const params = new URLSearchParams({ limit: 100 });
+      if (shopId !== 'all') params.set('shopId', shopId);
+      if (action !== 'all') params.set('action', action);
+
+      const wrap = document.getElementById('al-table-wrap');
+      wrap.innerHTML = `<p class="muted" style="text-align:center;padding:48px">${isHi ? 'डेटा लाया जा रहा है…' : 'Fetching…'}</p>`;
+
+      try {
+        const res = await api(`/admin/audit?${params}`);
+        const logs = res.logs || [];
+
+        if (!logs.length) {
+          wrap.innerHTML = `<p class="muted" style="text-align:center;padding:48px">${t('noData')}</p>`;
+          return;
+        }
+
+        wrap.innerHTML = `
+          <table class="a-table">
+            <thead>
+              <tr>
+                <th>${t('time')}</th>
+                <th>${t('actions')}</th>
+                <th>${isHi ? 'उपयोगकर्ता' : 'User'}</th>
+                <th>${t('shop')}</th>
+                <th>${isHi ? 'विवरण' : 'Details'}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${logs.map((l) => {
+                const actionBadgeClass = l.action.includes('delete') ? 'sale' : l.action.includes('approve') || l.action.includes('restore') ? 'payment' : 'neutral';
+                return `
+                  <tr>
+                    <td style="white-space:nowrap;font-size:.84rem">
+                      ${new Date(l.createdAt).toLocaleString(isHi ? 'hi-IN' : 'en-IN')}
+                    </td>
+                    <td>
+                      <span class="a-badge-pill ${actionBadgeClass}">
+                        ${escapeHtml(l.action)}
+                      </span>
+                    </td>
+                    <td style="font-weight:700;color:#092c20">
+                      ${escapeHtml(l.userId?.username || l.by?.username || 'admin')}
+                    </td>
+                    <td>
+                      <span class="a-badge-pill shop">${escapeHtml(l.shopId || '—')}</span>
+                    </td>
+                    <td style="font-family:monospace;font-size:.78rem;color:#475569;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                      ${escapeHtml(JSON.stringify(l.details || l.after || l.reason || {}))}
+                    </td>
+                  </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`;
+
+      } catch (err) {
+        wrap.innerHTML = `<div style="color:#dc2626;padding:24px">${escapeHtml(err.message)}</div>`;
+      }
+    };
+
+    document.getElementById('al-shop').onchange = fetchAudit;
+    document.getElementById('al-action').onchange = fetchAudit;
+
+    fetchAudit();
   }
 
   // ─── Expose & Boot ───────────────────────────────────────────────────────────
