@@ -2864,12 +2864,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   box-shadow: 0 2px 6px rgba(9, 44, 32, 0.2);
 }
 
-/* Home Action Cards 2-item Grid for Elderly Usability */
+/* Home Action Cards for Elderly Usability */
+.p-actions .p-card,
 .p-actions--home .p-card {
   min-height: 96px;
   cursor: pointer;
 }
 
+.p-actions .p-card:active,
 .p-actions--home .p-card:active {
   transform: scale(0.98);
 }

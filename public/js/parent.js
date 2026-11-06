@@ -130,21 +130,16 @@
           <h1 class="p-brand">खाता</h1>
           <p class="p-sub">${escapeHtml(user.displayName || '')} · नमस्ते 🙏</p>
 
-          <!-- 🔍 HOME CUSTOMER SEARCH BAR -->
-          <div class="home-search-wrap">
-            <div class="home-search-box">
-              <span class="home-search-ico">🔍</span>
-              <input type="search" id="home-cust-search" class="home-search-input" placeholder="ग्राहक खोजें (नाम / गाँव / फ़ोन)..." autocomplete="off" lang="hi" />
-              <button type="button" id="home-search-mic" class="home-search-mic-btn" title="बोलकर खोजें">🎤</button>
-            </div>
-            <div id="home-search-dropdown" class="home-search-dropdown hidden"></div>
-          </div>
-
-          <div class="p-actions p-actions--home">
+          <div class="p-actions">
             <button class="p-card p-card--voice" type="button" id="go-entry">
               <span class="ico">✍️🎤</span>
               <span class="p-card-label">हिसाब लिखें</span>
               <span class="p-card-hint">बोलकर या लिखकर नया हिसाब</span>
+            </button>
+            <button class="p-card p-card--search" type="button" id="go-search">
+              <span class="ico">🔍</span>
+              <span class="p-card-label">ग्राहक खोजें</span>
+              <span class="p-card-hint">बचा कितना है देखें</span>
             </button>
             <button class="p-card p-card--photo" type="button" id="go-diary">
               <span class="ico">📷</span>
@@ -155,98 +150,8 @@
           <button type="button" id="logout" class="p-logout">दुकान बदलें / बाहर निकलें</button>
         </div>`;
 
-      // Wire Customer Search on Home
-      const searchInput = document.getElementById('home-cust-search');
-      const searchDropdown = document.getElementById('home-search-dropdown');
-      const searchMic = document.getElementById('home-search-mic');
-      let searchTimer = null;
-
-      const runHomeSearch = async () => {
-        const q = (searchInput?.value || '').trim();
-        if (!q) {
-          if (searchDropdown) { searchDropdown.innerHTML = ''; searchDropdown.classList.add('hidden'); }
-          return;
-        }
-        try {
-          const { customers } = await api(`/customers?q=${encodeURIComponent(q)}&all=1`);
-          if (!searchDropdown) return;
-          if (!customers || !customers.length) {
-            searchDropdown.innerHTML = `<div class="home-search-empty">कोई ग्राहक नहीं मिला</div>`;
-            searchDropdown.classList.remove('hidden');
-            return;
-          }
-          searchDropdown.innerHTML = customers.slice(0, 15).map((c) => {
-            const isSettled = (c.balance || 0) <= 0;
-            return `
-              <div class="home-search-item" data-id="${c._id}">
-                <div class="hsi-main">
-                  <div class="hsi-name">
-                    ${c.diaryNo ? `<span class="hsi-diary-pill">#${c.diaryNo}</span>` : ''}
-                    ${c.honorific ? `${escapeHtml(c.honorific)} ` : ''}<strong>${escapeHtml(c.name)}</strong>
-                    ${c.identifierNote ? `<span class="hsi-sub">(${escapeHtml(c.identifierNote)})</span>` : ''}
-                  </div>
-                  <div class="hsi-loc">${escapeHtml(c.village || '—')}${c.phone ? ' · ' + escapeHtml(c.phone) : ''}</div>
-                </div>
-                <div class="hsi-bal ${isSettled ? 'hsi-settled' : 'hsi-owed'}">
-                  ${isSettled ? 'चुकता ✓' : 'बचा ' + inr(c.balance)}
-                </div>
-              </div>`;
-          }).join('');
-          searchDropdown.classList.remove('hidden');
-
-          searchDropdown.querySelectorAll('.home-search-item').forEach((item) => {
-            item.onclick = (e) => {
-              e.stopPropagation();
-              const id = item.dataset.id;
-              if (id) this.go('customer', { id });
-            };
-          });
-        } catch {
-          if (searchDropdown) {
-            searchDropdown.innerHTML = `<div class="home-search-empty">खोजने में समस्या आई</div>`;
-            searchDropdown.classList.remove('hidden');
-          }
-        }
-      };
-
-      if (searchInput) {
-        searchInput.oninput = () => {
-          clearTimeout(searchTimer);
-          searchTimer = setTimeout(runHomeSearch, 160);
-        };
-        searchInput.onfocus = () => {
-          if (searchInput.value.trim()) runHomeSearch();
-        };
-      }
-
-      // Close dropdown when tapping anywhere outside
-      const onDocClick = (e) => {
-        if (!e.target.closest('.home-search-wrap') && searchDropdown) {
-          searchDropdown.classList.add('hidden');
-        }
-      };
-      document.addEventListener('click', onDocClick);
-
-      // Home Search Voice Mic
-      if (searchMic) {
-        searchMic.onclick = async () => {
-          stopActiveMic();
-          if (!g.VoiceEngine) { toast('आवाज़ इस ब्राउज़र में उपलब्ध नहीं है'); return; }
-          searchMic.classList.add('mic-pulsing');
-          const eng = new g.VoiceEngine({ silenceMs: 2500 });
-          _activeMicEngine = eng;
-          try {
-            const spoken = await eng.listenOnce(5000);
-            if (spoken && searchInput) {
-              searchInput.value = spoken;
-              runHomeSearch();
-            }
-          } catch {}
-          searchMic.classList.remove('mic-pulsing');
-        };
-      }
-
       document.getElementById('go-entry').onclick = () => { this.form = emptyForm(); this.go('entry'); };
+      document.getElementById('go-search').onclick = () => this.go('search');
       document.getElementById('go-diary').onclick = () => this.go('diary');
       document.getElementById('logout').onclick = () => {
         g.KhataAPI.clearSession();
@@ -1354,9 +1259,18 @@
           }
           box.innerHTML = customers.map((c) => `
             <button class="cust-card" type="button" data-id="${c._id}">
-              <div class="nm">${escapeHtml(c.displayName || c.name)}</div>
-              <div class="rel">${escapeHtml(c.identifierNote || c.relationNote || '')} · ${escapeHtml(c.village || '')}</div>
-              <div class="bacha">${tab === 'settled' ? 'चुकता ✓' : 'बचा ' + inr(c.balance)}</div>
+              <div>
+                <div class="nm">
+                  ${c.diaryNo ? `<span class="hsi-diary-pill" style="display:inline-block;margin-right:6px">#${c.diaryNo}</span>` : ''}
+                  ${c.honorific ? `${escapeHtml(c.honorific)} ` : ''}${escapeHtml(c.displayName || c.name)}
+                </div>
+                <div class="rel">
+                  ${c.identifierNote || c.relationNote ? `${escapeHtml(c.identifierNote || c.relationNote)} · ` : ''}
+                  📍 ${escapeHtml(c.village || '—')}
+                  ${c.phone ? ' · 📞 ' + escapeHtml(c.phone) : ''}
+                </div>
+              </div>
+              <div class="bacha" style="${tab === 'settled' ? 'color:#15803d' : ''}">${tab === 'settled' ? 'चुकता ✓' : 'बचा ' + inr(c.balance)}</div>
             </button>`).join('');
           // Use event delegation so child-element taps don't break navigation
           box.onclick = (e) => {
