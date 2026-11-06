@@ -25,6 +25,11 @@ const entrySchema = new mongoose.Schema(
 
     // --- New fields (§5) ---
     entryTime: { type: Date, default: () => new Date() }, // separate editable time
+    dueDate: { type: Date, default: null, index: true }, // promised payment due date
+    dueDateNote: { type: String, default: '', trim: true }, // e.g. "15 दिन", "दिवाली के बाद"
+    reminderSent: { type: Boolean, default: false },
+    reminderSentAt: { type: Date, default: null },
+    reminderStatus: { type: String, enum: ['none', 'pending', 'sent', 'failed'], default: 'none' },
     paymentMode: { type: String, enum: ['cash', 'upi', ''], default: '' },
     note: { type: String, default: '', trim: true },
     enteredVia: {
@@ -63,6 +68,7 @@ const entrySchema = new mongoose.Schema(
 
 entrySchema.index({ shopId: 1, status: 1, deletedAt: 1 });
 entrySchema.index({ customer: 1, type: 1, date: 1 });
+entrySchema.index({ dueDate: 1, isCleared: 1, type: 1 });
 
 entrySchema.virtual('remaining').get(function remaining() {
   if (this.type !== 'sale') return 0;

@@ -342,6 +342,28 @@ function cleanPhraseDuplicates(str) {
   return words.join(' ');
 }
 
+function parseDueDateFromSpeech(text) {
+  const t = (text || '').toLowerCase();
+  const now = new Date();
+  if (/(?:15|पंद्रह)\s*दिन/.test(t)) {
+    const d = new Date(now); d.setDate(d.getDate() + 15); return d;
+  }
+  if (/(?:7|सात)\s*दिन|(?:1|एक)\s*(?:हफ्ता|सप्ताह)/.test(t)) {
+    const d = new Date(now); d.setDate(d.getDate() + 7); return d;
+  }
+  if (/(?:30|तीस)\s*दिन|(?:1|एक)\s*महीना/.test(t)) {
+    const d = new Date(now); d.setDate(d.getDate() + 30); return d;
+  }
+  const daysMatch = t.match(/(\d+)\s*दिन\s*(?:बाद|में)?/);
+  if (daysMatch) {
+    const num = Number(daysMatch[1]);
+    if (num > 0 && num <= 365) {
+      const d = new Date(now); d.setDate(d.getDate() + num); return d;
+    }
+  }
+  return null;
+}
+
 // ─── Master mic slot-filling parser ──────────────────────────────────────────
 /**
  * Parse a free-form Hindi sentence into form slots.
@@ -398,6 +420,10 @@ function parseMasterSpeech(raw) {
   // Date
   const parsedDate = parseHindiDate(text);
   if (parsedDate) result.date = parsedDate;
+
+  // Due Date (तगादा / कब तक देंगे)
+  const parsedDueDate = parseDueDateFromSpeech(text);
+  if (parsedDueDate) result.dueDate = parsedDueDate;
 
   // Time
   const parsedTime = parseHindiTime(text);

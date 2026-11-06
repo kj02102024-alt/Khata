@@ -441,10 +441,11 @@
     el.innerHTML = `<div class="a-card" style="text-align:center;padding:48px"><p class="muted">${isHi ? 'डेटा लोड हो रहा है…' : 'Loading financial intelligence…'}</p></div>`;
 
     try {
-      const [metrics, agingData, villageData] = await Promise.all([
+      const [metrics, agingData, villageData, followUpsData] = await Promise.all([
         api('/admin/metrics').catch(() => ({})),
         api('/admin/aging').catch(() => ({ buckets: [] })),
         api('/admin/village-stats').catch(() => ({ villages: [] })),
+        api('/admin/follow-ups').catch(() => ({ followUps: [], totalCount: 0, totalAmount: 0 })),
       ]);
 
       const m = metrics || {};
@@ -703,9 +704,87 @@
           }).join('')}
         </div>`;
 
+      // ── Call / Follow-up Alert Card ──
+      const followUps = followUpsData.followUps || [];
+      const followUpsHtml = followUps.length ? `
+        <div class="a-followup-card">
+          <div class="a-followup-header">
+            <div class="a-followup-title-wrap">
+              <span class="a-followup-pulse-icon">🚨</span>
+              <div>
+                <h3 class="a-followup-title">
+                  ${isHi ? 'तगादा / कॉल आवश्यक (Call / Follow-up Required)' : 'Call / Follow-up Required'}
+                  <span class="a-followup-badge">${followUps.length} ${isHi ? 'ग्राहक' : 'Customers'}</span>
+                </h3>
+                <p class="a-followup-subtitle">
+                  ${isHi ? `कुल अतिदेय: ${inr(followUpsData.totalAmount)} · इन ग्राहकों की नियत तारीख निकल चुकी है, तुरंत संपर्क करें या ऑटो-रिमाइंडर भेजें` : `Total Overdue: ${inr(followUpsData.totalAmount)} · Promised due date has passed`}
+                </p>
+              </div>
+            </div>
+            <div class="a-followup-header-actions">
+              <button class="a-btn-auto-remind" type="button" id="btn-trigger-all-reminders">
+                ⚡ ${isHi ? 'सभी को ऑटो-रिमाइंडर भेजें' : 'Send All Reminders'}
+              </button>
+            </div>
+          </div>
+          <div class="a-followup-table-wrap">
+            <table class="a-table a-followup-table">
+              <thead>
+                <tr>
+                  <th>${isHi ? 'ग्राहक' : 'Customer'}</th>
+                  <th>${isHi ? 'नियत तारीख (Due Date)' : 'Due Date'}</th>
+                  <th>${isHi ? 'देय रकम' : 'Amount Due'}</th>
+                  <th>${isHi ? 'कुल बकाया' : 'Total Balance'}</th>
+                  <th>${isHi ? 'संपर्क / रिमाइंडर' : 'Actions'}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${followUps.map(item => `
+                  <tr data-followup-id="${item._id}">
+                    <td>
+                      <div style="font-weight:700;color:#0f172a">${escapeHtml(item.customer.displayName || item.customer.name)}</div>
+                      <div class="muted" style="font-size:.78rem">${escapeHtml(item.customer.village || '')} · ${escapeHtml(item.itemLabel || '')}</div>
+                    </td>
+                    <td>
+                      <span class="a-badge-pill ${item.daysOverdue > 7 ? 'danger' : 'warn'}">
+                        ${item.daysOverdue === 0 ? (isHi ? 'आज देय' : 'Due Today') : `${item.daysOverdue} ${isHi ? 'दिन लेट' : 'days late'}`}
+                      </span>
+                      <div class="muted" style="font-size:.75rem;margin-top:2px">${new Date(item.dueDate).toLocaleDateString('hi-IN')}</div>
+                    </td>
+                    <td style="font-weight:800;color:#b91c1c">${inr(item.amount)}</td>
+                    <td style="font-weight:800;color:#092c20">${inr(item.customer.balance)}</td>
+                    <td>
+                      <div style="display:flex;gap:6px;align-items:center">
+                        ${item.customer.phone ? `
+                          <a class="a-action-btn call" href="tel:${escapeHtml(item.customer.phone)}" title="${isHi ? 'कॉल करें' : 'Call'}">
+                            📞 <span>${isHi ? 'कॉल' : 'Call'}</span>
+                          </a>
+                          <button class="a-action-btn wa ${item.reminderSent ? 'sent' : ''}" type="button" data-remind-id="${item._id}" data-wa-url="${escapeHtml(item.whatsappUrl || '')}" title="${isHi ? 'WhatsApp रिमाइंडर' : 'WhatsApp Remind'}">
+                            📲 <span>${item.reminderSent ? (isHi ? 'भेजा गया ✓' : 'Sent ✓') : (isHi ? 'रिमाइंडर' : 'Remind')}</span>
+                          </button>
+                        ` : `<span class="muted" style="font-size:.78rem">${isHi ? 'फ़ोन नंबर नहीं' : 'No phone'}</span>`}
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ` : `
+        <div class="a-followup-card ok" style="padding:14px 20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="font-size:1.3rem">✅</span>
+            <span style="font-weight:700;color:#065f46">${isHi ? 'कोई अतिदेय तगादा लंबित नहीं है — सभी खाते समय पर हैं' : 'All accounts on track — No overdue follow-ups pending'}</span>
+          </div>
+        </div>
+      `;
+
       // Compose full dashboard layout
       el.innerHTML = `
         ${kpisHtml}
+
+        ${followUpsHtml}
 
         <div class="a-analytics-grid">
           <div class="a-card">
@@ -768,6 +847,47 @@
           tooltip.style.opacity = '0';
         };
       });
+
+      // Wire individual remind button
+      el.querySelectorAll('[data-remind-id]').forEach((btn) => {
+        btn.onclick = async () => {
+          const id = btn.dataset.remindId;
+          const waUrl = btn.dataset.waUrl;
+          btn.disabled = true;
+          btn.innerHTML = `<span>${isHi ? 'भेज रहा है…' : 'Sending…'}</span>`;
+          try {
+            await api(`/admin/follow-ups/${id}/remind`, { method: 'POST' });
+            btn.classList.add('sent');
+            btn.innerHTML = `📲 <span>${isHi ? 'भेजा गया ✓' : 'Sent ✓'}</span>`;
+            toast(isHi ? '✅ ग्राहक को रिमाइंडर संदेश दर्ज और प्रेषित हो गया!' : 'Reminder triggered!');
+            if (waUrl) {
+              window.open(waUrl, '_blank');
+            }
+          } catch (e) {
+            toast(e.message || 'त्रुटि');
+            btn.disabled = false;
+            btn.innerHTML = `📲 <span>${isHi ? 'रिमाइंडर' : 'Remind'}</span>`;
+          }
+        };
+      });
+
+      // Wire trigger all reminders button
+      const trigBtn = document.getElementById('btn-trigger-all-reminders');
+      if (trigBtn) {
+        trigBtn.onclick = async () => {
+          trigBtn.disabled = true;
+          trigBtn.textContent = isHi ? 'भेज रहा है…' : 'Triggering…';
+          try {
+            const res = await api('/admin/follow-ups/trigger-all', { method: 'POST' });
+            toast(isHi ? `✅ ${res.triggeredCount} ग्राहकों के लिए ऑटो-रिमाइंडर ट्रिगर हो गए!` : `Triggered for ${res.triggeredCount} customers!`);
+            loadOverview();
+          } catch (e) {
+            toast(e.message || 'त्रुटि');
+            trigBtn.disabled = false;
+            trigBtn.textContent = isHi ? '⚡ सभी को ऑटो-रिमाइंडर भेजें' : 'Send All Reminders';
+          }
+        };
+      }
 
     } catch (err) {
       console.error(err);

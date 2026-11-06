@@ -1,7 +1,11 @@
 /**
- * Pause-tolerant, echo-suppressed voice ledger engine with app-level silence timer.
- * Prevents Android Chrome resultIndex bugs, word/phrase duplications, and audio feedback loops.
- * States: IDLE → LISTENING → SILENCE_COUNTDOWN → (done) …
+ * Gemini-Grade High-Performance Voice Ledger Engine
+ * Features:
+ *  - Zero duplication via indexed ev.results scanning
+ *  - Repeating phrase & echo suppression (cleanPhraseDuplicates)
+ *  - Live interim results with zero-lag synchronous dispatch
+ *  - Instant finalization via browser onspeechend VAD detection (no 3s delay)
+ *  - Audio feedback & TTS echo prevention
  */
 (function (g) {
   const SR = g.SpeechRecognition || g.webkitSpeechRecognition;
@@ -40,7 +44,7 @@
   class VoiceEngine {
     constructor(opts = {}) {
       this.lang = opts.lang || 'hi-IN';
-      this.silenceMs = opts.silenceMs || 3000;
+      this.silenceMs = opts.silenceMs || 2500;
       this.onPartial = opts.onPartial || (() => {});
       this.onState = opts.onState || (() => {});
       this.onComplete = opts.onComplete || (() => {});
@@ -54,8 +58,8 @@
       this._manual = false;
       this._silenceTimer = null;
       this._silenceStart = null;
+      this._speechEndTimer = null;
       this._raf = null;
-      this._partialRaf = null;
       this._sessionId = 0;
       this.state = 'IDLE';
     }
@@ -98,6 +102,10 @@
     done() {
       this._manual = true;
       this._clearSilence();
+      if (this._speechEndTimer) {
+        clearTimeout(this._speechEndTimer);
+        this._speechEndTimer = null;
+      }
       const text = this.transcript;
       this._stopRec();
       this._active = false;
@@ -118,6 +126,10 @@
       this._manual = true;
       this._active = false;
       this._clearSilence();
+      if (this._speechEndTimer) {
+        clearTimeout(this._speechEndTimer);
+        this._speechEndTimer = null;
+      }
       this._stopRec();
       this._history = [];
       this._sessionFinals = [];
@@ -125,7 +137,7 @@
       this._setState('IDLE');
     }
 
-    listenOnce(timeoutMs = 10000) {
+    listenOnce(timeoutMs = 8000) {
       return new Promise((resolve) => {
         this.cancel();
         this._manual = false;
@@ -141,24 +153,24 @@
           this.silenceMs = prevSilence;
           resolve(cleanPhraseDuplicates(text));
         };
-        this._startRec(false); // single-shot mode
+        this._startRec(false); // single-shot mode for rapid response
         this._armSilence();
         this._setState('LISTENING');
       });
     }
 
-    speak(text, rate = 0.82) {
+    speak(text, rate = 0.85) {
       return new Promise((resolve) => {
         if (!g.speechSynthesis) return resolve(false);
-        // Cancel any active speech or mic before speaking to avoid feedback loop
+        // Cancel active mic and speech synthesis to prevent acoustic feedback
         this.cancel();
         g.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text);
         u.lang = this.lang;
         u.rate = rate;
         u.onend = () => {
-          // Grace delay for hardware speaker echo to dissipate before mic opens
-          setTimeout(() => resolve(true), 200);
+          // Hardware audio grace delay before microphone activates
+          setTimeout(() => resolve(true), 180);
         };
         u.onerror = () => resolve(false);
         g.speechSynthesis.speak(u);
@@ -166,13 +178,10 @@
     }
 
     _emitPartial() {
-      if (this._partialRaf) cancelAnimationFrame(this._partialRaf);
-      this._partialRaf = requestAnimationFrame(() => {
-        this._partialRaf = null;
-        if (this._active) {
-          this.onPartial(this.transcript, this._interim);
-        }
-      });
+      if (this._active) {
+        // Zero-lag instant dispatch of live transcript + current interim text
+        this.onPartial(this.transcript, this._interim);
+      }
     }
 
     _startRec(continuous = true) {
@@ -186,6 +195,12 @@
 
       rec.onresult = (ev) => {
         if (sessionId !== this._sessionId) return;
+
+        // Cancel any pending speech-end finalizer when new speech audio arrives
+        if (this._speechEndTimer) {
+          clearTimeout(this._speechEndTimer);
+          this._speechEndTimer = null;
+        }
 
         // Reconstruct finals directly by slot index from ev.results.
         // This is 100% immune to Chrome Android's resultIndex reset bug.
@@ -211,6 +226,20 @@
         this._setState('LISTENING');
       };
 
+      // Native browser Voice Activity Detector (VAD) speech end event
+      rec.onspeechend = () => {
+        if (sessionId !== this._sessionId || !this._active) return;
+        // User stopped speaking! Finalize quickly (650ms) instead of waiting for long silence timeout
+        if (this.transcript.length >= 2) {
+          if (this._speechEndTimer) clearTimeout(this._speechEndTimer);
+          this._speechEndTimer = setTimeout(() => {
+            if (sessionId === this._sessionId && this._active) {
+              this.done();
+            }
+          }, 650);
+        }
+      };
+
       rec.onerror = (e) => {
         if (sessionId !== this._sessionId) return;
         if (e.error === 'no-speech' || e.error === 'aborted') return;
@@ -221,7 +250,7 @@
       rec.onend = () => {
         if (sessionId !== this._sessionId) return;
         if (this._active && !this._manual) {
-          // If we already captured a complete transcript and speech ended naturally, finish now!
+          // If we already captured a complete transcript and session naturally closed, complete instantly!
           const current = this.transcript;
           if (current && current.length >= 2) {
             this.done();
@@ -242,7 +271,7 @@
             if (this._active && !this._manual && sessionId === this._sessionId) {
               this._startRec(continuous);
             }
-          }, 100);
+          }, 80);
         }
       };
 
@@ -256,12 +285,15 @@
 
     _stopRec() {
       this._sessionId++;
-      if (this._partialRaf) cancelAnimationFrame(this._partialRaf);
-      this._partialRaf = null;
+      if (this._speechEndTimer) {
+        clearTimeout(this._speechEndTimer);
+        this._speechEndTimer = null;
+      }
       if (!this._rec) return;
       try {
         this._rec.onend = null;
         this._rec.onresult = null;
+        this._rec.onspeechend = null;
         this._rec.onerror = null;
         this._rec.stop();
       } catch { /* ignore */ }

@@ -21,6 +21,7 @@
       txType: 'sale', // 'sale' = उधार, 'payment' = जमा
       items: [emptyItem()],
       date: fmtDate(now), time: fmtTime(now),
+      dueDate: '', dueDateDays: null,
       paymentAmount: 0, paymentMode: 'cash',
       note: '',
       enteredVia: 'typed',
@@ -285,6 +286,24 @@
               </div>
             </div>
 
+            <!-- तगादा / कब तक देंगे? (Due Date) -->
+            <div class="entry-field-row" id="due-date-section" style="${f.txType === 'sale' ? '' : 'display:none'}">
+              <label class="entry-label">तगादा / कब तक देंगे? (Due Date)</label>
+              <div class="chip-row due-chips" id="due-chips" style="margin-bottom:8px">
+                <button class="chip ${f.dueDateDays === 7 ? 'chip--on' : ''}" type="button" data-due-days="7">7 दिन</button>
+                <button class="chip ${f.dueDateDays === 15 ? 'chip--on' : ''}" type="button" data-due-days="15">15 दिन</button>
+                <button class="chip ${f.dueDateDays === 30 ? 'chip--on' : ''}" type="button" data-due-days="30">1 महीना</button>
+                <button class="chip ${f.dueDateDays === 'custom' ? 'chip--on' : ''}" type="button" data-due-days="custom">📅 तारीख चुनें</button>
+              </div>
+              <div class="entry-input-wrap ${f.dueDate ? '' : 'hidden'}" id="due-date-wrap">
+                <input class="entry-input" id="f-due-date" type="date" value="${escapeHtml(f.dueDate || '')}" />
+                <button class="field-clear" type="button" id="clear-due-date">✕</button>
+              </div>
+              <div class="item-auto-hint" id="due-date-hint" style="${f.dueDate ? '' : 'display:none'}">
+                ⏰ नियत तारीख पर ग्राहक को ऑटो-रिमाइंडर संदेश जाएगा और एडमिन को अलर्ट दिखेगा
+              </div>
+            </div>
+
             <div class="entry-field-row" id="payment-section" style="${f.txType === 'payment' ? '' : 'display:none'}">
               <label class="entry-label">कितने मिले <span class="req">*</span></label>
               <div class="entry-input-wrap">
@@ -391,6 +410,8 @@
         document.getElementById('tx-sale').classList.add('tx-btn--on');
         document.getElementById('tx-payment').classList.remove('tx-btn--on');
         document.getElementById('payment-section').style.display = 'none';
+        const dueSec = document.getElementById('due-date-section');
+        if (dueSec) dueSec.style.display = '';
         this._updateStickyBar();
       };
       document.getElementById('tx-payment').onclick = () => {
@@ -398,8 +419,67 @@
         document.getElementById('tx-payment').classList.add('tx-btn--on');
         document.getElementById('tx-sale').classList.remove('tx-btn--on');
         document.getElementById('payment-section').style.display = '';
+        const dueSec = document.getElementById('due-date-section');
+        if (dueSec) dueSec.style.display = 'none';
         this._updateStickyBar();
       };
+
+      // Due date (तगादा) chips & inputs
+      this.root.querySelectorAll('#due-chips .chip').forEach((btn) => {
+        btn.onclick = () => {
+          const days = btn.dataset.dueDays;
+          this.root.querySelectorAll('#due-chips .chip').forEach((b) => b.classList.remove('chip--on'));
+          btn.classList.add('chip--on');
+          const wrap = document.getElementById('due-date-wrap');
+          const hint = document.getElementById('due-date-hint');
+          const inp = document.getElementById('f-due-date');
+          if (days === 'custom') {
+            f.dueDateDays = 'custom';
+            if (wrap) wrap.classList.remove('hidden');
+            if (inp) inp.focus();
+            if (hint) { hint.style.display = 'block'; hint.textContent = '⏰ इस तारीख तक हिसाब न होने पर ग्राहक को ऑटो-रिमाइंडर संदेश जाएगा'; }
+          } else {
+            const num = Number(days);
+            f.dueDateDays = num;
+            const target = new Date();
+            target.setDate(target.getDate() + num);
+            f.dueDate = fmtDate(target);
+            if (inp) inp.value = f.dueDate;
+            if (wrap) wrap.classList.remove('hidden');
+            if (hint) {
+              hint.style.display = 'block';
+              hint.textContent = `⏰ ${num} दिन बाद (${new Date(f.dueDate).toLocaleDateString('hi-IN')}) तगादा होगा और ऑटो-रिमाइंडर संदेश जाएगा`;
+            }
+          }
+        };
+      });
+
+      const dueDateInp = document.getElementById('f-due-date');
+      if (dueDateInp) {
+        dueDateInp.onchange = (e) => {
+          f.dueDate = e.target.value;
+          const hint = document.getElementById('due-date-hint');
+          if (hint) {
+            hint.style.display = f.dueDate ? 'block' : 'none';
+            if (f.dueDate) hint.textContent = `⏰ ${new Date(f.dueDate).toLocaleDateString('hi-IN')} को ऑटो-रिमाइंडर संदेश जाएगा`;
+          }
+        };
+      }
+
+      const clearDueDateBtn = document.getElementById('clear-due-date');
+      if (clearDueDateBtn) {
+        clearDueDateBtn.onclick = () => {
+          f.dueDate = '';
+          f.dueDateDays = null;
+          const inp = document.getElementById('f-due-date');
+          if (inp) inp.value = '';
+          const wrap = document.getElementById('due-date-wrap');
+          if (wrap) wrap.classList.add('hidden');
+          const hint = document.getElementById('due-date-hint');
+          if (hint) hint.style.display = 'none';
+          this.root.querySelectorAll('#due-chips .chip').forEach((b) => b.classList.remove('chip--on'));
+        };
+      }
 
       // Date / time
       document.getElementById('f-date').onchange = (e) => { f.date = e.target.value; };
@@ -724,6 +804,8 @@
       btnEl.textContent = '⏹';
 
       const setField = (val) => {
+        const inp = this._getFieldInput(field);
+        if (inp) inp.classList.remove('mic-live-transcribing');
         this._applyFieldValue(field, val);
         btnEl.classList.remove('mic-active');
         btnEl.textContent = '🎤';
@@ -731,18 +813,25 @@
         stopActiveMic();
       };
 
-      engine.onPartial = (full) => {
-        // Show live text in the target input
+      engine.onPartial = (full, interim) => {
+        // Show live interim text in the target input with typing feedback
         const inp = this._getFieldInput(field);
-        if (inp) inp.value = full;
+        if (inp) {
+          inp.value = full;
+          inp.classList.add('mic-live-transcribing');
+        }
       };
 
       engine.onComplete = (text) => {
+        const inp = this._getFieldInput(field);
+        if (inp) inp.classList.remove('mic-live-transcribing');
         const parsed = this._parseFieldValue(field, text);
         setField(parsed);
       };
 
       engine.onError = () => {
+        const inp = this._getFieldInput(field);
+        if (inp) inp.classList.remove('mic-live-transcribing');
         btnEl.classList.remove('mic-active');
         btnEl.textContent = '🎤';
         btnEl.onclick = () => this._startFieldMic(field, btnEl);
@@ -886,8 +975,12 @@
       const engine = new g.VoiceEngine({ silenceMs: 3000 });
       _activeMicEngine = engine;
 
-      engine.onPartial = (full) => { transcriptBox.textContent = full || 'सुन रहा हूँ…'; };
+      engine.onPartial = (full) => {
+        transcriptBox.textContent = full || 'सुन रहा हूँ…';
+        transcriptBox.classList.add('master-transcript--live');
+      };
       engine.onComplete = async (text) => {
+        transcriptBox.classList.remove('master-transcript--live');
         btn.classList.remove('master-mic--active');
         pulse.textContent = '🎤';
         btn.onclick = () => this._startMasterMic();
@@ -896,6 +989,7 @@
         await this._parseMasterTranscript(text);
       };
       engine.onError = () => {
+        transcriptBox.classList.remove('master-transcript--live');
         btn.classList.remove('master-mic--active');
         pulse.textContent = '🎤';
         btn.onclick = () => this._startMasterMic();
@@ -931,6 +1025,21 @@
         f.items = [{ name: parsed.item || 'सामान', brand: parsed.brand || '', qty: parsed.qty || 1, unit: parsed.unit || 'पीस', rate: parsed.rate || 0, amount: parsed.amount || 0 }];
       }
       if (parsed.note) { f.note = parsed.note; const el = document.getElementById('f-note'); if (el) el.value = f.note; }
+      if (parsed.dueDate) {
+        const d = new Date(parsed.dueDate);
+        if (!isNaN(d.getTime())) {
+          f.dueDate = fmtDate(d);
+          const wrap = document.getElementById('due-date-wrap');
+          const inp = document.getElementById('f-due-date');
+          const hint = document.getElementById('due-date-hint');
+          if (inp) inp.value = f.dueDate;
+          if (wrap) wrap.classList.remove('hidden');
+          if (hint) {
+            hint.style.display = 'block';
+            hint.textContent = `⏰ नियत तारीख: ${d.toLocaleDateString('hi-IN')} को ऑटो-रिमाइंडर संदेश जाएगा`;
+          }
+        }
+      }
 
       this._renderItems();
       this._updateStickyBar();
@@ -1037,6 +1146,8 @@
         date: dateTime.toISOString(),
         entryTime: dateTime.toISOString(),
         paymentMode: f.txType === 'payment' ? f.paymentMode : undefined,
+        dueDate: f.txType === 'sale' && f.dueDate ? new Date(`${f.dueDate}T12:00:00`).toISOString() : undefined,
+        dueDateNote: f.dueDateDays ? `${f.dueDateDays} दिन` : undefined,
         note: f.note,
         notes: f.note,
         enteredVia: f.enteredVia || 'typed',

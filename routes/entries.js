@@ -146,6 +146,14 @@ router.post('/', requireAuth, async (req, res) => {
 
     const entryDate = req.body.date ? new Date(req.body.date) : new Date();
     const entryTime = req.body.entryTime ? new Date(req.body.entryTime) : entryDate;
+    let dueDate = null;
+    if (req.body.dueDate) {
+      const d = new Date(req.body.dueDate);
+      if (!isNaN(d.getTime())) dueDate = d;
+    } else if (req.body.dueDateDays && Number(req.body.dueDateDays) > 0) {
+      dueDate = new Date(Date.now() + Number(req.body.dueDateDays) * 86400000);
+    }
+    const dueDateNote = req.body.dueDateNote || '';
 
     const entry = await Entry.create({
       customer: customerId,
@@ -160,6 +168,8 @@ router.post('/', requireAuth, async (req, res) => {
       rate: Number(req.body.rate) || (items[0]?.rate || 0),
       amount,
       entryTime,
+      dueDate,
+      dueDateNote,
       paymentMode: req.body.paymentMode || '',
       note: req.body.note || req.body.notes || '',
       notes: req.body.notes || req.body.note || '',

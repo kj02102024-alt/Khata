@@ -57,6 +57,21 @@ router.get('/metrics', requireAdmin, async (req, res) => {
       { $group: { _id: '$shopId', outstanding: { $sum: '$balance' }, count: { $sum: 1 } } },
     ]);
 
+    // Follow-ups & Due Date alerts (call / message required)
+    const todayEndOfDay = new Date();
+    todayEndOfDay.setHours(23, 59, 59, 999);
+    const overdueEntries = await Entry.find({
+      ...shopFilter,
+      type: 'sale',
+      status: 'approved',
+      deletedAt: null,
+      isCleared: false,
+      dueDate: { $ne: null, $lte: todayEndOfDay },
+    }).populate('customer');
+    const activeFollowUps = overdueEntries.filter((e) => e.customer && e.customer.balance > 0);
+    const followUpsCount = activeFollowUps.length;
+    const followUpsAmount = activeFollowUps.reduce((s, e) => s + (e.remaining || e.amount || 0), 0);
+
     // 7-day trend (Credit vs Collections)
     const trend = [];
     for (let i = 6; i >= 0; i--) {
@@ -93,6 +108,8 @@ router.get('/metrics', requireAdmin, async (req, res) => {
       todayCollections: Math.round(todayCollections * 100) / 100,
       activeCustomers,
       pendingPhotos,
+      followUpsCount,
+      followUpsAmount: Math.round(followUpsAmount),
       byShop,
       trend,
     });
@@ -271,6 +288,158 @@ router.get('/ledger', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ledger failed' });
+  }
+});
+
+// ── GET /follow-ups ──────────────────────────────────────────────────────────
+router.get('/follow-ups', requireAdmin, async (req, res) => {
+  try {
+    const shopFilter = req.query.shopId && req.query.shopId !== 'all' ? { shopId: req.query.shopId } : {};
+    const todayEndOfDay = new Date();
+    todayEndOfDay.setHours(23, 59, 59, 999);
+
+    const entries = await Entry.find({
+      ...shopFilter,
+      type: 'sale',
+      status: 'approved',
+      deletedAt: null,
+      isCleared: false,
+      dueDate: { $ne: null, $lte: todayEndOfDay },
+    })
+      .populate('customer')
+      .sort({ dueDate: 1, date: -1 });
+
+    const activeList = entries.filter((e) => e.customer && e.customer.balance > 0).map((e) => {
+      const c = e.customer;
+      const due = new Date(e.dueDate);
+      const diffMs = Date.now() - due.getTime();
+      const daysOverdue = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
+      const phone = c.phone || c.mobile2 || '';
+
+      const reminderText = `नमस्ते ${c.displayName || c.name} जी, खता से सादर प्रणाम। आपके दिनांक ${due.toLocaleDateString('hi-IN')} के उधारी हिसाब (रकम ₹${e.amount}, कुल बाकी ₹${c.balance}) का भुगतान शेष है। कृपया सुविधानुसार जमा कराने का कष्ट करें। धन्यवाद!`;
+      const cleanPhone = phone.replace(/\D/g, '').replace(/^91/, '');
+      const whatsappUrl = cleanPhone.length === 10 ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(reminderText)}` : '';
+
+      return {
+        _id: e._id,
+        shopId: e.shopId,
+        amount: e.amount,
+        remaining: e.remaining || e.amount,
+        itemLabel: e.itemLabel,
+        date: e.date,
+        dueDate: e.dueDate,
+        dueDateNote: e.dueDateNote,
+        daysOverdue,
+        reminderSent: e.reminderSent,
+        reminderSentAt: e.reminderSentAt,
+        reminderStatus: e.reminderStatus,
+        customer: {
+          _id: c._id,
+          name: c.name,
+          displayName: c.displayName,
+          village: c.village,
+          phone: c.phone,
+          mobile2: c.mobile2,
+          balance: c.balance,
+        },
+        reminderMessage: reminderText,
+        whatsappUrl,
+      };
+    });
+
+    res.json({
+      followUps: activeList,
+      totalCount: activeList.length,
+      totalAmount: activeList.reduce((s, it) => s + (it.remaining || it.amount || 0), 0),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Follow-ups failed' });
+  }
+});
+
+// ── POST /follow-ups/:id/remind ──────────────────────────────────────────────
+router.post('/follow-ups/:id/remind', requireAdmin, async (req, res) => {
+  try {
+    const entry = await Entry.findById(req.params.id).populate('customer');
+    if (!entry) return res.status(404).json({ error: 'Entry not found' });
+
+    entry.reminderSent = true;
+    entry.reminderSentAt = new Date();
+    entry.reminderStatus = 'sent';
+    await entry.save();
+
+    await AuditLog.create({
+      action: 'customer.reminder.sent',
+      entityType: 'Entry',
+      entityId: entry._id,
+      userId: req.session.user.id,
+      shopId: entry.shopId,
+      details: {
+        customerId: entry.customer?._id,
+        phone: entry.customer?.phone,
+        dueDate: entry.dueDate,
+        amount: entry.amount,
+      },
+    });
+
+    const c = entry.customer || {};
+    const due = entry.dueDate ? new Date(entry.dueDate) : new Date();
+    const reminderText = `नमस्ते ${c.displayName || c.name} जी, खता से सादर प्रणाम। आपके दिनांक ${due.toLocaleDateString('hi-IN')} के उधारी हिसाब (रकम ₹${entry.amount}, कुल बाकी ₹${c.balance || 0}) का भुगतान शेष है। कृपया सुविधानुसार जमा कराने का कष्ट करें। धन्यवाद!`;
+    const cleanPhone = (c.phone || c.mobile2 || '').replace(/\D/g, '').replace(/^91/, '');
+    const whatsappUrl = cleanPhone.length === 10 ? `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(reminderText)}` : '';
+
+    res.json({ ok: true, reminderSentAt: entry.reminderSentAt, reminderMessage: reminderText, whatsappUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Remind failed' });
+  }
+});
+
+// ── POST /follow-ups/trigger-all ─────────────────────────────────────────────
+router.post('/follow-ups/trigger-all', requireAdmin, async (req, res) => {
+  try {
+    const todayEndOfDay = new Date();
+    todayEndOfDay.setHours(23, 59, 59, 999);
+
+    const entries = await Entry.find({
+      type: 'sale',
+      status: 'approved',
+      deletedAt: null,
+      isCleared: false,
+      dueDate: { $ne: null, $lte: todayEndOfDay },
+    }).populate('customer');
+
+    const dueList = entries.filter((e) => e.customer && e.customer.balance > 0);
+    const now = new Date();
+    let triggeredCount = 0;
+
+    for (const e of dueList) {
+      e.reminderSent = true;
+      e.reminderSentAt = now;
+      e.reminderStatus = 'sent';
+      await e.save();
+      triggeredCount++;
+
+      await AuditLog.create({
+        action: 'customer.reminder.auto_triggered',
+        entityType: 'Entry',
+        entityId: e._id,
+        userId: req.session.user.id,
+        shopId: e.shopId,
+        details: {
+          customerId: e.customer._id,
+          phone: e.customer.phone,
+          dueDate: e.dueDate,
+          amount: e.amount,
+        },
+      });
+    }
+
+    res.json({ ok: true, triggeredCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Trigger all reminders failed' });
   }
 });
 

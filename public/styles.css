@@ -1837,3 +1837,200 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   outline: 3px solid var(--forest-soft);
   outline-offset: 2px;
 }
+
+/* ── Live Speech & Interim Animation Styles ── */
+.mic-live-transcribing {
+  border-color: #10b981 !important;
+  background: #f0fdf4 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+  transition: all 0.15s ease !important;
+  color: #065f46 !important;
+  font-weight: 600 !important;
+}
+
+.master-transcript--live {
+  border: 1.5px solid #10b981 !important;
+  background: #f0fdf4 !important;
+  color: #065f46 !important;
+  font-weight: 600 !important;
+  animation: live-mic-pulse 1.6s infinite ease-in-out;
+}
+
+@keyframes live-mic-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+/* ── Admin Call / Follow-up Alert Card ── */
+.a-followup-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid #fecaca;
+  border-left: 5px solid #ef4444;
+  border-radius: 18px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 6px 24px rgba(239, 68, 68, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.a-followup-card.ok {
+  border-color: #bbf7d0;
+  border-left: 5px solid #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.05);
+}
+
+.a-followup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.a-followup-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.a-followup-pulse-icon {
+  font-size: 1.8rem;
+  display: inline-block;
+  animation: alert-wiggle 2s infinite ease-in-out;
+}
+
+@keyframes alert-wiggle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.1); }
+  75% { transform: rotate(8deg) scale(1.1); }
+}
+
+.a-followup-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #991b1b;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.a-followup-badge {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  border: 1px solid #fca5a5;
+}
+
+.a-followup-subtitle {
+  font-size: 0.85rem;
+  color: #7f1d1d;
+  margin: 4px 0 0;
+  font-weight: 500;
+}
+
+.a-btn-auto-remind {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 3px 12px rgba(220, 38, 38, 0.25);
+  transition: all 0.15s ease;
+}
+
+.a-btn-auto-remind:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(220, 38, 38, 0.35);
+}
+
+.a-followup-table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid #fee2e2;
+  background: #ffffff;
+}
+
+.a-followup-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.a-followup-table th {
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1.5px solid #fee2e2;
+}
+
+.a-followup-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #fecaca;
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.a-followup-table tr:last-child td {
+  border-bottom: none;
+}
+
+.a-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.a-action-btn.call {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.a-action-btn.call:hover {
+  background: #dbeafe;
+}
+
+.a-action-btn.wa {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.a-action-btn.wa:hover {
+  background: #dcfce7;
+}
+
+.a-action-btn.wa.sent {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #6ee7b7;
+  opacity: 0.85;
+}
