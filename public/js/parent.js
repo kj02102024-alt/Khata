@@ -140,21 +140,16 @@
             <div id="home-search-dropdown" class="home-search-dropdown hidden"></div>
           </div>
 
-          <div class="p-actions">
+          <div class="p-actions p-actions--home">
             <button class="p-card p-card--voice" type="button" id="go-entry">
               <span class="ico">✍️🎤</span>
               <span class="p-card-label">हिसाब लिखें</span>
-              <span class="p-card-hint">बोलकर या लिखकर</span>
-            </button>
-            <button class="p-card p-card--search" type="button" id="go-search">
-              <span class="ico">🔍</span>
-              <span class="p-card-label">ग्राहक खोजें</span>
-              <span class="p-card-hint">बचा कितना है देखें</span>
+              <span class="p-card-hint">बोलकर या लिखकर नया हिसाब</span>
             </button>
             <button class="p-card p-card--photo" type="button" id="go-diary">
               <span class="ico">📷</span>
               <span class="p-card-label">पुरानी डायरी की फोटो</span>
-              <span class="p-card-hint">एडमिन जाँच करेंगे</span>
+              <span class="p-card-hint">फोटो खींचकर एडमिन को भेजें</span>
             </button>
           </div>
           <button type="button" id="logout" class="p-logout">दुकान बदलें / बाहर निकलें</button>
@@ -252,7 +247,6 @@
       }
 
       document.getElementById('go-entry').onclick = () => { this.form = emptyForm(); this.go('entry'); };
-      document.getElementById('go-search').onclick = () => this.go('search');
       document.getElementById('go-diary').onclick = () => this.go('diary');
       document.getElementById('logout').onclick = () => {
         g.KhataAPI.clearSession();
@@ -1603,9 +1597,8 @@
       const modalRoot = document.getElementById('pb-inline-modal-root');
       if (!modalRoot) return;
 
-      const quickItems = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'चादर', 'तौलिया', 'किराना', 'अन्य'];
-      let selectedItem = 'साड़ी';
-      let customItem = '';
+      const quickItems = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'चादर', 'तौलिया', 'किराना', 'कंबल'];
+      let selectedItems = ['साड़ी'];
       let dueDateDays = null;
       let dueDateCustom = '';
 
@@ -1627,7 +1620,7 @@
               <div class="pb-quick-voice-wrap">
                 <button type="button" class="pb-quick-mic-btn" id="q-udaar-mic">
                   <span class="pb-qmic-icon">🎤</span>
-                  <span id="q-udaar-mic-text">बोलकर भरें (जैसे: 1200 की साड़ी)</span>
+                  <span id="q-udaar-mic-text">बोलकर भरें (जैसे: साड़ी और धोती 1200)</span>
                 </button>
                 <div id="q-udaar-transcript" class="pb-mic-transcript hidden"></div>
               </div>
@@ -1635,7 +1628,7 @@
               <!-- Amount Input (Large ₹) -->
               <div style="margin-top:14px">
                 <label style="font-weight:700;font-size:.9rem;color:var(--ink);display:block;margin-bottom:6px">
-                  उधार रकम (Amount) <span style="color:#dc2626">*</span>
+                  कुल उधार रकम (Total Amount) <span style="color:#dc2626">*</span>
                 </label>
                 <div class="pb-amt-input-wrap">
                   <span class="pb-rupee-sign">₹</span>
@@ -1643,16 +1636,36 @@
                 </div>
               </div>
 
-              <!-- Quick Item Chips -->
+              <!-- Multiple Items Selection -->
               <div style="margin-top:14px">
-                <label style="font-weight:700;font-size:.9rem;color:var(--ink);display:block;margin-bottom:6px">
-                  सामान (Item)
-                </label>
-                <div class="chip-row" id="q-udaar-item-chips">
-                  ${quickItems.map((it) => `<button type="button" class="chip ${it === selectedItem ? 'chip--on' : ''}" data-val="${it}">${it}</button>`).join('')}
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                  <label style="font-weight:700;font-size:.9rem;color:var(--ink)">
+                    सामान चुनें (एक से ज़्यादा चुन सकते हैं) <span style="color:#dc2626">*</span>
+                  </label>
+                  <button type="button" id="q-udaar-add-custom-toggle" class="chip chip--add" style="padding:2px 8px;font-size:.8rem;font-weight:700">
+                    + अन्य सामान
+                  </button>
                 </div>
-                <div id="q-udaar-custom-item-wrap" style="margin-top:8px;display:none">
-                  <input type="text" id="q-udaar-custom-item" class="entry-input" placeholder="सामान का नाम टाइप करें..." lang="hi" />
+
+                <!-- Selected Items Tray -->
+                <div id="q-udaar-selected-tray" class="pb-selected-tray" style="margin-bottom:8px">
+                  <span style="font-size:.8rem;color:#64748b;font-weight:700;margin-right:6px">चुना हुआ:</span>
+                  <div id="q-udaar-tag-list" style="display:inline-flex;gap:6px;flex-wrap:wrap"></div>
+                </div>
+
+                <!-- Quick Multi-Select Chips -->
+                <div class="chip-row" id="q-udaar-item-chips">
+                  ${quickItems.map((it) => `<button type="button" class="chip ${selectedItems.includes(it) ? 'chip--on' : ''}" data-val="${it}">${selectedItems.includes(it) ? '✓ ' : ''}${it}</button>`).join('')}
+                </div>
+
+                <!-- Custom Item Input Row -->
+                <div id="q-udaar-custom-row" style="margin-top:8px;display:none">
+                  <div style="display:flex;gap:6px">
+                    <input type="text" id="q-udaar-custom-input" class="entry-input" placeholder="सामान का नाम लिखें..." lang="hi" style="flex:1" />
+                    <button type="button" id="q-udaar-custom-add-btn" class="a-page-btn" style="background:#092c20;color:#ffffff;font-weight:700;padding:0 14px">
+                      + जोड़ें
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1678,7 +1691,7 @@
                 <label style="font-weight:700;font-size:.85rem;color:var(--ink-soft);display:block;margin-bottom:4px">
                   विवरण / नोट (वैकल्पिक)
                 </label>
-                <input type="text" id="q-udaar-note" class="entry-input" placeholder="जैसे: शादी के लिए, 2 पीस" lang="hi" />
+                <input type="text" id="q-udaar-note" class="entry-input" placeholder="जैसे: 2 पीस, शादी का सामान" lang="hi" />
               </div>
 
               <!-- Save / Cancel Buttons -->
@@ -1699,22 +1712,83 @@
       document.getElementById('q-udaar-cancel').onclick = close;
       document.getElementById('q-udaar-backdrop').onclick = (e) => { if (e.target.id === 'q-udaar-backdrop') close(); };
 
-      // Wire Item Chips
-      const customWrap = document.getElementById('q-udaar-custom-item-wrap');
-      const customInput = document.getElementById('q-udaar-custom-item');
+      // Helper to render selected item tags & update chip visual state
+      const renderSelectedTags = () => {
+        const tagList = document.getElementById('q-udaar-tag-list');
+        if (!tagList) return;
+        tagList.innerHTML = selectedItems.map((name) => `
+          <span class="pb-tag-pill" style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-size:.85rem;font-weight:700">
+            ${escapeHtml(name)}
+            <button type="button" class="pb-tag-del" data-name="${escapeHtml(name)}" style="background:none;border:none;cursor:pointer;color:#991b1b;font-weight:800;padding:0 2px" title="हटाएँ">✕</button>
+          </span>
+        `).join('');
+
+        // Wire delete buttons on tags
+        tagList.querySelectorAll('.pb-tag-del').forEach((btn) => {
+          btn.onclick = () => {
+            const n = btn.dataset.name;
+            selectedItems = selectedItems.filter((x) => x !== n);
+            renderSelectedTags();
+            updateChipStyles();
+          };
+        });
+      };
+
+      const updateChipStyles = () => {
+        document.querySelectorAll('#q-udaar-item-chips button').forEach((btn) => {
+          const val = btn.dataset.val;
+          const isOn = selectedItems.includes(val);
+          btn.classList.toggle('chip--on', isOn);
+          btn.textContent = (isOn ? '✓ ' : '') + val;
+        });
+      };
+
+      renderSelectedTags();
+
+      // Wire Multi-select Item Chips
       document.querySelectorAll('#q-udaar-item-chips button').forEach((btn) => {
         btn.onclick = () => {
-          document.querySelectorAll('#q-udaar-item-chips button').forEach((b) => b.classList.remove('chip--on'));
-          btn.classList.add('chip--on');
-          selectedItem = btn.dataset.val;
-          if (selectedItem === 'अन्य') {
-            customWrap.style.display = 'block';
-            customInput.focus();
+          const val = btn.dataset.val;
+          if (selectedItems.includes(val)) {
+            selectedItems = selectedItems.filter((x) => x !== val);
           } else {
-            customWrap.style.display = 'none';
+            selectedItems.push(val);
           }
+          renderSelectedTags();
+          updateChipStyles();
         };
       });
+
+      // Wire Custom Item Input Toggle & Add Button
+      const customRow = document.getElementById('q-udaar-custom-row');
+      const customInput = document.getElementById('q-udaar-custom-input');
+      const customToggle = document.getElementById('q-udaar-add-custom-toggle');
+      const customAddBtn = document.getElementById('q-udaar-custom-add-btn');
+
+      if (customToggle) {
+        customToggle.onclick = () => {
+          const isShown = customRow.style.display !== 'none';
+          customRow.style.display = isShown ? 'none' : 'block';
+          if (!isShown && customInput) customInput.focus();
+        };
+      }
+
+      const addCustomItem = () => {
+        const val = (customInput?.value || '').trim();
+        if (val && !selectedItems.includes(val)) {
+          selectedItems.push(val);
+          customInput.value = '';
+          renderSelectedTags();
+          updateChipStyles();
+        }
+      };
+
+      if (customAddBtn) customAddBtn.onclick = addCustomItem;
+      if (customInput) {
+        customInput.onkeydown = (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); addCustomItem(); }
+        };
+      }
 
       // Wire Due Date Chips
       const dateWrap = document.getElementById('q-udaar-custom-date-wrap');
@@ -1740,7 +1814,7 @@
         };
       });
 
-      // Wire Voice Mic for Udaar
+      // Wire Voice Mic for Udaar (Multi-Item Detection)
       const micBtn = document.getElementById('q-udaar-mic');
       const micText = document.getElementById('q-udaar-mic-text');
       const transcriptBox = document.getElementById('q-udaar-transcript');
@@ -1763,24 +1837,26 @@
             const spoken = await eng.listenOnce(6000);
             if (spoken) {
               transcriptBox.textContent = `"${spoken}"`;
-              // Parse through speech API
+
+              // Scan spoken text for multiple item keywords
+              const KNOWN_KEYWORDS = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'पैंट', 'शर्ट', 'चादर', 'तौलिया', 'किराना', 'कंबल', 'कुर्ता', 'दुपट्टा', 'गमछा', 'ब्लाउज', 'रुई'];
+              KNOWN_KEYWORDS.forEach((kw) => {
+                if (spoken.includes(kw) && !selectedItems.includes(kw)) {
+                  selectedItems.push(kw);
+                }
+              });
+
+              // Parse via speech API for amount & due date
               try {
                 const { parsed } = await api('/entries/parse-speech', { method: 'POST', body: { text: spoken } });
                 if (parsed) {
                   if (parsed.amount) {
                     document.getElementById('q-udaar-amt').value = parsed.amount;
                   }
-                  if (parsed.items && parsed.items[0]?.name) {
-                    const itemName = parsed.items[0].name;
-                    // Check if chip exists
-                    const matchedChip = Array.from(document.querySelectorAll('#q-udaar-item-chips button')).find((b) => b.dataset.val === itemName);
-                    if (matchedChip) {
-                      matchedChip.click();
-                    } else {
-                      const otherChip = Array.from(document.querySelectorAll('#q-udaar-item-chips button')).find((b) => b.dataset.val === 'अन्य');
-                      if (otherChip) otherChip.click();
-                      if (customInput) customInput.value = itemName;
-                    }
+                  if (parsed.items && Array.isArray(parsed.items)) {
+                    parsed.items.forEach((it) => {
+                      if (it.name && !selectedItems.includes(it.name)) selectedItems.push(it.name);
+                    });
                   }
                   if (parsed.dueDateDays) {
                     const chip = document.querySelector(`#q-udaar-due-chips button[data-days="${parsed.dueDateDays}"]`);
@@ -1788,10 +1864,13 @@
                   }
                 }
               } catch {}
+
+              renderSelectedTags();
+              updateChipStyles();
             }
           } catch {}
           micBtn.classList.remove('mic-pulsing');
-          micText.textContent = 'बोलकर भरें (जैसे: 1200 की साड़ी)';
+          micText.textContent = 'बोलकर भरें (जैसे: साड़ी और धोती 1200)';
         };
       }
 
@@ -1804,10 +1883,17 @@
           return;
         }
 
-        let finalItemName = selectedItem;
-        if (selectedItem === 'अन्य') {
-          finalItemName = customInput.value.trim() || 'अन्य सामान';
+        if (!selectedItems.length) {
+          toast('कृपया कम से कम एक सामान चुनें');
+          return;
         }
+
+        const finalItemString = selectedItems.join(', ');
+        const itemsArray = selectedItems.map((name) => ({
+          name,
+          qty: 1,
+          amount: Math.round(amtVal / selectedItems.length),
+        }));
 
         let computedDueDate = null;
         let computedDueDateNote = '';
@@ -1834,8 +1920,8 @@
               shopId: customer.shopId,
               type: 'sale',
               amount: amtVal,
-              item: finalItemName,
-              items: [{ name: finalItemName, qty: 1, amount: amtVal }],
+              item: finalItemString,
+              items: itemsArray,
               dueDate: computedDueDate || undefined,
               dueDateNote: computedDueDateNote || undefined,
               note: noteVal,
@@ -1844,7 +1930,7 @@
             },
           });
           playChime();
-          toast(`उधार ${inr(amtVal)} सफलतापूर्वक दर्ज हुआ!`);
+          toast(`उधार ${inr(amtVal)} (${finalItemString}) सफलतापूर्वक दर्ज हुआ!`);
           close();
           if (onSaved) onSaved();
         } catch (err) {

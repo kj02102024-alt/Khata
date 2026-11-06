@@ -168,7 +168,7 @@ router.post('/', requireAuth, async (req, res) => {
       type,
       items,
       category: req.body.category || (items[0]?.name || req.body.item || ''),
-      item: items[0]?.name || req.body.item || '',
+      item: req.body.item || (items.length ? items.map((it) => it.name).filter(Boolean).join(', ') : ''),
       brand: items[0]?.brand || req.body.brand || '',
       meters: Number(req.body.meters) || 0,
       quantity: Number(req.body.quantity) || (items[0]?.qty || 1),

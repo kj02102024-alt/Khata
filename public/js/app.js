@@ -2243,13 +2243,13 @@
 
       // Wire Quick Udaar
       document.getElementById('cq-open-udaar').onclick = () => {
-        const quickItems = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'चादर', 'तौलिया', 'किराना', 'अन्य'];
-        let selectedItem = 'साड़ी';
+        const quickItems = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'चादर', 'तौलिया', 'किराना', 'कंबल'];
+        let selectedItems = ['साड़ी'];
         let dueDateDays = null;
 
         submodalContainer.innerHTML = `
           <div class="a-modal-backdrop" id="cq-sub-backdrop" style="z-index:1100">
-            <div class="a-modal-card" style="max-width:500px">
+            <div class="a-modal-card" style="max-width:520px">
               <div class="a-modal-header" style="background:#fee2e2;border-bottom:1px solid #fecaca">
                 <h3 style="margin:0;font-size:1.15rem;font-weight:800;color:#991b1b">🔴 नया उधार जोड़ें (Debit)</h3>
                 <button class="a-page-btn" id="cq-sub-close">✕</button>
@@ -2259,14 +2259,14 @@
                 <div class="pb-quick-voice-wrap">
                   <button type="button" class="pb-quick-mic-btn" id="cq-sub-mic">
                     <span class="pb-qmic-icon">🎤</span>
-                    <span id="cq-sub-mic-label">${isHi ? 'बोलकर भरें (जैसे: 1200 की साड़ी)' : 'Voice Input (e.g. 1200 saree)'}</span>
+                    <span id="cq-sub-mic-label">${isHi ? 'बोलकर भरें (जैसे: साड़ी और धोती 1200)' : 'Voice Input (e.g. 1200 saree)'}</span>
                   </button>
                   <div id="cq-sub-transcript" class="pb-mic-transcript hidden"></div>
                 </div>
 
                 <div style="margin-top:14px">
                   <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
-                    ${isHi ? 'उधार रकम (Amount)' : 'Amount'} <span style="color:#dc2626">*</span>
+                    ${isHi ? 'कुल उधार रकम (Total Amount)' : 'Total Amount'} <span style="color:#dc2626">*</span>
                   </label>
                   <div class="pb-amt-input-wrap">
                     <span class="pb-rupee-sign">₹</span>
@@ -2274,15 +2274,32 @@
                   </div>
                 </div>
 
+                <!-- Multiple Items Selection -->
                 <div style="margin-top:14px">
-                  <label style="font-weight:700;font-size:.88rem;color:#0f172a;display:block;margin-bottom:6px">
-                    ${isHi ? 'सामान (Item)' : 'Item'}
-                  </label>
-                  <div class="chip-row" id="cq-sub-item-chips">
-                    ${quickItems.map((it) => `<button type="button" class="chip ${it === selectedItem ? 'chip--on' : ''}" data-val="${it}">${it}</button>`).join('')}
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                    <label style="font-weight:700;font-size:.88rem;color:#0f172a">
+                      ${isHi ? 'सामान चुनें (Multiple Items Select करें)' : 'Select Items (Multi-select)'} <span style="color:#dc2626">*</span>
+                    </label>
+                    <button type="button" id="cq-sub-custom-toggle" class="chip chip--add" style="padding:2px 8px;font-size:.78rem;font-weight:700">
+                      + ${isHi ? 'अन्य सामान' : 'Custom Item'}
+                    </button>
                   </div>
+
+                  <!-- Selected Items Tags -->
+                  <div id="cq-sub-tag-list" style="display:inline-flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
+
+                  <!-- Quick Chips -->
+                  <div class="chip-row" id="cq-sub-item-chips">
+                    ${quickItems.map((it) => `<button type="button" class="chip ${selectedItems.includes(it) ? 'chip--on' : ''}" data-val="${it}">${selectedItems.includes(it) ? '✓ ' : ''}${it}</button>`).join('')}
+                  </div>
+
                   <div id="cq-sub-custom-item-wrap" style="margin-top:8px;display:none">
-                    <input type="text" id="cq-sub-custom-item" class="entry-input" placeholder="सामान का नाम..." />
+                    <div style="display:flex;gap:6px">
+                      <input type="text" id="cq-sub-custom-item" class="entry-input" placeholder="${isHi ? 'सामान का नाम...' : 'Item name...'}" style="flex:1" />
+                      <button type="button" id="cq-sub-custom-add-btn" class="a-page-btn" style="background:#092c20;color:#ffffff;font-weight:700;padding:0 14px">
+                        + ${isHi ? 'जोड़ें' : 'Add'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2322,22 +2339,81 @@
         document.getElementById('cq-sub-cancel').onclick = closeSub;
         document.getElementById('cq-sub-backdrop').onclick = (e) => { if (e.target.id === 'cq-sub-backdrop') closeSub(); };
 
+        const renderAdminTags = () => {
+          const list = document.getElementById('cq-sub-tag-list');
+          if (!list) return;
+          list.innerHTML = selectedItems.map((n) => `
+            <span style="display:inline-flex;align-items:center;gap:4px;background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:12px;font-size:.85rem;font-weight:700">
+              ${escapeHtml(n)}
+              <button type="button" class="cq-tag-del" data-name="${escapeHtml(n)}" style="background:none;border:none;cursor:pointer;color:#991b1b;font-weight:800" title="Remove">✕</button>
+            </span>
+          `).join('');
+
+          list.querySelectorAll('.cq-tag-del').forEach((btn) => {
+            btn.onclick = () => {
+              const name = btn.dataset.name;
+              selectedItems = selectedItems.filter((x) => x !== name);
+              renderAdminTags();
+              updateAdminChips();
+            };
+          });
+        };
+
+        const updateAdminChips = () => {
+          document.querySelectorAll('#cq-sub-item-chips button').forEach((btn) => {
+            const val = btn.dataset.val;
+            const isOn = selectedItems.includes(val);
+            btn.classList.toggle('chip--on', isOn);
+            btn.textContent = (isOn ? '✓ ' : '') + val;
+          });
+        };
+
+        renderAdminTags();
+
         // Item chips
-        const customWrap = document.getElementById('cq-sub-custom-item-wrap');
-        const customInput = document.getElementById('cq-sub-custom-item');
         document.querySelectorAll('#cq-sub-item-chips button').forEach((btn) => {
           btn.onclick = () => {
-            document.querySelectorAll('#cq-sub-item-chips button').forEach((b) => b.classList.remove('chip--on'));
-            btn.classList.add('chip--on');
-            selectedItem = btn.dataset.val;
-            if (selectedItem === 'अन्य') {
-              customWrap.style.display = 'block';
-              customInput.focus();
+            const val = btn.dataset.val;
+            if (selectedItems.includes(val)) {
+              selectedItems = selectedItems.filter((x) => x !== val);
             } else {
-              customWrap.style.display = 'none';
+              selectedItems.push(val);
             }
+            renderAdminTags();
+            updateAdminChips();
           };
         });
+
+        // Custom item toggle & add
+        const customWrap = document.getElementById('cq-sub-custom-item-wrap');
+        const customInput = document.getElementById('cq-sub-custom-item');
+        const customToggle = document.getElementById('cq-sub-custom-toggle');
+        const customAddBtn = document.getElementById('cq-sub-custom-add-btn');
+
+        if (customToggle) {
+          customToggle.onclick = () => {
+            const isShown = customWrap.style.display !== 'none';
+            customWrap.style.display = isShown ? 'none' : 'block';
+            if (!isShown && customInput) customInput.focus();
+          };
+        }
+
+        const addAdminCustomItem = () => {
+          const val = (customInput?.value || '').trim();
+          if (val && !selectedItems.includes(val)) {
+            selectedItems.push(val);
+            customInput.value = '';
+            renderAdminTags();
+            updateAdminChips();
+          }
+        };
+
+        if (customAddBtn) customAddBtn.onclick = addAdminCustomItem;
+        if (customInput) {
+          customInput.onkeydown = (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addAdminCustomItem(); }
+          };
+        }
 
         // Due chips
         document.querySelectorAll('#cq-sub-due-chips button').forEach((btn) => {
@@ -2364,22 +2440,27 @@
               const spoken = await eng.listenOnce(6000);
               if (spoken) {
                 subTranscript.textContent = `"${spoken}"`;
+                const KNOWN_KEYWORDS = ['साड़ी', 'सूटिंग', 'पर्दा', 'गद्दा', 'धोती', 'पैंट-शर्ट', 'पैंट', 'शर्ट', 'चादर', 'तौलिया', 'किराना', 'कंबल', 'कुर्ता', 'दुपट्टा', 'गमछा', 'ब्लाउज', 'रुई'];
+                KNOWN_KEYWORDS.forEach((kw) => {
+                  if (spoken.includes(kw) && !selectedItems.includes(kw)) {
+                    selectedItems.push(kw);
+                  }
+                });
+
                 try {
                   const { parsed } = await api('/entries/parse-speech', { method: 'POST', body: { text: spoken } });
                   if (parsed) {
                     if (parsed.amount) document.getElementById('cq-sub-amt').value = parsed.amount;
-                    if (parsed.items && parsed.items[0]?.name) {
-                      const itemName = parsed.items[0].name;
-                      const matched = Array.from(document.querySelectorAll('#cq-sub-item-chips button')).find((b) => b.dataset.val === itemName);
-                      if (matched) matched.click();
-                      else {
-                        const otherBtn = Array.from(document.querySelectorAll('#cq-sub-item-chips button')).find((b) => b.dataset.val === 'अन्य');
-                        if (otherBtn) otherBtn.click();
-                        if (customInput) customInput.value = itemName;
-                      }
+                    if (parsed.items && Array.isArray(parsed.items)) {
+                      parsed.items.forEach((it) => {
+                        if (it.name && !selectedItems.includes(it.name)) selectedItems.push(it.name);
+                      });
                     }
                   }
                 } catch {}
+
+                renderAdminTags();
+                updateAdminChips();
               }
             } catch {}
             subMic.classList.remove('mic-pulsing');
@@ -2393,8 +2474,18 @@
             toast(isHi ? 'कृपया सही उधार रकम डालें' : 'Please enter valid amount');
             return;
           }
-          let itName = selectedItem;
-          if (selectedItem === 'अन्य') itName = customInput.value.trim() || 'अन्य सामान';
+          if (!selectedItems.length) {
+            toast(isHi ? 'कृपया कम से कम एक सामान चुनें' : 'Please select at least one item');
+            return;
+          }
+
+          const itName = selectedItems.join(', ');
+          const itemsArray = selectedItems.map((name) => ({
+            name,
+            qty: 1,
+            amount: Math.round(amt / selectedItems.length),
+          }));
+
           let dueDate = null;
           let dueDateNote = '';
           if (dueDateDays) {
@@ -2414,7 +2505,7 @@
                 type: 'sale',
                 amount: amt,
                 item: itName,
-                items: [{ name: itName, qty: 1, amount: amt }],
+                items: itemsArray,
                 dueDate: dueDate || undefined,
                 dueDateNote: dueDateNote || undefined,
                 note,
@@ -2423,7 +2514,7 @@
               },
             });
             playChime();
-            toast(isHi ? `उधार ${inr(amt)} सफलतापूर्वक दर्ज हुआ!` : `Credit sale of ${inr(amt)} recorded!`);
+            toast(isHi ? `उधार ${inr(amt)} (${itName}) दर्ज हुआ!` : `Credit sale of ${inr(amt)} (${itName}) recorded!`);
             closeSub();
             openCustomerLedgerModal(customerId);
           } catch (err) {

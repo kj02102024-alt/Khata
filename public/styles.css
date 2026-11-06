@@ -2800,3 +2800,78 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   width: 100%;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   MULTIPLE ITEMS SELECTION TRAY & TAGS (PAPA-FRIENDLY UI)
+   ══════════════════════════════════════════════════════════════════════════════ */
+.pb-selected-tray {
+  background: #f8fafc;
+  border: 1.5px dashed #fca5a5;
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 42px;
+}
+
+.pb-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  border: 1px solid #fecaca;
+  box-shadow: 0 1px 3px rgba(153, 27, 27, 0.08);
+}
+
+.pb-tag-del {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-weight: 900;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.pb-tag-del:hover {
+  color: #7f1d1d;
+  transform: scale(1.2);
+}
+
+/* High-Contrast Large Touch Friendly Buttons for Elders */
+.chip {
+  min-height: 38px;
+  padding: 6px 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 10px;
+  transition: all 0.12s ease;
+}
+
+.chip--on {
+  background: var(--forest, #092c20) !important;
+  color: #ffffff !important;
+  border-color: var(--forest, #092c20) !important;
+  box-shadow: 0 2px 6px rgba(9, 44, 32, 0.2);
+}
+
+/* Home Action Cards 2-item Grid for Elderly Usability */
+.p-actions--home .p-card {
+  min-height: 96px;
+  cursor: pointer;
+}
+
+.p-actions--home .p-card:active {
+  transform: scale(0.98);
+}
+
+
